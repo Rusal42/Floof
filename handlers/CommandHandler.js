@@ -26,7 +26,7 @@ class CommandHandler {
                 this.loadCommandsFromDirectory(itemPath);
             } else if (item.endsWith('.js')) {
                 // Skip utility files that aren't commands
-                const skipFiles = ['BaseCommand.js', 'balance-manager.js', 'gambling.js', 'gambling-menu.js', 'blackjack-handler.js', 'owner-gambling.js', 'fun-commands.js'];
+                const skipFiles = ['BaseCommand.js', 'balance-manager.js', 'gambling.js', 'gambling-menu.js', 'blackjack-handler.js', 'owner-gambling.js'];
                 if (skipFiles.includes(item)) {
                     continue;
                 }

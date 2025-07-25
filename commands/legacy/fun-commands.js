@@ -104,7 +104,7 @@ function pat(message) {
         .setDescription(description)
         .setImage(randomGif)
         .setColor(0xffe4b5);
-    message.channel.send({ embeds: [embed] });
+    sendAsFloofWebhook(message, { embeds: [embed] });
 }
 
 // Slap GIF command
