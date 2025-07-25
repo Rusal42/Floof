@@ -226,8 +226,9 @@ sendAsFloofWebhook(message, { embeds: [embed] });
         const embed = new EmbedBuilder()
             .setTitle('🎉 Fun Commands')
             .addFields([
-                { name: 'Entertainment', value: '`%joke` `%8ball <question>` `%cat` `%roll [sides]`', inline: true },
-                { name: 'Social', value: '`%hug [@user]` `%pat [@user]` `%kiss [@user]` `%wave [@user]`', inline: true }
+                { name: 'Entertainment', value: '`%joke` `%8ball <question>` `%cat` `%roll [sides]` `%blush`', inline: true },
+                { name: 'Social Positive', value: '`%hug [@user]` `%pat [@user]` `%kiss [@user]` `%wave [@user]` `%highfive [@user]` `%cuddle [@user]` `%dance [@user]`', inline: true },
+                { name: 'Social Playful', value: '`%slap [@user]` `%bite [@user]` `%poke [@user]` `%shoot [@user]`', inline: true }
             ])
             .setColor(0x7289da);
         sendAsFloofWebhook(message, { embeds: [embed] });
