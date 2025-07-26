@@ -21,36 +21,58 @@ const RANDOM_WELCOMES = [
 // Custom welcome message handler
 async function handleMemberJoin(member) {
     // Pick a random message
-    const welcomeText = RANDOM_WELCOMES[Math.floor(Math.random() * RANDOM_WELCOMES.length)].replace('{member}', `${member}`);
+    const welcomeText = RANDOM_WELCOMES[Math.floor(Math.random() * RANDOM_WELCOMES.length)].replace('{member}', `<@${member.user.id}>`);
     const embed = new EmbedBuilder()
         .setTitle('Welcome to Floof\'s Fluffy Den!')
-        .setDescription(`Hi ${member}, welcome to the fluffiest place on Discord!\n\nPlease read the <#${RULES_CHANNEL_ID}> to get started and agree to the rules. Once you\'ve agreed, you\'ll get access to the rest of the server!\n\nIf you need help, just ask a mod or mention Floof! ✨🐾`)
+        .setDescription(`Hi ${member}, welcome to the fluffiest place on Discord!\n\nPlease read the <#${RULES_CHANNEL_ID}> to get started and agree to the rules. Once you've agreed, you'll get access to the rest of the server!\n\nIf you need help, just ask a mod or mention Floof! ✨🐾`)
         .setColor(0xffb6c1)
         .setThumbnail(member.user.displayAvatarURL({ dynamic: true }));
-    const welcomeChannelId = '1393667671609835642'; // Channel to ping new users in
-    const rulesChannelId = '1393667672511746099'; // Channel where the rules are
-    const welcomeChannel = member.guild.channels.cache.get(welcomeChannelId);
-    if (welcomeChannel && welcomeChannel.isTextBased()) {
-        await welcomeChannel.send({
-            content: `Welcome <@${member.user.id}>! Please read the rules in <#${rulesChannelId}> to gain access to the server.`
-        });
-    }
 
-    // Send to the hardcoded welcome channel
-    const embedChannel = member.guild.channels.cache.get(WELCOME_CHANNEL_ID);
-    if (embedChannel && embedChannel.isTextBased()) {
-        await embedChannel.send({ content: welcomeText, embeds: [embed] });
+    // Send single combined message to welcome channel
+    const welcomeChannel = member.guild.channels.cache.get(WELCOME_CHANNEL_ID);
+    if (welcomeChannel && welcomeChannel.isTextBased()) {
+        await welcomeChannel.send({ 
+            content: welcomeText, 
+            embeds: [embed] 
+        });
     }
 }
 
 async function handleMemberLeave(member) {
-    // Compose a cute, custom goodbye embed
+    // Check if this was a kick by looking at audit logs
+    let wasKicked = false;
+    
+    try {
+        // Fetch recent audit logs for member kicks
+        const auditLogs = await member.guild.fetchAuditLogs({
+            type: 20, // MEMBER_KICK
+            limit: 5
+        });
+        
+        // Check if there's a recent kick for this user (within last 5 seconds)
+        const kickLog = auditLogs.entries.find(entry => 
+            entry.target.id === member.user.id && 
+            Date.now() - entry.createdTimestamp < 5000
+        );
+        
+        if (kickLog) {
+            wasKicked = true;
+            // Handle as kick with "good riddance" message
+            await handleMemberKickBan(member.user, member.guild, 'kicked');
+            return;
+        }
+    } catch (error) {
+        console.log('Could not fetch audit logs for kick detection:', error.message);
+    }
+    
+    // If not kicked, treat as voluntary leave with nice goodbye
     const embed = new EmbedBuilder()
         .setTitle('A floof has left the den...')
         .setDescription(`${member.user.tag} has left the server. We\'ll miss you! (｡•́︿•̀｡)\n\nMay your adventures be fluffy and bright!`)
         .setColor(0xadd8e6)
         .setThumbnail(member.user.displayAvatarURL({ dynamic: true }))
         .setFooter({ text: 'Floof waves a fluffy paw goodbye!' });
+    
     const embedChannel = member.guild.channels.cache.get(WELCOME_CHANNEL_ID);
     if (embedChannel && embedChannel.isTextBased()) {
         await embedChannel.send({ embeds: [embed] });
@@ -65,10 +87,9 @@ async function handleMemberKickBan(user, guild, action = 'banned') {
         .setColor(0xff6961)
         .setThumbnail(user.displayAvatarURL({ dynamic: true }))
         .setFooter({ text: 'Floof keeps the den safe and cozy!' });
-    const welcomeChannel = guild.channels.cache.find(
-        c => c.name === 'welcome' && c.isTextBased()
-    );
-    if (welcomeChannel) {
+    
+    const welcomeChannel = guild.channels.cache.get(WELCOME_CHANNEL_ID);
+    if (welcomeChannel && welcomeChannel.isTextBased()) {
         await welcomeChannel.send({ embeds: [embed] });
     }
 }

@@ -78,8 +78,14 @@ client.on('guildBanAdd', async (ban) => {
     await handleMemberKickBan(ban.user, ban.guild, 'banned');
 });
 
+// Import auto moderation
+const { handleAutoModeration } = require('./moderation/automod');
+
 client.on('messageCreate', async (message) => {
     if (message.author.bot) return;
+    
+    // Run auto moderation first
+    await handleAutoModeration(message);
     // --- Meowlock Intercept ---
     const fs = require('fs');
     const path = require('path');
