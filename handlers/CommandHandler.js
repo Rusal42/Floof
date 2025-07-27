@@ -16,6 +16,10 @@ class CommandHandler {
         // Load creation commands with owner-only flag
         const creationPath = path.join(__dirname, '..', 'creation');
         this.loadCommandsFromDirectory(creationPath, { ownerOnly: true });
+        
+        // Load moderation commands
+        const moderationPath = path.join(__dirname, '..', 'moderation');
+        this.loadCommandsFromDirectory(moderationPath);
     }
 
     loadCommandsFromDirectory(dir, options = {}) {

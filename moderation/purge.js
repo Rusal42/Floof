@@ -50,11 +50,12 @@ module.exports = {
                 .setDescription(`✅ Successfully deleted ${deletedMessages.size} messages${targetUser ? ` from ${targetUser.tag}` : ''}.`)
                 .setColor(0x00FF00);
             
-            const reply = await sendAsFloofWebhook(message, { embeds: [embed] });
-            
-            // Delete the confirmation message after 5 seconds
+            // Send the confirmation message and delete it after 5 seconds
+            const reply = await message.channel.send({ embeds: [embed] });
             setTimeout(() => {
-                reply.delete().catch(console.error);
+                if (reply && reply.deletable) {
+                    reply.delete().catch(console.error);
+                }
             }, 5000);
             
         } catch (error) {
