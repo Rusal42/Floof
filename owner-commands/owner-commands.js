@@ -87,30 +87,51 @@ module.exports = {
         });
         await message.delete();
     },
-    meowlock: async (message, userArg, style) => {
+    meowlock: async (message, args) => {
         const fs = require('fs');
         const path = require('path');
         const meowlockPath = path.join(__dirname, '../meowlock.json');
+        
+        // Check if we have both user and style
+        if (args.length < 2) {
+            const embed = new EmbedBuilder()
+                .setDescription('Usage: %meowlock <@user|userID> <meow|nya>')
+                .setColor(0xB57EDC);
+            return sendAsFloofWebhook(message, { embeds: [embed] });
+        }
+
+        const userArg = args[0];
+        const style = args[1].toLowerCase();
+
+        if (!['nya', 'meow'].includes(style)) {
+            const embed = new EmbedBuilder()
+                .setDescription('Please specify a style: nya or meow. Usage: %meowlock @user meow')
+                .setColor(0xB57EDC);
+            return sendAsFloofWebhook(message, { embeds: [embed] });
+        }
+
         let user = message.mentions.users.first();
+        
+        // If no mention, try to fetch by ID
         if (!user && userArg) {
             try {
                 user = await message.client.users.fetch(userArg);
             } catch (e) {
-                return message.reply('Could not find that user by ID.');
+                const embed = new EmbedBuilder()
+                    .setDescription('Could not find that user by ID.')
+                    .setColor(0xB57EDC);
+                return sendAsFloofWebhook(message, { embeds: [embed] });
             }
         }
+
         if (!user) {
-    const embed = new EmbedBuilder()
-        .setDescription('Please mention a user or provide a user ID.')
-        .setColor(0xB57EDC);
-    return sendAsFloofWebhook(message, { embeds: [embed] });
-}
-        if (!['nya', 'meow'].includes(style)) {
-    const embed = new EmbedBuilder()
-        .setDescription('Please specify a style: nya or meow. Usage: %meowlock @user nya')
-        .setColor(0xB57EDC);
-    return sendAsFloofWebhook(message, { embeds: [embed] });
-}
+            const embed = new EmbedBuilder()
+                .setDescription('Please mention a user or provide a valid user ID.')
+                .setColor(0xB57EDC);
+            return sendAsFloofWebhook(message, { embeds: [embed] });
+        }
+
+        // Rest of the meowlock logic here
         let allLocks = {};
         if (fs.existsSync(meowlockPath)) {
             try {
@@ -119,16 +140,29 @@ module.exports = {
                 allLocks = {};
             }
         }
+        
         const guildId = message.guild?.id;
-        if (!guildId) return message.reply('This command can only be used in a server.');
+        if (!guildId) {
+            const embed = new EmbedBuilder()
+                .setDescription('This command can only be used in a server.')
+                .setColor(0xB57EDC);
+            return sendAsFloofWebhook(message, { embeds: [embed] });
+        }
+        
         if (!allLocks[guildId]) allLocks[guildId] = [];
         let locked = allLocks[guildId];
+        
         // Remove existing lock for this user if present
         locked = locked.filter(entry => entry.id !== user.id);
         locked.push({ id: user.id, style });
         allLocks[guildId] = locked;
+        
         try {
             fs.writeFileSync(meowlockPath, JSON.stringify(allLocks, null, 2));
+            const embed = new EmbedBuilder()
+                .setDescription(`✅ ${user.tag} is now meowlocked with style: ${style}!`)
+                .setColor(0xB57EDC);
+            return sendAsFloofWebhook(message, { embeds: [embed] });
         } catch (err) {
             console.error('[meowlock] Write failed:', err);
             const embed = new EmbedBuilder()
@@ -136,10 +170,6 @@ module.exports = {
                 .setColor(0xFF0000);
             return sendAsFloofWebhook(message, { embeds: [embed] });
         }
-        const embed = new EmbedBuilder()
-            .setDescription(`${user.tag} is now meowlocked with style: ${style}!`)
-            .setColor(0xB57EDC);
-        sendAsFloofWebhook(message, { embeds: [embed] });
     },
     meowunlock: async (message, userArg) => {
         const fs = require('fs');
