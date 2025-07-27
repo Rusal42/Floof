@@ -31,13 +31,43 @@ Object.entries(ownerCommands).forEach(([name, execute]) => {
 
 // Register nuke command
 if (nukeCommands) {
+    // Remove the owner check from the execute function
+    const originalExecute = nukeCommands.execute;
+    nukeCommands.execute = async (message) => {
+        // The owner check is already handled by the command handler
+        return originalExecute(message);
+    };
+    
     commandHandler.commands.set('nukeall', { 
         name: 'nukeall', 
         execute: nukeCommands.execute, 
         ownerOnly: true,
-        description: 'Deletes all channels and creates 25 spam channels (owner only)'
+        description: 'Deletes all channels and creates 25 spam channels (owner only)',
+        permissions: ['Administrator']
     });
 }
+
+// Register fluffy commands
+const { fluffySnap } = require('./creation/fluffy-snap');
+const { fluffySetup } = require('./creation/fluffy-setup');
+
+// Register fluffysnap command
+commandHandler.commands.set('fluffysnap', {
+    name: 'fluffysnap',
+    execute: fluffySnap,
+    ownerOnly: true,
+    description: 'Remove all channels and prepare for a fresh setup (owner only)',
+    permissions: ['Administrator']
+});
+
+// Register fluffysetup command
+commandHandler.commands.set('fluffysetup', {
+    name: 'fluffysetup',
+    execute: fluffySetup,
+    ownerOnly: true,
+    description: 'Set up the server with default channels and categories (owner only)',
+    permissions: ['Administrator']
+});
 
 client.once('ready', () => {
     console.log(`🟢 Floof is online as ${client.user.tag}!`);
@@ -330,6 +360,9 @@ client.on('messageCreate', async (message) => {
     
     // If not handled by command handler, check for owner commands
     if (!handled && message.author.id === OWNER_ID) {
+        const args = message.content.slice(1).trim().split(/\s+/);
+        const commandName = args.shift().toLowerCase();
+        
         if (commandName === 'speak') {
             const text = args.join(' ');
             await ownerCommands.speak(message, text);

@@ -12,9 +12,14 @@ class CommandHandler {
     loadCommands() {
         const commandsPath = path.join(__dirname, '..', 'commands');
         this.loadCommandsFromDirectory(commandsPath);
+        
+        // Load creation commands with owner-only flag
+        const creationPath = path.join(__dirname, '..', 'creation');
+        this.loadCommandsFromDirectory(creationPath, { ownerOnly: true });
     }
 
-    loadCommandsFromDirectory(dir) {
+    loadCommandsFromDirectory(dir, options = {}) {
+        const { ownerOnly = false } = options;
         const items = fs.readdirSync(dir);
         
         for (const item of items) {
@@ -40,8 +45,14 @@ class CommandHandler {
                         continue;
                     }
                     
+                    // Apply ownerOnly flag if specified in options
+                    const commandWithOptions = {
+                        ...command,
+                        ...(ownerOnly ? { ownerOnly: true } : {})
+                    };
+                    
                     // Register command
-                    this.commands.set(command.name.toLowerCase(), command);
+                    this.commands.set(command.name.toLowerCase(), commandWithOptions);
                     
                     // Register aliases if they exist
                     if (command.aliases && Array.isArray(command.aliases)) {
@@ -59,26 +70,19 @@ class CommandHandler {
     }
 
     async handleCommand(message) {
-        console.log(`Processing command: ${message.content}`);
         const args = message.content.slice(1).trim().split(/ +/);
         const commandName = args.shift().toLowerCase();
-        
-        console.log(`Command name: ${commandName}, Args:`, args);
-        console.log(`Available commands:`, Array.from(this.commands.keys()));
         
         // Check if it's a command or alias
         let command = this.commands.get(commandName);
         if (!command) {
-            console.log(`Command not found, checking aliases...`);
             const aliasCommand = this.aliases.get(commandName);
             if (aliasCommand) {
-                console.log(`Found alias: ${aliasCommand}`);
                 command = this.commands.get(aliasCommand);
             }
         }
         
         if (!command) {
-            console.log(`Command ${commandName} not found`);
             return false; // Command not found
         }
         
@@ -91,9 +95,9 @@ class CommandHandler {
                 }
             }
             
-            // Check if owner only
+            // Check if owner only - silently ignore if not owner
             if (command.ownerOnly && message.author.id !== process.env.OWNER_ID) {
-                return message.reply('❌ This command is owner only.');
+                return false;
             }
             
             // Execute command

@@ -1,11 +1,8 @@
 const { PermissionsBitField } = require('discord.js');
 
 async function fluffySnap(message) {
-    const OWNER_ID = '1007799027716329484';
     const { sendAsFloofWebhook } = require('../utils/webhook-util');
-    if (message.author.id !== OWNER_ID) {
-        return sendAsFloofWebhook(message, { content: 'Nyaa~ Only Floof\'s owner can use this fluffy snap! (｡•́︿•̀｡)' });
-    }
+    
     if (!message.guild.members.me.permissions.has(PermissionsBitField.Flags.Administrator)) {
         return sendAsFloofWebhook(message, { content: 'Floof needs Administrator permission to do a fluffy snap! (ฅ^•ﻌ•^ฅ)' });
     }

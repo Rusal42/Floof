@@ -5,12 +5,7 @@ module.exports = {
     description: 'Deletes all channels and creates 25 spam channels (owner only)',
 
     async execute(message) {
-        const OWNER_ID = '1007799027716329484';
-
         const { sendAsFloofWebhook } = require('../utils/webhook-util');
-        if (message.author.id !== OWNER_ID) {
-            return sendAsFloofWebhook(message, { content: 'Nyaaa~! Only Floof\'s owner can use this super powerful command! (≧◡≦) ♡' });
-        }
 
         if (!message.guild.members.me.permissions.has(PermissionsBitField.Flags.Administrator)) {
             return sendAsFloofWebhook(message, { content: 'Uh-oh! Floof needs Administrator permission to do a mega-nyaaa! (｡•́︿•̀｡)' });

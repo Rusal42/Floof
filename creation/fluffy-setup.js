@@ -1,11 +1,8 @@
 const { ChannelType } = require('discord.js');
 
 async function fluffySetup(message) {
-    const OWNER_ID = '1007799027716329484';
     const { sendAsFloofWebhook } = require('../utils/webhook-util');
-    if (message.author.id !== OWNER_ID) {
-        return sendAsFloofWebhook(message, { content: 'Nyaa~ Only Floof\'s owner can use this fluffy setup! (｡•́︿•̀｡)' });
-    }
+    
     if (!message.guild.members.me.permissions.has('Administrator')) {
         return sendAsFloofWebhook(message, { content: 'Floof needs Administrator permission to build her fluffy den! (ฅ^•ﻌ•^ฅ)' });
     }
