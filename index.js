@@ -26,7 +26,13 @@ const nukeCommands = require('./owner-commands/nukeall');
 
 // Register owner commands with the command handler
 Object.entries(ownerCommands).forEach(([name, execute]) => {
-    commandHandler.commands.set(name.toLowerCase(), { name, execute, ownerOnly: true });
+    commandHandler.commands.set(name.toLowerCase(), { 
+        name, 
+        execute, 
+        ownerOnly: true,
+        description: 'Owner command',
+        aliases: []
+    });
 });
 
 // Register nuke command
