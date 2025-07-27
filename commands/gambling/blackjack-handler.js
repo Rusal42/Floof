@@ -3,7 +3,7 @@
 
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const { sendAsFloofWebhook } = require('../../utils/webhook-util');
-const { userBalances, saveBalances } = require('./gambling');
+const { getBalance, addBalance, saveBalances } = require('./utils/balance-manager');
 const { blackjackGames, handValue, formatHand } = require('./blackjack');
 
 // Create a new deck
@@ -106,12 +106,12 @@ async function handleBlackjackInteraction(interaction) {
         if (finalDealerValue > 21) {
             // Dealer busts - player wins
             result = `🎉 **YOU WIN!** Dealer busted! You won **${game.bet}** coins!`;
-            userBalances[userId] += game.bet * 2; // Return bet + winnings
+            addBalance(userId, game.bet * 2); // Return bet + winnings
             color = 0x43b581;
         } else if (playerValue > finalDealerValue) {
             // Player wins
             result = `🎉 **YOU WIN!** You won **${game.bet}** coins!`;
-            userBalances[userId] += game.bet * 2; // Return bet + winnings
+            addBalance(userId, game.bet * 2); // Return bet + winnings
             color = 0x43b581;
         } else if (playerValue < finalDealerValue) {
             // Dealer wins
@@ -120,7 +120,7 @@ async function handleBlackjackInteraction(interaction) {
         } else {
             // Tie
             result = `🤝 **PUSH!** It's a tie! Your **${game.bet}** coins are returned.`;
-            userBalances[userId] += game.bet; // Return bet
+            addBalance(userId, game.bet); // Return bet
             color = 0xffd700;
         }
         
@@ -132,7 +132,7 @@ async function handleBlackjackInteraction(interaction) {
             .setDescription(
                 `Your hand: ${formatHand(game.player)} (**${playerValue}**)\n` +
                 `Dealer: ${formatHand(game.dealer)} (**${finalDealerValue}**)\n\n` +
-                result + `\n\nYour balance: **${userBalances[userId]}** coins`
+                result + `\n\nYour balance: **${getBalance(userId)}** coins`
             )
             .setColor(color);
         
