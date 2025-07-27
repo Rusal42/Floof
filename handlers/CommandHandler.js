@@ -59,19 +59,28 @@ class CommandHandler {
     }
 
     async handleCommand(message) {
+        console.log(`Processing command: ${message.content}`);
         const args = message.content.slice(1).trim().split(/ +/);
         const commandName = args.shift().toLowerCase();
+        
+        console.log(`Command name: ${commandName}, Args:`, args);
+        console.log(`Available commands:`, Array.from(this.commands.keys()));
         
         // Check if it's a command or alias
         let command = this.commands.get(commandName);
         if (!command) {
+            console.log(`Command not found, checking aliases...`);
             const aliasCommand = this.aliases.get(commandName);
             if (aliasCommand) {
+                console.log(`Found alias: ${aliasCommand}`);
                 command = this.commands.get(aliasCommand);
             }
         }
         
-        if (!command) return false; // Command not found
+        if (!command) {
+            console.log(`Command ${commandName} not found`);
+            return false; // Command not found
+        }
         
         try {
             // Check permissions if specified

