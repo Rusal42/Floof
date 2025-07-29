@@ -11,7 +11,21 @@ class CommandHandler {
 
     loadCommands() {
         const commandsPath = path.join(__dirname, '..', 'commands');
-        this.loadCommandsFromDirectory(commandsPath);
+        
+        // Load all regular commands, but mark gambling commands as owner-only
+        const items = fs.readdirSync(commandsPath);
+        for (const item of items) {
+            const itemPath = path.join(commandsPath, item);
+            const stat = fs.statSync(itemPath);
+            
+            if (stat.isDirectory()) {
+                // Load all directories without ownerOnly flag
+                this.loadCommandsFromDirectory(itemPath);
+            } else if (item.endsWith('.js')) {
+                // Load individual command files in the root commands directory
+                this.loadCommandFile(itemPath);
+            }
+        }
         
         // Load creation commands with owner-only flag
         const creationPath = path.join(__dirname, '..', 'creation');
@@ -22,6 +36,62 @@ class CommandHandler {
         this.loadCommandsFromDirectory(moderationPath);
     }
 
+    loadCommandFile(filePath) {
+        const fileName = path.basename(filePath);
+        const dirName = path.basename(path.dirname(filePath));
+        
+        // Skip utility files that aren't commands
+        const skipFiles = ['BaseCommand.js', 'balance-manager.js', 'gambling.js', 'gambling-menu.js', 'blackjack-handler.js'];
+        
+        if (skipFiles.includes(fileName)) {
+            console.log(`Skipping non-command file: ${fileName}`);
+            return;
+        }
+        
+        try {
+            console.log(`Loading command file: ${fileName}`);
+            const command = require(filePath);
+            
+            // Only mark owner-gambling.js commands as ownerOnly
+            if (fileName === 'owner-gambling.js' && dirName === 'gambling') {
+                command.ownerOnly = true;
+            }
+            
+            // Validate command structure
+            if (!command.name || !command.execute) {
+                console.warn(`⚠️  Command ${fileName} is missing required properties (name, execute)`);
+                return;
+            }
+            
+            // Register command
+            this.registerCommand(command, filePath);
+        } catch (error) {
+            console.error(`❌ Failed to load command ${fileName}:`, error);
+        }
+    }
+    
+    registerCommand(command, filePath) {
+        // Store file path for potential reloading
+        command.filePath = filePath;
+        
+        // Debug log command registration
+        const cmdName = command.name.toLowerCase();
+        const isOwnerOnly = command.ownerOnly ? 'OWNER-ONLY' : 'PUBLIC';
+        console.log(`📝 Registering command: ${cmdName.padEnd(15)} [${isOwnerOnly}] from ${path.basename(filePath)}`);
+        
+        // Register command
+        this.commands.set(cmdName, command);
+        
+        // Register aliases if they exist
+        if (command.aliases && Array.isArray(command.aliases)) {
+            for (const alias of command.aliases) {
+                this.aliases.set(alias.toLowerCase(), command.name.toLowerCase());
+            }
+        }
+        
+        console.log(`✅ Loaded command: ${command.name}${command.ownerOnly ? ' (owner only)' : ''}`);
+    }
+    
     loadCommandsFromDirectory(dir, options = {}) {
         const { ownerOnly = false } = options;
         const items = fs.readdirSync(dir);
@@ -32,14 +102,8 @@ class CommandHandler {
             
             if (stat.isDirectory()) {
                 // Recursively load commands from subdirectories
-                this.loadCommandsFromDirectory(itemPath);
+                this.loadCommandsFromDirectory(itemPath, options);
             } else if (item.endsWith('.js')) {
-                // Skip utility files that aren't commands
-                const skipFiles = ['BaseCommand.js', 'balance-manager.js', 'gambling.js', 'gambling-menu.js', 'blackjack-handler.js', 'owner-gambling.js'];
-                if (skipFiles.includes(item)) {
-                    continue;
-                }
-                
                 try {
                     const command = require(itemPath);
                     
@@ -50,13 +114,15 @@ class CommandHandler {
                     }
                     
                     // Apply ownerOnly flag if specified in options
-                    const commandWithOptions = {
-                        ...command,
-                        ...(ownerOnly ? { ownerOnly: true } : {})
-                    };
+                    if (ownerOnly) {
+                        command.ownerOnly = true;
+                    }
+                    
+                    // Store file path for potential reloading
+                    command.filePath = itemPath;
                     
                     // Register command
-                    this.commands.set(command.name.toLowerCase(), commandWithOptions);
+                    this.commands.set(command.name.toLowerCase(), command);
                     
                     // Register aliases if they exist
                     if (command.aliases && Array.isArray(command.aliases)) {
@@ -65,7 +131,7 @@ class CommandHandler {
                         }
                     }
                     
-                    console.log(`✅ Loaded command: ${command.name}`);
+                    console.log(`✅ Loaded command: ${command.name}${command.ownerOnly ? ' (owner only)' : ''}`);
                 } catch (error) {
                     console.error(`❌ Failed to load command ${item}:`, error);
                 }
@@ -86,6 +152,42 @@ class CommandHandler {
             }
         }
         
+        // If this is a gambling command, check if the other bot is online
+        if (command && command.category === 'gambling' && message.guild) {
+            const OTHER_BOT_ID = '1399482685545779241'; // The ID of the other gambling bot
+            
+            try {
+                // Try to get the bot from cache first (faster)
+                let otherBot = message.guild.members.cache.get(OTHER_BOT_ID);
+                
+                // If not in cache, try to fetch it (slower but more accurate)
+                if (!otherBot) {
+                    otherBot = await message.guild.members.fetch(OTHER_BOT_ID).catch(() => null);
+                }
+                
+                // If we found the bot, check its status
+                if (otherBot) {
+                    const status = otherBot.presence?.status || 'offline';
+                    const isOnline = status !== 'offline' && status !== 'invisible';
+                    
+                    console.log(`[BOT STATUS] ${otherBot.user.tag} is ${isOnline ? 'ONLINE' : 'OFFLINE'} (status: ${status})`);
+                    
+                    // If the other bot is online, ignore the command
+                    if (isOnline) {
+                        console.log(`[COMMAND] Ignoring ${commandName} - other gambling bot is online`);
+                        return false;
+                    }
+                    console.log(`[COMMAND] Processing ${commandName} - other gambling bot is offline`);
+                } else {
+                    console.log(`[BOT STATUS] Other gambling bot (${OTHER_BOT_ID}) not found in server`);
+                }
+            } catch (error) {
+                console.error('[ERROR] Failed to check bot status:', error);
+                // Continue with command execution if there's an error
+                console.log(`[COMMAND] Processing ${commandName} - error checking bot status`);
+            }
+        }
+        
         if (!command) {
             return false; // Command not found
         }
@@ -100,8 +202,14 @@ class CommandHandler {
             }
             
             // Check if owner only - silently ignore if not owner
-            if (command.ownerOnly && message.author.id !== process.env.OWNER_ID) {
-                return false;
+            if (command.ownerOnly) {
+                console.log(`Command ${command.name} is owner-only`);
+                if (message.author.id !== process.env.OWNER_ID) {
+                    console.log(`User ${message.author.tag} is not the owner, ignoring command`);
+                    return false;
+                }
+            } else {
+                console.log(`Command ${command.name} is available to all users`);
             }
             
             // Execute command

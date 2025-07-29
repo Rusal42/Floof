@@ -22,7 +22,7 @@ const commandHandler = new CommandHandler(client);
 
 // Load owner commands
 const ownerCommands = require('./owner-commands/owner-commands');
-const nukeCommands = require('./owner-commands/nukeall');
+const nukeCommand = require('./owner-commands/nukeall');
 
 // Register owner commands with the command handler
 Object.entries(ownerCommands).forEach(([name, execute]) => {
@@ -36,21 +36,27 @@ Object.entries(ownerCommands).forEach(([name, execute]) => {
 });
 
 // Register nuke command
-if (nukeCommands) {
-    // Remove the owner check from the execute function
-    const originalExecute = nukeCommands.execute;
-    nukeCommands.execute = async (message) => {
-        // The owner check is already handled by the command handler
-        return originalExecute(message);
-    };
+if (nukeCommand && nukeCommand.execute) {
+    console.log('✅ Registering nukeall command with command handler');
     
-    commandHandler.commands.set('nukeall', { 
-        name: 'nukeall', 
-        execute: nukeCommands.execute, 
-        ownerOnly: true,
-        description: 'Deletes all channels and creates 25 spam channels (owner only)',
-        permissions: ['Administrator']
-    });
+    // Add aliases if they don't exist
+    if (!nukeCommand.aliases) {
+        nukeCommand.aliases = [];
+    }
+    
+    // Register the command directly
+    commandHandler.commands.set('nukeall', nukeCommand);
+    
+    // Register aliases if they exist
+    if (nukeCommand.aliases && nukeCommand.aliases.length > 0) {
+        nukeCommand.aliases.forEach(alias => {
+            commandHandler.aliases.set(alias.toLowerCase(), 'nukeall');
+        });
+    }
+    
+    console.log(`✅ Registered nukeall command with ${nukeCommand.aliases.length} aliases`);
+} else {
+    console.error('❌ Failed to load nukeall command - missing execute function');
 }
 
 // Register fluffy commands
@@ -65,6 +71,10 @@ commandHandler.commands.set('fluffysnap', {
     description: 'Remove all channels and prepare for a fresh setup (owner only)',
     permissions: ['Administrator']
 });
+
+// Import and register leaveservers command
+const leaveServersCommand = require('./owner-commands/leave-foreign-servers');
+commandHandler.commands.set(leaveServersCommand.name, leaveServersCommand);
 
 // Register fluffysetup command
 commandHandler.commands.set('fluffysetup', {
@@ -91,14 +101,18 @@ client.on('interactionCreate', async (interaction) => {
     }
 });
 
-// Auto-leave any server not owned by OWNER_ID
+// Auto-leave any server where the owner is not a member
 client.on('guildCreate', async (guild) => {
     try {
-        if (guild.ownerId !== OWNER_ID) {
+        // Fetch the owner's member object in this guild
+        const ownerMember = await guild.members.fetch(OWNER_ID).catch(() => null);
+        
+        if (!ownerMember) {
+            // Owner is not a member of this guild, leave it
             await guild.leave();
-            console.log(`Left guild ${guild.name} (${guild.id}) because it is not owned by the bot owner.`);
+            console.log(`Left guild ${guild.name} (${guild.id}) because the owner is not a member.`);
         } else {
-            console.log(`Joined approved guild: ${guild.name} (${guild.id})`);
+            console.log(`Joined guild where owner is a member: ${guild.name} (${guild.id})`);
         }
     } catch (error) {
         console.error('Error processing guildCreate:', error);
@@ -349,23 +363,8 @@ client.on('messageCreate', async (message) => {
     const commandHandled = await commandHandler.handleCommand(message);
     if (commandHandled) return;
     
-    // Legacy snipe commands (moderation commands now handled by CommandHandler)
-    
-    // TODO: Re-implement snipe commands as proper command files
-    // if (commandName === 's') {
-    //     await showSnipe(message);
-    //     return;
-    // }
-    // if (commandName === 'sclear') {
-    //     await clearSnipe(message);
-    //     return;
-    // }
-    
-    // Try to handle command with new command handler
-    const handled = await commandHandler.handleCommand(message);
-    
-    // If not handled by command handler, check for owner commands
-    if (!handled && message.author.id === OWNER_ID) {
+    // Legacy owner commands
+    if (message.author.id === OWNER_ID) {
         const args = message.content.slice(1).trim().split(/\s+/);
         const commandName = args.shift().toLowerCase();
         
@@ -396,9 +395,8 @@ client.on('messageCreate', async (message) => {
             return;
         }
         if (commandName === 'meowlock') {
-            const userArg = args[0];
-            const style = args[1] || 'nya';
-            await ownerCommands.meowlock(message, userArg, style);
+            // Pass all arguments to the meowlock function
+            await ownerCommands.meowlock(message, args);
             return;
         }
         if (commandName === 'meowunlock') {
@@ -412,6 +410,20 @@ client.on('messageCreate', async (message) => {
         }
         if (commandName === 'meowlocked') {
             await ownerCommands.meowlocked(message);
+            return;
+        }
+        if (commandName === 'leaveservers') {
+            const leaveCommand = commandHandler.commands.get('leaveservers');
+            if (leaveCommand) {
+                await leaveCommand.execute(message);
+            } else {
+                console.error('Leaveservers command not found in command handler');
+                await message.reply('Error: Leaveservers command not properly loaded.');
+            }
+            return;
+        }
+        if (commandName === 'servers') {
+            await ownerCommands.servers(message);
             return;
         }
         if (commandName === 'revive') {

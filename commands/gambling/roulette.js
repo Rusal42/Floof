@@ -65,12 +65,26 @@ function getPayout(betType) {
 async function roulette(message, args) {
     const userId = message.author.id;
     const amount = parseInt(args[0]);
-    const betType = args[1]?.toLowerCase();
+    let betType = args[1]?.toLowerCase();
     let betValue = args[2];
 
-    // Check if user wants to see help
-    if (!amount || !betType || isNaN(amount) || amount <= 0) {
+    // Check if amount is valid
+    if (!amount || isNaN(amount) || amount <= 0) {
+        await sendAsFloofWebhook(message, {
+            embeds: [
+                new EmbedBuilder()
+                    .setTitle('🎰 Roulette - Invalid Bet')
+                    .setDescription('Please specify a valid bet amount! Example: `%roulette 100 color red`')
+                    .setColor(0xff6961)
+            ]
+        });
         return showRouletteHelp(message);
+    }
+    
+    // Default to color bet if no bet type specified
+    if (!betType || !['color', 'number', 'green'].includes(betType)) {
+        betType = 'color';
+        betValue = args[1]?.toLowerCase() || 'red'; // Default to red if no color specified
     }
 
     // Check balance
@@ -86,13 +100,47 @@ async function roulette(message, args) {
         });
     }
 
-    // For number bets, betValue is the number
+    // Process bet type and value
     if (betType === 'number') {
-        betValue = args[1]; // The number is the second argument
+        betValue = parseInt(args[2]);
+        if (isNaN(betValue) || betValue < 0 || betValue > 36) {
+            await sendAsFloofWebhook(message, {
+                embeds: [
+                    new EmbedBuilder()
+                        .setTitle('🎰 Roulette - Invalid Number')
+                        .setDescription('Please specify a valid number between 0 and 36! Example: `%roulette 100 number 17`')
+                        .setColor(0xff6961)
+                ]
+            });
+            return showRouletteHelp(message);
+        }
+    } else if (betType === 'color') {
+        betValue = (args[2]?.toLowerCase() || 'red');
+        if (!['red', 'black'].includes(betValue)) {
+            await sendAsFloofWebhook(message, {
+                embeds: [
+                    new EmbedBuilder()
+                        .setTitle('🎰 Roulette - Invalid Color')
+                        .setDescription('Please specify either `red` or `black`! Example: `%roulette 100 color red`')
+                        .setColor(0xff6961)
+                ]
+            });
+            return showRouletteHelp(message);
+        }
+    } else if (betType === 'green') {
+        betValue = '0';
     }
 
-    // Validate bet type and value
-    if (!BET_TYPES[betType] || (betValue && !BET_TYPES[betType](betValue))) {
+    // Final validation
+    if (!BET_TYPES[betType] || (betValue === undefined || !BET_TYPES[betType](betValue))) {
+        await sendAsFloofWebhook(message, {
+            embeds: [
+                new EmbedBuilder()
+                    .setTitle('🎰 Roulette - Invalid Bet')
+                    .setDescription('Please specify a valid bet! Example: `%roulette 100 color red`')
+                    .setColor(0xff6961)
+            ]
+        });
         return showRouletteHelp(message);
     }
 
