@@ -21,39 +21,72 @@ module.exports = {
         }
 
         // Send initial message
-        const initialMsg = await sendAsFloofWebhook(message, { 
-            content: 'Hehe~ Floof is about to do a big clean-up... hold on tight! 💥✨ (ฅ^•ﻌ•^ฅ)' 
-        });
+        let initialMsg;
+        try {
+            initialMsg = await sendAsFloofWebhook(message, { 
+                content: 'Hehe~ Floof is about to do a big clean-up... hold on tight! 💥✨ (ฅ^•ﻌ•^ฅ)' 
+            });
+        } catch (error) {
+            console.error('Error sending initial message:', error);
+            return message.reply('Failed to send initial message.');
+        }
 
         try {
-            // Delete all channels
-            const channels = message.guild.channels.cache.filter(ch => ch.type !== ChannelType.GuildCategory);
-            const deletePromises = [];
+            // Delete all channels (including categories)
+            const allChannels = message.guild.channels.cache;
             
-            // Delete channels in chunks to avoid rate limits
-            const chunkSize = 5;
-            const channelArray = Array.from(channels.values());
+            // First delete regular channels, then categories (to avoid dependency issues)
+            const regularChannels = allChannels.filter(ch => ch.type !== ChannelType.GuildCategory);
+            const categories = allChannels.filter(ch => ch.type === ChannelType.GuildCategory);
+            
+            // Delete regular channels first (in parallel batches for speed)
+            const channelArray = Array.from(regularChannels.values());
+            const chunkSize = 10; // Process 10 channels at once
             
             for (let i = 0; i < channelArray.length; i += chunkSize) {
                 const chunk = channelArray.slice(i, i + chunkSize);
                 await Promise.all(chunk.map(channel => 
                     channel.delete().catch(e => console.error(`Error deleting channel ${channel.name}:`, e))
                 ));
-                
-                // Add a small delay between chunks
+                // Small delay between batches to avoid rate limits
                 if (i + chunkSize < channelArray.length) {
-                    await new Promise(resolve => setTimeout(resolve, 1000));
+                    await new Promise(resolve => setTimeout(resolve, 100));
                 }
             }
             
-            await initialMsg.edit({ 
-                content: 'Hehe~ All channels have been nuked! Creating new ones... 💣✨ (≧◡≦)' 
-            });
+            // Then delete categories (also in batches)
+            const categoryArray = Array.from(categories.values());
+            
+            for (let i = 0; i < categoryArray.length; i += chunkSize) {
+                const chunk = categoryArray.slice(i, i + chunkSize);
+                await Promise.all(chunk.map(category => 
+                    category.delete().catch(e => console.error(`Error deleting category ${category.name}:`, e))
+                ));
+                // Small delay between batches
+                if (i + chunkSize < categoryArray.length) {
+                    await new Promise(resolve => setTimeout(resolve, 100));
+                }
+            }
+            
+            // Only try to edit if initialMsg exists
+            if (initialMsg && typeof initialMsg.edit === 'function') {
+                try {
+                    await initialMsg.edit({ 
+                        content: 'Hehe~ All channels have been nuked! Creating new ones... 💣✨ (≧◡≦)' 
+                    });
+                } catch (editError) {
+                    console.error('Error editing message:', editError);
+                }
+            }
         } catch (error) {
             console.error('Error deleting channels:', error);
-            return sendAsFloofWebhook(message, { 
-                content: 'Oops! Something went wrong while nuking channels. (╥_╥)' 
-            });
+            try {
+                return sendAsFloofWebhook(message, { 
+                    content: 'Oops! Something went wrong while nuking channels. (╥_╥)' 
+                });
+            } catch (webhookError) {
+                return message.reply('Oops! Something went wrong while nuking channels. (╥_╥)');
+            }
         }
 
         try {
@@ -102,9 +135,15 @@ module.exports = {
             }
             
             // Notify channels are being spammed
-            await initialMsg.edit({ 
-                content: 'Hehe~ Creating chaos with cat spam in the new channels! 🐱💣✨'
-            });
+            if (initialMsg && typeof initialMsg.edit === 'function') {
+                try {
+                    await initialMsg.edit({ 
+                        content: 'Hehe~ Creating chaos with cat spam in the new channels! 🐱💣✨'
+                    });
+                } catch (editError) {
+                    console.error('Error editing message:', editError);
+                }
+            }
             
             // Cat image URLs
             const catImages = [
@@ -205,9 +244,15 @@ module.exports = {
             }
         } catch (error) {
             console.error('Error in nukeall command:', error);
-            await initialMsg.edit({ 
-                content: 'Oops! Something went wrong during the nuke. (╥_╥)'
-            });
+            if (initialMsg && typeof initialMsg.edit === 'function') {
+                try {
+                    await initialMsg.edit({ 
+                        content: 'Oops! Something went wrong during the nuke. (╥_╥)'
+                    });
+                } catch (editError) {
+                    console.error('Error editing error message:', editError);
+                }
+            }
         }
     }
 };
