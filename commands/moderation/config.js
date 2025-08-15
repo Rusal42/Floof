@@ -11,7 +11,7 @@ module.exports = {
     description: 'Configure server-specific settings for Floof Bot',
     usage: '%config <setting> [value/channel]',
     category: 'moderation',
-    aliases: ['configure', 'settings'],
+    aliases: ['configure', 'settings', 'cfg', 'c'],
     cooldown: 5,
     permissions: [PermissionFlagsBits.ManageGuild],
 
@@ -49,6 +49,11 @@ module.exports = {
                 case 'prefix':
                     return await this.setPrefix(message, value);
                 
+                case 'userprefix':
+                case 'user-prefix':
+                case 'customprefix':
+                    return await this.setUserPrefix(message, args.slice(1));
+                
                 case 'gambling':
                 case 'gambling-channel':
                     return await this.setGamblingChannel(message, value);
@@ -57,6 +62,16 @@ module.exports = {
                 case 'revive-role':
                 case 'reviverole':
                     return await this.setReviveRole(message, value);
+                
+                case 'changelog':
+                case 'changelog-channel':
+                case 'changelogchannel':
+                    return await this.setChangelogChannel(message, value);
+                
+                case 'levels':
+                case 'leveling':
+                case 'level':
+                    return await this.configureLevels(message, args.slice(1));
                 
                 case 'view':
                 case 'show':
@@ -92,7 +107,10 @@ module.exports = {
                         '`%config welcome #channel` - Set welcome channel',
                         '`%config gambling #channel` - Set gambling channel',
                         '`%config revive @role` - Set revive notification role',
+                        '`%config changelog #channel` - Set changelog channel',
+                        '`%config levels` - Configure leveling system',
                         '`%config prefix !` - Set custom command prefix',
+                        '`%config userprefix @user !` - Set custom prefix for user',
                         '`%config view` - View current configuration',
                         '`%config reset [setting]` - Reset configuration'
                     ].join('\n'),
@@ -290,6 +308,184 @@ module.exports = {
         return await sendAsFloofWebhook(message, { embeds: [embed] });
     },
 
+    async setChangelogChannel(message, channelInput) {
+        if (!channelInput) {
+            return await sendAsFloofWebhook(message, {
+                content: '❌ Please specify a channel: `%config changelog #channel`'
+            });
+        }
+
+        const channel = this.parseChannel(message, channelInput);
+        if (!channel) {
+            return await sendAsFloofWebhook(message, {
+                content: '❌ Invalid channel. Please mention a valid text channel.'
+            });
+        }
+
+        if (channel.type !== ChannelType.GuildText) {
+            return await sendAsFloofWebhook(message, {
+                content: '❌ Changelog channel must be a text channel.'
+            });
+        }
+
+        // Check bot permissions
+        const botPermissions = channel.permissionsFor(message.guild.members.me);
+        if (!botPermissions.has([PermissionFlagsBits.SendMessages, PermissionFlagsBits.EmbedLinks])) {
+            return await sendAsFloofWebhook(message, {
+                content: `❌ I don't have permission to send messages in ${channel}. Please check my permissions.`
+            });
+        }
+
+        await this.updateConfig(message.guild.id, 'changelogChannel', channel.id);
+
+        const embed = new EmbedBuilder()
+            .setTitle('✅ Changelog Channel Set')
+            .setDescription(`Bot changelogs will now be sent to ${channel}`)
+            .setColor(0x00FF7F)
+            .addFields({
+                name: '📋 What gets posted:',
+                value: [
+                    '• New feature announcements',
+                    '• Bug fix notifications',
+                    '• Bot improvement updates',
+                    '• Version release notes'
+                ].join('\n')
+            });
+
+        return await sendAsFloofWebhook(message, { embeds: [embed] });
+    },
+
+    async configureLevels(message, args) {
+        const embed = new EmbedBuilder()
+            .setTitle('📊 Leveling System Configuration')
+            .setDescription('Configure XP and leveling settings for your server')
+            .setColor(0x7289DA)
+            .addFields(
+                {
+                    name: '⚙️ Available Commands',
+                    value: [
+                        '`%levels config enable/disable` - Toggle leveling system',
+                        '`%levels config channel #channel` - Set level up announcement channel',
+                        '`%levels config xp <amount>` - Set XP per message (1-100)',
+                        '`%levels config role <level> @role` - Set level reward role',
+                        '`%levels config` - View current leveling settings'
+                    ].join('\n'),
+                    inline: false
+                },
+                {
+                    name: '📈 User Commands',
+                    value: [
+                        '`%levels` - View your level and XP',
+                        '`%levels @user` - View someone\'s level',
+                        '`%levels leaderboard` - Server XP leaderboard'
+                    ].join('\n'),
+                    inline: false
+                },
+                {
+                    name: '🎯 Quick Setup',
+                    value: [
+                        '1. Use `%levels config enable` to turn on leveling',
+                        '2. Set a channel with `%levels config channel #general`',
+                        '3. Create roles and assign them with `%levels config role 5 @Level5`',
+                        '4. Adjust XP rate with `%levels config xp 20`'
+                    ].join('\n'),
+                    inline: false
+                }
+            )
+            .setFooter({ text: 'Use the %levels command directly for detailed configuration' });
+
+        return await sendAsFloofWebhook(message, { embeds: [embed] });
+    },
+
+    async setUserPrefix(message, args) {
+        const { isOwner } = require('../../utils/owner-util');
+        
+        if (!isOwner(message.author.id) && !message.member?.permissions.has(PermissionFlagsBits.ManageGuild)) {
+            return await sendAsFloofWebhook(message, {
+                content: '❌ You need **Manage Server** permission or be a bot owner to manage user prefixes!'
+            });
+        }
+
+        if (args.length < 2) {
+            return await sendAsFloofWebhook(message, {
+                content: '❌ Usage: `%config userprefix @user <prefix>`\nExample: `%config userprefix @John !`'
+            });
+        }
+
+        const targetUser = message.mentions.users.first();
+        if (!targetUser) {
+            return await sendAsFloofWebhook(message, {
+                content: '❌ Please mention a user! Usage: `%config userprefix @user <prefix>`'
+            });
+        }
+
+        const newPrefix = args.slice(1).join(' ');
+        if (newPrefix.length > 5) {
+            return await sendAsFloofWebhook(message, {
+                content: '❌ Prefix must be 5 characters or less!'
+            });
+        }
+
+        if (newPrefix.includes(' ')) {
+            return await sendAsFloofWebhook(message, {
+                content: '❌ Prefix cannot contain spaces!'
+            });
+        }
+
+        try {
+            const fs = require('fs');
+            const path = require('path');
+            const configPath = path.join(__dirname, '..', '..', 'prefix-config.json');
+            
+            let config = {};
+            if (fs.existsSync(configPath)) {
+                config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+            }
+            
+            if (!config[message.guild.id]) {
+                config[message.guild.id] = {};
+            }
+            
+            config[message.guild.id][targetUser.id] = {
+                prefix: newPrefix,
+                setBy: message.author.id,
+                setAt: new Date().toISOString()
+            };
+            
+            fs.writeFileSync(configPath, JSON.stringify(config, null, 2));
+
+            const embed = new EmbedBuilder()
+                .setColor('#00ff00')
+                .setTitle('✅ Custom User Prefix Set')
+                .setDescription(`Custom prefix set for **${targetUser.displayName}**`)
+                .addFields(
+                    {
+                        name: '👤 User',
+                        value: targetUser.displayName,
+                        inline: true
+                    },
+                    {
+                        name: '🔧 Prefix',
+                        value: `\`${newPrefix}\``,
+                        inline: true
+                    },
+                    {
+                        name: '👤 Set by',
+                        value: message.author.displayName,
+                        inline: true
+                    }
+                )
+                .setTimestamp();
+
+            await sendAsFloofWebhook(message, { embeds: [embed] });
+        } catch (error) {
+            console.error('Error setting custom user prefix:', error);
+            await sendAsFloofWebhook(message, {
+                content: '❌ Failed to set custom user prefix!'
+            });
+        }
+    },
+
     async setPrefix(message, newPrefix) {
         if (!newPrefix) {
             return await sendAsFloofWebhook(message, {
@@ -379,6 +575,15 @@ module.exports = {
             });
         }
 
+        if (config.changelogChannel) {
+            const channel = message.guild.channels.cache.get(config.changelogChannel);
+            embed.addFields({
+                name: '📋 Changelog Channel',
+                value: channel ? `${channel}` : 'Channel not found',
+                inline: true
+            });
+        }
+
         if (embed.data.fields?.length === 0) {
             embed.setDescription('No configuration set yet. Use `%config` to get started!');
         }
@@ -406,13 +611,14 @@ module.exports = {
             'welcome': 'welcomeChannel',
             'gambling': 'gamblingChannel',
             'revive': 'reviveRole',
+            'changelog': 'changelogChannel',
             'prefix': 'prefix'
         };
 
         const configKey = settingMap[setting.toLowerCase()];
         if (!configKey) {
             return await sendAsFloofWebhook(message, {
-                content: '❌ Invalid setting. Available: `modlog`, `roles`, `welcome`, `gambling`, `revive`, `prefix`, `all`'
+                content: '❌ Invalid setting. Available: `modlog`, `roles`, `welcome`, `gambling`, `revive`, `changelog`, `prefix`, `all`'
             });
         }
 

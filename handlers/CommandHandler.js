@@ -143,8 +143,8 @@ class CommandHandler {
         }
     }
 
-    async handleCommand(message) {
-        const args = message.content.slice(1).trim().split(/ +/);
+    async handleCommand(message, usedPrefix = '%') {
+        const args = message.content.slice(usedPrefix.length).trim().split(/ +/);
         const commandName = args.shift().toLowerCase();
         
         // Check if it's a command or alias
@@ -219,6 +219,15 @@ class CommandHandler {
             
             // Execute command
             await command.execute(message, args);
+            
+            // Track command usage for website stats
+            try {
+                const { incrementCommandUsage } = require('../utils/website-integration');
+                incrementCommandUsage();
+            } catch (error) {
+                console.error('Error tracking command usage:', error);
+            }
+            
             return true;
         } catch (error) {
             console.error(`Error executing command ${commandName}:`, error);

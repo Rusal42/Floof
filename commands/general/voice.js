@@ -27,7 +27,7 @@ module.exports = {
     description: 'Voice channel management interface and commands',
     usage: '%voice [name/reject/allow/limit/transfer] [arguments]',
     category: 'general',
-    aliases: ['vc', 'voicemaster'],
+    aliases: ['vc', 'voicemaster', 'vm', 'v'],
     cooldown: 3,
 
     async execute(message, args) {

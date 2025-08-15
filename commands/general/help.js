@@ -119,8 +119,8 @@ module.exports = {
             embed.addFields({
                 name: '⚙️ **Getting Started**',
                 value: isNewServer 
-                    ? '• Try `%balance` to see your starting coins\n• Use `%work` to earn money safely\n• Play `%slots 50` for your first gamble\n• Have fun with `%8ball` or `%cat`!'
-                    : '• Use `%help <category>` for specific commands\n• Use `%help <command>` for detailed info\n• Try `%balance` to check your coins\n• Use `%work` to earn money',
+                    ? '• Try `%balance` to see your starting coins\n• Use `%work` to earn money safely\n• Play `%slots 50` for your first gamble\n• Set custom prefix: `%prefix set !`\n• Have fun with `%8ball` or `%cat`!'
+                    : '• Use `%help <category>` for specific commands\n• Use `%help <command>` for detailed info\n• Try `%balance` to check your coins\n• Set custom prefix: `%prefix set !`\n• Use `%work` to earn money',
                 inline: false
             });
         }
@@ -241,7 +241,8 @@ module.exports = {
             balance: '`%balance` - Check your balance\n`%balance @user` - Check someone else\'s balance',
             slots: '`%slots 100` - Bet 100 coins on slots\n`%slots all` - Bet all your coins',
             work: '`%work` - Work to earn coins (has cooldown)',
-            kick: '`%kick @user Spamming` - Kick user with reason\n`%kick @user` - Kick user without reason'
+            kick: '`%kick @user Spamming` - Kick user with reason\n`%kick @user` - Kick user without reason',
+            prefix: '`%prefix set !` - Set ! as your custom prefix\n`%prefix remove` - Remove your custom prefix\n`%prefix list` - View all custom prefixes'
         };
 
         if (examples[command.name]) {

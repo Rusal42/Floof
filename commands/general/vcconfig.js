@@ -22,7 +22,7 @@ module.exports = {
     description: 'Configure voice channel creation settings',
     usage: '%vcconfig [set/clear/view]',
     category: 'general',
-    aliases: ['voiceconfig'],
+    aliases: ['voiceconfig', 'vcc', 'vc'],
     cooldown: 5,
 
     async execute(message, args) {

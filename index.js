@@ -3,6 +3,12 @@ const { Client, GatewayIntentBits, PermissionsBitField, EmbedBuilder } = require
 const { sendAsFloofWebhook } = require('./utils/webhook-util');
 const CommandHandler = require('./handlers/CommandHandler');
 const { isOwner, getPrimaryOwnerId } = require('./utils/owner-util');
+const { 
+    startStatsUpdater, 
+    incrementCommandUsage, 
+    recordDisconnection,
+    initializeStats 
+} = require('./utils/website-integration');
 
 // Set your Discord user ID here (now supports multiple owners)
 const OWNER_ID = getPrimaryOwnerId();
@@ -145,10 +151,27 @@ client.once('ready', () => {
     console.log(`🟢 Floof is online as ${client.user.tag}!`);
     console.log(`📋 Loaded ${commandHandler.commands.size} commands`);
     
+    // Initialize website stats tracking
+    initializeStats();
+    
+    // Start automatic website stats updates (every 5 minutes)
+    startStatsUpdater(client, 5);
+    
     // Set bot activity to show server invite
     client.user.setActivity('discord.gg/Acpx662Eyg', { 
         type: 3 // 3 = WATCHING
     });
+});
+
+// Track disconnections for uptime calculation
+client.on('disconnect', () => {
+    console.log('🔴 Bot disconnected');
+    recordDisconnection();
+});
+
+client.on('error', (error) => {
+    console.error('🔴 Bot error:', error);
+    recordDisconnection();
 });
 
 // Handle button interactions for blackjack and snipe commands
@@ -471,12 +494,38 @@ client.on('messageCreate', async (message) => {
         }
     }
     
-    // Check if message starts with command prefix
-    if (!message.content.startsWith('%')) return;
+    // Check if message starts with command prefix (% or custom prefix)
+    
+    function getPrefixConfig() {
+        const configPath = path.join(__dirname, 'prefix-config.json');
+        if (fs.existsSync(configPath)) {
+            return JSON.parse(fs.readFileSync(configPath, 'utf8'));
+        }
+        return {};
+    }
+    
+    // Check for custom prefix first
+    let usedPrefix = '%';
+    let hasValidPrefix = message.content.startsWith('%');
+    
+    if (!hasValidPrefix && message.guild) {
+        const prefixConfig = getPrefixConfig();
+        const guildConfig = prefixConfig[message.guild.id];
+        
+        if (guildConfig && guildConfig[message.author.id]) {
+            const customPrefix = guildConfig[message.author.id].prefix;
+            if (message.content.startsWith(customPrefix)) {
+                usedPrefix = customPrefix;
+                hasValidPrefix = true;
+            }
+        }
+    }
+    
+    if (!hasValidPrefix) return;
     
     // Handle AFK command specially (since it has complex logic)
-    if (message.content.startsWith('%afk')) {
-        const args = message.content.slice(1).trim().split(/ +/);
+    if (message.content.startsWith(usedPrefix + 'afk')) {
+        const args = message.content.slice(usedPrefix.length).trim().split(/ +/);
         const commandName = args.shift().toLowerCase();
         
         if (message.mentions.users.size > 0) {
@@ -491,26 +540,29 @@ client.on('messageCreate', async (message) => {
     }
     
     // Handle all other commands through the command handler
-    const commandHandled = await commandHandler.handleCommand(message);
+    const commandHandled = await commandHandler.handleCommand(message, usedPrefix);
     if (commandHandled) return;
+    
+    // Public commands available to everyone
+    const args = message.content.slice(usedPrefix.length).trim().split(/\s+/);
+    const commandName = args.shift().toLowerCase();
+    
+    // Gambling menu - available to everyone
+    if (commandName === 'floofgambling') {
+        await ownerCommands.gamblingMenu(message);
+        return;
+    }
     
     // Legacy owner commands (now available to moderators+)
     const hasModPerms = message.member?.permissions.has('ModerateMembers') || isOwner(message.author.id);
     
     if (hasModPerms) {
-        const args = message.content.slice(1).trim().split(/\s+/);
-        const commandName = args.shift().toLowerCase();
-        
         if (commandName === 'floof') {
             await ownerCommands.funMenu(message);
             return;
         }
         if (commandName === 'floofmod') {
             await ownerCommands.modMenu(message);
-            return;
-        }
-        if (commandName === 'floofgambling') {
-            await ownerCommands.gamblingMenu(message);
             return;
         }
         if (commandName === 'floofroles') {

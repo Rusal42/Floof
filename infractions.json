@@ -118,5 +118,29 @@
         "timestamp": "2025-08-15T11:40:22.925Z"
       }
     ]
+  },
+  "1233375464672985109": {
+    "962923585096269844": [
+      {
+        "id": "1755299324638",
+        "type": "automod",
+        "violations": [
+          {
+            "type": "discordInvites",
+            "reason": "Posted Discord server invite links: discordapp.com/invite/jMf6v6wZxF",
+            "action": "delete"
+          }
+        ],
+        "moderator": "Auto-Moderation",
+        "timestamp": "2025-08-15T23:08:44.638Z",
+        "channel": "fluffy-setup-here",
+        "channelId": "1406020472268652634",
+        "messageContent": "discordapp.com/invite/jMf6v6wZxF @everyone",
+        "actions": [
+          "delete"
+        ],
+        "severity": "low"
+      }
+    ]
   }
 }

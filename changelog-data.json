@@ -1,0 +1,94 @@
+{
+  "changelogs": [
+    {
+      "id": 4,
+      "version": "v2.1.2",
+      "title": "Cute & Fluffy Makeover",
+      "description": "Complete website redesign with adorable fluffy theme, real-time bot statistics, and enhanced user experience",
+      "features": [
+        "features"
+      ],
+      "improvements": [],
+      "fixes": [],
+      "timestamp": "2025-08-15T22:20:14.506Z",
+      "messageId": "1406039811730575421",
+      "channelId": "1393667713208946728",
+      "guildId": "1393659651832152185"
+    },
+    {
+      "id": 3,
+      "version": "v2.1.1",
+      "title": "Server Advertisement Command Added",
+      "description": "New owner command for promoting the Fluffy community server",
+      "features": [
+        "Fluffy server advertisement command (%fluffyad)",
+        "Random cat image display system",
+        "Professional server promotion embed",
+        "Multiple command aliases support"
+      ],
+      "improvements": [
+        "Enhanced owner command collection",
+        "Better community outreach tools",
+        "Improved server marketing capabilities"
+      ],
+      "fixes": [
+        "N/A"
+      ],
+      "timestamp": "2025-08-15T21:06:49.084Z",
+      "messageId": "1406021333984219206",
+      "channelId": "1393667713208946728",
+      "guildId": "1393659651832152185"
+    },
+    {
+      "id": 2,
+      "version": "v2.1.0",
+      "title": "Major Bot Improvements & New Features",
+      "description": "Comprehensive update with new systems, better configuration, and enhanced functionality",
+      "features": [
+        "Changelog system for update announcements",
+        "Advanced server configuration system",
+        "Enhanced help command with role-based guidance",
+        "Multi-server compatibility improvements"
+      ],
+      "improvements": [
+        "Better error handling and validation",
+        "Improved command organization and structure",
+        "Enhanced webhook integration",
+        "Streamlined owner command management"
+      ],
+      "fixes": [
+        "Fixed balance synchronization issues",
+        "Resolved command loading problems",
+        "Fixed hardcoded server dependencies",
+        "Corrected config system file paths"
+      ],
+      "timestamp": "2025-08-15T20:10:48.299Z",
+      "messageId": "1406007237683445951",
+      "channelId": "1393667713208946728",
+      "guildId": "1393659651832152185"
+    },
+    {
+      "id": 1,
+      "version": "v1.2.3",
+      "title": "Major Update",
+      "description": "Added new features and fixes",
+      "features": [
+        "New gambling games",
+        "Better moderation"
+      ],
+      "improvements": [
+        "Faster responses",
+        "Improved UI"
+      ],
+      "fixes": [
+        "Fixed balance sync",
+        "Resolved crashes"
+      ],
+      "timestamp": "2025-08-15T20:09:02.286Z",
+      "messageId": "1406006792873312266",
+      "channelId": "1393667713208946728",
+      "guildId": "1393659651832152185"
+    }
+  ],
+  "nextId": 5
+}
