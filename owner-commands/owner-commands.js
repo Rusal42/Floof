@@ -117,8 +117,11 @@ module.exports = {
     },
 
     // Speak command
-    speak: async (message, text) => {
-        if (!text) return message.reply('Please provide a message for me to speak!');
+    speak: async (message, args) => {
+        const text = Array.isArray(args) ? args.join(' ') : args;
+        if (!text || text === '') {
+            return message.reply('Please provide a message for me to speak!');
+        }
         await sendAsFloofWebhook(message, { content: text });
         await message.delete();
     },
@@ -327,10 +330,10 @@ sendAsFloofWebhook(message, { embeds: [embed] });
             .setDescription('Here are all the fun commands you can use! 🎉')
             .addFields(
                 { name: '🎲 Games', value: '`%8ball <question>` - Ask the magic 8ball a question\n`%roll [sides]` - Roll a die (default 6 sides)\n`%joke` - Get a random joke' },
-                { name: '🎭 Actions', value: '`%hug [@user]` - Give someone a hug\n`%kiss [@user]` - Blow a kiss\n`%pat [@user]` - Pat someone\n`%slap [@user]` - Slap someone' },
+                { name: '🎭 Actions', value: '`%hug [@user]` - Give someone a hug\n`%kiss [@user]` - Blow a kiss\n`%pat [@user]` - Pat someone\n`%slap [@user]` - Slap someone\n`%bite [@user]` - Playfully bite someone' },
                 { name: '💃 Social', value: '`%dance [@user]` - Show off your moves\n`%highfive [@user]` - High five someone\n`%wave [@user]` - Wave hello' },
-                { name: '🐾 Animals', value: '`%cat` - Get a random cat picture\n`%dog` - Get a random dog picture\n`%fox` - Get a random fox picture' },
-                { name: '😊 Reactions', value: '`%blush` - Show your embarrassment\n`%poke [@user]` - Poke someone\n`%shoot [@user]` - Pew pew!' }
+                { name: '🐾 Animals', value: '`%cat` - Get a random cat picture' },
+                { name: '😊 Reactions', value: '`%blush` - Show your embarrassment\n`%shoot [@user]` - Pew pew!' }
             )
             .setColor(0x9B59B6)
             .setFooter({ text: 'Floof Bot Commands', iconURL: message.client.user.displayAvatarURL() })
@@ -346,6 +349,7 @@ sendAsFloofWebhook(message, { embeds: [embed] });
             .addFields(
                 { name: '💰 Balance', value: '`%balance` - Check your current balance\n`%work` - Earn some coins\n`%beg` - Try begging for coins\n`%donate <@user> <amount>` - Share your wealth' },
                 { name: '🎲 Games', value: '`%slots <bet>` - Play slots\n`%roulette <bet> <red/black/number>` - Play roulette\n`%blackjack <bet>` - Play blackjack\n`%coinflip <bet> <heads/tails>` - Flip a coin' },
+                { name: '📈 Leveling System', value: '`%levels rank [@user]` - Check level/XP\n`%levels leaderboard` - XP leaderboard\n`%levels config` - Configure leveling (admin)\n`%levels rewards` - Manage level rewards' },
                 { name: '🏆 Leaderboard', value: '`%leaderboard` - See who has the most coins\n`%richest` - Top 10 richest users' },
                 { name: '🎮 Game Help', value: '`%blackjack help` - Blackjack rules\n`%slots help` - Slots information\n`%roulette help` - Roulette rules' }
             )
@@ -362,12 +366,64 @@ sendAsFloofWebhook(message, { embeds: [embed] });
             .setDescription('Keep your server safe with these moderation tools! 🔒')
             .addFields(
                 { name: '🔨 Punishments', value: '`%warn <@user> [reason]` - Warn a user\n`%kick <@user> [reason]` - Kick a user\n`%ban <@user> [reason]` - Ban a user\n`%timeout <@user> <time> [reason]` - Timeout a user' },
-                { name: '👥 User Management', value: '`%whois <@user>` - Get detailed user information\n`%av [@user]` - View user avatar' },
-                { name: '🧹 Cleanup', value: '`%purge <amount>` - Delete messages\n`%clear <amount>` - Clear messages\n`%slowmode <time>` - Set slowmode' },
-                { name: '⚙️ Settings', value: '`%modlog <#channel>` - Set mod log channel\n`%automod` - Configure auto-moderation\n`%antispam` - Toggle anti-spam' }
+                { name: '👥 User Management', value: '`%whois <@user>` - Get detailed user information\n`%av [@user]` - View user avatar\n`%infractions [@user]` - View user infractions\n`%clearinfractions <@user|all>` - Clear infractions' },
+                { name: '🧹 Cleanup', value: '`%purge <amount>` - Delete messages\n`%slowmode <time>` - Set slowmode' },
+                { name: '⚙️ Settings', value: '`%config modlog <#channel>` - Set mod log channel\n`%automod` - Configure auto-moderation\n`%antispam` - Toggle anti-spam protection' },
+                { name: '🎭 Role Management', value: '`%floofroles` - Role management menu\n`%createrole <name>` - Create a new role\n`%deleterole <role>` - Delete a role\n`%giverole <@user> <role>` - Give role to user\n`%takerole <@user> <role>` - Remove role from user' },
+                { name: '🎫 Ticket System', value: '`%ticket create [reason]` - Create support ticket\n`%ticket claim` - Claim ticket (staff)\n`%ticket close` - Close ticket\n`%ticket setup` - Configure tickets (admin)' },
+                { name: '📋 Advanced Logging', value: '`%advancedlog setup` - Configure logging\n`%advancedlog toggle <event>` - Toggle events\n`%advancedlog view` - View configuration\n`%advancedlog test` - Test logging' }
             )
             .setColor(0x3498DB)
             .setFooter({ text: 'Requires moderation permissions', iconURL: message.client.user.displayAvatarURL() })
+            .setTimestamp();
+            
+        await sendAsFloofWebhook(message, { embeds: [embed] });
+    },
+    
+    funMenu: async (message) => {
+        const embed = new EmbedBuilder()
+            .setTitle('🎉 Fun Commands')
+            .setDescription('Entertainment and social commands to liven up your server! 🎊')
+            .addFields(
+                { name: '🎮 Games', value: '`%8ball <question>` - Ask the magic 8-ball\n`%coinflip` - Flip a coin\n`%dice [sides]` - Roll dice\n`%rps <choice>` - Rock Paper Scissors' },
+                { name: '😄 Reactions', value: '`%hug <@user>` - Hug someone\n`%kiss <@user>` - Kiss someone\n`%slap <@user>` - Slap someone\n`%bite <@user>` - Bite someone\n`%blush` - Blush\n`%cry` - Cry\n`%dance` - Dance\n`%facepalm` - Facepalm\n`%highfive <@user>` - High five someone\n`%laugh` - Laugh\n`%pat <@user>` - Pat someone\n`%poke <@user>` - Poke someone\n`%shrug` - Shrug\n`%smile` - Smile\n`%wave <@user>` - Wave at someone\n`%wink <@user>` - Wink at someone' },
+                { name: '🗳️ Polls & Voting', value: '`%poll create <question>` - Create poll\n`%poll quick <question>` - Quick yes/no poll\n`%poll results <id>` - View poll results\n`%poll end <id>` - End poll early' },
+                { name: '🎨 Utility', value: '`%avatar [@user]` - View user avatar\n`%serverinfo` - Server information\n`%userinfo [@user]` - User information' }
+            )
+            .setColor(0xFFD700)
+            .setFooter({ text: 'Have fun and spread joy!', iconURL: message.client.user.displayAvatarURL() })
+            .setTimestamp();
+            
+        await sendAsFloofWebhook(message, { embeds: [embed] });
+    },
+    
+    utilityMenu: async (message) => {
+        const embed = new EmbedBuilder()
+            .setTitle('🔧 Utility Commands')
+            .setDescription('Helpful server management and utility tools! ⚙️')
+            .addFields(
+                { name: '📊 Server Analytics', value: '`%analytics overview` - Server statistics\n`%analytics members` - Member analytics\n`%analytics messages` - Message statistics\n`%analytics channels` - Channel activity' },
+                { name: '⏰ Reminders', value: '`%remind me <time> <message>` - Personal reminder\n`%remind here <time> <message>` - Channel reminder\n`%remind list` - View your reminders\n`%remind clear` - Clear reminders' },
+                { name: '🎨 General', value: '`%avatar [@user]` - View user avatar\n`%serverinfo` - Server information\n`%userinfo [@user]` - User information' }
+            )
+            .setColor(0x17A2B8)
+            .setFooter({ text: 'Productivity and server management tools', iconURL: message.client.user.displayAvatarURL() })
+            .setTimestamp();
+            
+        await sendAsFloofWebhook(message, { embeds: [embed] });
+    },
+    
+    roleMenu: async (message) => {
+        const embed = new EmbedBuilder()
+            .setTitle('🏷️ Role Management Commands')
+            .setDescription('Manage server roles with these powerful tools! 🎭')
+            .addFields(
+                { name: '➕ Role Creation', value: '`%createrole <name> [color] [hoist] [mentionable]` - Create a new role\n`%deleterole <role>` - Delete an existing role' },
+                { name: '👥 Role Assignment', value: '`%giverole <@user> <role>` - Give a role to a user\n`%takerole <@user> <role>` - Remove a role from a user' },
+                { name: '📋 Role Information', value: '`%listroles` - List all server roles\n`%listroles <@user>` - Show a user\'s roles' }
+            )
+            .setColor(0x9B59B6)
+            .setFooter({ text: 'Requires Manage Roles permission', iconURL: message.client.user.displayAvatarURL() })
             .setTimestamp();
             
         await sendAsFloofWebhook(message, { embeds: [embed] });

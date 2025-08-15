@@ -182,17 +182,15 @@ client.on('messageCreate', async (message) => {
     
     // Handle owner commands
     if (message.author.id === OWNER_ID) {
-        const { speak, ownerMenu, revive } = require('./owner-commands/owner-commands');
+        const { ownerMenu, revive } = require('./owner-commands/owner-commands');
         
         if (commandName === 'floofy') {
             ownerMenu(message);
             return;
         }
         
-        if (commandName === 'speak') {
-            speak(message, args);
-            return;
-        }
+        // speak command is now handled by the command handler (commands/general/speak.js)
+        // Removed hardcoded override to allow proper command routing
         
         if (commandName === 'revive') {
             revive(message);

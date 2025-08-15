@@ -2,9 +2,10 @@ require('dotenv').config();
 const { Client, GatewayIntentBits, PermissionsBitField, EmbedBuilder } = require('discord.js');
 const { sendAsFloofWebhook } = require('./utils/webhook-util');
 const CommandHandler = require('./handlers/CommandHandler');
+const { isOwner, getPrimaryOwnerId } = require('./utils/owner-util');
 
-// Set your Discord user ID here
-const OWNER_ID = process.env.OWNER_ID || '1007799027716329484';
+// Set your Discord user ID here (now supports multiple owners)
+const OWNER_ID = getPrimaryOwnerId();
 
 const client = new Client({
     intents: [
@@ -22,10 +23,13 @@ const commandHandler = new CommandHandler(client);
 
 // Load owner commands
 const ownerCommands = require('./owner-commands/owner-commands');
+const { ownerMenu, revive } = ownerCommands;
 const nukeCommand = require('./owner-commands/nukeall');
+const floofyCommand = require('./owner-commands/floofy');
+const floofymCommand = require('./owner-commands/floofym');
 
 // Register owner commands with the command handler
-Object.entries(ownerCommands).forEach(([name, execute]) => {
+Object.entries({ ownerMenu, revive }).forEach(([name, execute]) => {
     commandHandler.commands.set(name.toLowerCase(), { 
         name, 
         execute, 
@@ -34,6 +38,57 @@ Object.entries(ownerCommands).forEach(([name, execute]) => {
         aliases: []
     });
 });
+
+// Register individual meowlock commands as owner-only
+const meowlockCommands = {
+    'meowlock': ownerCommands.meowlock,
+    'meowunlock': ownerCommands.meowunlock,
+    'meowlockclear': ownerCommands.meowlockclear,
+    'meowlocked': ownerCommands.meowlocked
+};
+
+Object.entries(meowlockCommands).forEach(([name, execute]) => {
+    if (execute) {
+        commandHandler.commands.set(name, { 
+            name, 
+            execute, 
+            ownerOnly: true,
+            description: `Meowlock command: ${name}`,
+            aliases: []
+        });
+        console.log(`✅ Registered ${name} command (owner only)`);
+    }
+});
+
+// Register floofy command
+if (floofyCommand && floofyCommand.execute) {
+    console.log('✅ Registering floofy command with command handler');
+    
+    // Add aliases if they don't exist
+    if (!floofyCommand.aliases) {
+        floofyCommand.aliases = [];
+    }
+    
+    // Register the command directly
+    commandHandler.commands.set('floofy', floofyCommand);
+    
+    console.log(`✅ Registered floofy command with ${floofyCommand.aliases.length} aliases`);
+}
+
+// Register floofym command
+if (floofymCommand && floofymCommand.execute) {
+    console.log('✅ Registering floofym command with command handler');
+    
+    // Add aliases if they don't exist
+    if (!floofymCommand.aliases) {
+        floofymCommand.aliases = [];
+    }
+    
+    // Register the command directly
+    commandHandler.commands.set('floofym', floofymCommand);
+    
+    console.log(`✅ Registered floofym command with ${floofymCommand.aliases.length} aliases`);
+}
 
 // Register nuke command
 if (nukeCommand && nukeCommand.execute) {
@@ -88,9 +143,14 @@ commandHandler.commands.set('fluffysetup', {
 client.once('ready', () => {
     console.log(`🟢 Floof is online as ${client.user.tag}!`);
     console.log(`📋 Loaded ${commandHandler.commands.size} commands`);
+    
+    // Set bot activity to show server invite
+    client.user.setActivity('discord.gg/Acpx662Eyg', { 
+        type: 3 // 3 = WATCHING
+    });
 });
 
-// Handle button interactions for blackjack
+// Handle button interactions for blackjack and snipe commands
 client.on('interactionCreate', async (interaction) => {
     if (!interaction.isButton()) return;
     
@@ -98,6 +158,20 @@ client.on('interactionCreate', async (interaction) => {
     if (interaction.customId === 'blackjack_hit' || interaction.customId === 'blackjack_stand') {
         const { handleBlackjackInteraction } = require('./commands/gambling/blackjack-handler');
         await handleBlackjackInteraction(interaction);
+        return;
+    }
+    
+    // Handle snipe navigation buttons
+    if (interaction.customId.startsWith('snipe_') || interaction.customId.startsWith('bulk_')) {
+        await handleSnipeInteraction(interaction);
+        return;
+    }
+    
+    // Handle ticket button interactions
+    if (interaction.customId === 'ticket_claim' || interaction.customId === 'ticket_close') {
+        const { handleTicketInteraction } = require('./commands/moderation/ticket');
+        await handleTicketInteraction(interaction);
+        return;
     }
 });
 
@@ -363,16 +437,13 @@ client.on('messageCreate', async (message) => {
     const commandHandled = await commandHandler.handleCommand(message);
     if (commandHandled) return;
     
-    // Legacy owner commands
-    if (message.author.id === OWNER_ID) {
+    // Legacy owner commands (now available to moderators+)
+    const hasModPerms = message.member?.permissions.has('ModerateMembers') || isOwner(message.author.id);
+    
+    if (hasModPerms) {
         const args = message.content.slice(1).trim().split(/\s+/);
         const commandName = args.shift().toLowerCase();
         
-        if (commandName === 'speak') {
-            const text = args.join(' ');
-            await ownerCommands.speak(message, text);
-            return;
-        }
         if (commandName === 'floof') {
             await ownerCommands.funMenu(message);
             return;
@@ -385,10 +456,20 @@ client.on('messageCreate', async (message) => {
             await ownerCommands.gamblingMenu(message);
             return;
         }
-        if (commandName === 'floofy') {
-            await ownerCommands.ownerMenu(message);
+        if (commandName === 'floofroles') {
+            await ownerCommands.roleMenu(message);
             return;
         }
+        if (commandName === 'flooffun' || commandName === 'floof') {
+            await ownerCommands.funMenu(message);
+            return;
+        }
+        if (commandName === 'floofutil') {
+            await ownerCommands.utilityMenu(message);
+            return;
+        }
+        // floofy command is now handled by the command handler (owner-commands/floofy.js)
+        // Removed hardcoded override to allow proper command routing
         if (commandName === 'av' || commandName === 'avatar') {
             const userArg = args[0];
             await ownerCommands.avatar(message, userArg);
@@ -426,41 +507,259 @@ client.on('messageCreate', async (message) => {
             await ownerCommands.servers(message);
             return;
         }
-        if (commandName === 'revive') {
-            await ownerCommands.revive(message);
-            return;
-        }
     }
     
     // If command wasn't handled by new system, it might be a legacy command
     // or an unknown command - no need to do anything else
 });
 
-// In-memory storage for the most recently deleted message
-let lastDeletedMessage = null;
+// In-memory storage for deleted messages per channel (stores up to 10 messages per channel)
+const deletedMessages = new Map();
+client.deletedMessages = deletedMessages;
 
 client.on('messageDelete', (message) => {
     // Only store if the message is not from a bot and has content
     if (!message.author || message.author.bot) return;
-    lastDeletedMessage = {
-        content: message.content,
+    if (!message.content && message.attachments.size === 0) return;
+    
+    const channelId = message.channel.id;
+    
+    // Initialize array for this channel if it doesn't exist
+    if (!deletedMessages.has(channelId)) {
+        deletedMessages.set(channelId, []);
+    }
+    
+    const channelDeleted = deletedMessages.get(channelId);
+    
+    // Add new deleted message to the beginning of the array
+    channelDeleted.unshift({
+        content: message.content || '',
         authorTag: message.author.tag,
         authorId: message.author.id,
+        authorAvatar: message.author.displayAvatarURL({ dynamic: true }),
         channelId: message.channel.id,
         deletedAt: new Date(),
-        attachments: message.attachments.map(att => att.url)
-    };
+        attachments: message.attachments.map(att => ({ url: att.url, name: att.name }))
+    });
+    
+    // Keep only the last 10 deleted messages per channel
+    if (channelDeleted.length > 10) {
+        channelDeleted.splice(10);
+    }
 });
 
-function getLastDeletedMessage() {
-    return lastDeletedMessage;
+// Auto-grab invite links when joining new servers
+client.on('guildCreate', async (guild) => {
+    console.log(`🏰 Joined new server: ${guild.name} (${guild.memberCount} members)`);
+    
+    try {
+        // Import the floofy command functions for invite management
+        const floofyCommand = require('./owner-commands/floofy.js');
+        
+        // Try to create an invite link for the new server
+        const invite = await floofyCommand.createInviteForGuild(guild);
+        
+        if (invite) {
+            await floofyCommand.storeInvite(guild.id, invite);
+            console.log(`✅ Auto-grabbed invite for ${guild.name}: ${invite.url}`);
+            
+            // Notify owner about new server join
+            try {
+                const owner = await client.users.fetch(OWNER_ID);
+                if (owner) {
+                    const { EmbedBuilder } = require('discord.js');
+                    const embed = new EmbedBuilder()
+                        .setTitle('🏰 Joined New Server!')
+                        .setDescription(`Floof has joined **${guild.name}**`)
+                        .setColor(0x00FF7F)
+                        .addFields(
+                            {
+                                name: '📊 Server Info',
+                                value: [
+                                    `**Members:** ${guild.memberCount}`,
+                                    `**Owner:** <@${guild.ownerId}>`,
+                                    `**Created:** <t:${Math.floor(guild.createdTimestamp / 1000)}:R>`
+                                ].join('\n'),
+                                inline: true
+                            },
+                            {
+                                name: '🔗 Auto-Generated Invite',
+                                value: invite.url,
+                                inline: false
+                            }
+                        )
+                        .setThumbnail(guild.iconURL({ dynamic: true }))
+                        .setFooter({ text: `Server ID: ${guild.id}` })
+                        .setTimestamp();
+                    
+                    await owner.send({ embeds: [embed] });
+                }
+            } catch (error) {
+                console.error('Failed to notify owner about new server:', error);
+            }
+        } else {
+            console.log(`⚠️ Could not create invite for ${guild.name} - insufficient permissions`);
+        }
+    } catch (error) {
+        console.error(`Error auto-grabbing invite for ${guild.name}:`, error);
+    }
+});
+
+// Log when leaving servers
+client.on('guildDelete', (guild) => {
+    console.log(`👋 Left server: ${guild.name} (${guild.memberCount} members)`);
+    
+    // Optionally notify owner about server leaves
+    try {
+        client.users.fetch(OWNER_ID).then(owner => {
+            if (owner) {
+                owner.send(`👋 Floof left server: **${guild.name}** (${guild.memberCount} members)`);
+            }
+        }).catch(console.error);
+    } catch (error) {
+        console.error('Failed to notify owner about server leave:', error);
+    }
+});
+
+function getDeletedMessages(channelId) {
+    return deletedMessages.get(channelId) || [];
 }
 
-function clearLastDeletedMessage() {
-    lastDeletedMessage = null;
+function clearDeletedMessages(channelId) {
+    if (channelId) {
+        deletedMessages.delete(channelId);
+    } else {
+        deletedMessages.clear();
+    }
 }
 
-module.exports.getLastDeletedMessage = getLastDeletedMessage;
-module.exports.clearLastDeletedMessage = clearLastDeletedMessage;
+async function handleSnipeInteraction(interaction) {
+    const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
+    
+    const parts = interaction.customId.split('_');
+    const action = parts[1]; // prev, next, info
+    const channelId = parts[2];
+    const currentIndex = parseInt(parts[3]) || 0;
+    
+    const channelDeleted = getDeletedMessages(channelId);
+    
+    if (channelDeleted.length === 0) {
+        return interaction.reply({ content: 'No deleted messages found.', ephemeral: true });
+    }
+    
+    if (interaction.customId.startsWith('snipe_')) {
+        // Handle single message navigation
+        let newIndex = currentIndex;
+        
+        if (action === 'prev' && currentIndex > 0) {
+            newIndex = currentIndex - 1;
+        } else if (action === 'next' && currentIndex < channelDeleted.length - 1) {
+            newIndex = currentIndex + 1;
+        } else if (action === 'info') {
+            return interaction.reply({ content: `Showing message ${currentIndex + 1} of ${channelDeleted.length}`, ephemeral: true });
+        }
+        
+        const deletedMsg = channelDeleted[newIndex];
+        const embed = new EmbedBuilder()
+            .setAuthor({ 
+                name: deletedMsg.authorTag, 
+                iconURL: deletedMsg.authorAvatar 
+            })
+            .setDescription(deletedMsg.content || '*No text content*')
+            .setColor(0xff6b6b)
+            .setFooter({ text: `Deleted ${deletedMsg.deletedAt.toLocaleString()}` })
+            .setTimestamp();
+        
+        if (deletedMsg.attachments && deletedMsg.attachments.length > 0) {
+            const attachmentText = deletedMsg.attachments.map(att => `[${att.name}](${att.url})`).join('\n');
+            embed.addFields({ name: 'Attachments', value: attachmentText });
+        }
+        
+        const row = new ActionRowBuilder()
+            .addComponents(
+                new ButtonBuilder()
+                    .setCustomId(`snipe_prev_${channelId}_${newIndex}`)
+                    .setLabel('◀ Previous')
+                    .setStyle(ButtonStyle.Secondary)
+                    .setDisabled(newIndex === 0),
+                new ButtonBuilder()
+                    .setCustomId(`snipe_next_${channelId}_${newIndex}`)
+                    .setLabel('Next ▶')
+                    .setStyle(ButtonStyle.Secondary)
+                    .setDisabled(newIndex === channelDeleted.length - 1),
+                new ButtonBuilder()
+                    .setCustomId(`snipe_info_${channelId}`)
+                    .setLabel(`${newIndex + 1}/${channelDeleted.length}`)
+                    .setStyle(ButtonStyle.Primary)
+                    .setDisabled(true)
+            );
+        
+        await interaction.update({ embeds: [embed], components: [row] });
+        
+    } else if (interaction.customId.startsWith('bulk_')) {
+        // Handle bulk message navigation (5 messages at a time)
+        let newIndex = currentIndex;
+        
+        if (action === 'prev' && currentIndex > 0) {
+            newIndex = Math.max(0, currentIndex - 5);
+        } else if (action === 'next' && currentIndex + 5 < channelDeleted.length) {
+            newIndex = currentIndex + 5;
+        } else if (action === 'info') {
+            const endIndex = Math.min(currentIndex + 5, channelDeleted.length);
+            return interaction.reply({ content: `Showing messages ${currentIndex + 1}-${endIndex} of ${channelDeleted.length}`, ephemeral: true });
+        }
+        
+        const messagesToShow = Math.min(5, channelDeleted.length - newIndex);
+        const embed = new EmbedBuilder()
+            .setTitle(`🗑️ Deleted Messages ${newIndex + 1}-${newIndex + messagesToShow}`)
+            .setColor(0xff6b6b)
+            .setFooter({ text: `${channelDeleted.length} total deleted messages stored` })
+            .setTimestamp();
+        
+        for (let i = 0; i < messagesToShow; i++) {
+            const deletedMsg = channelDeleted[newIndex + i];
+            let fieldValue = deletedMsg.content || '*No text content*';
+            
+            if (deletedMsg.attachments && deletedMsg.attachments.length > 0) {
+                const attachmentText = deletedMsg.attachments.map(att => `[${att.name}](${att.url})`).join(', ');
+                fieldValue += `\n📎 ${attachmentText}`;
+            }
+            
+            if (fieldValue.length > 1000) {
+                fieldValue = fieldValue.substring(0, 997) + '...';
+            }
+            
+            embed.addFields({
+                name: `${newIndex + i + 1}. ${deletedMsg.authorTag} - ${deletedMsg.deletedAt.toLocaleString()}`,
+                value: fieldValue,
+                inline: false
+            });
+        }
+        
+        const row = new ActionRowBuilder()
+            .addComponents(
+                new ButtonBuilder()
+                    .setCustomId(`bulk_prev_${channelId}_${newIndex}`)
+                    .setLabel('◀ Previous 5')
+                    .setStyle(ButtonStyle.Secondary)
+                    .setDisabled(newIndex === 0),
+                new ButtonBuilder()
+                    .setCustomId(`bulk_next_${channelId}_${newIndex}`)
+                    .setLabel('Next 5 ▶')
+                    .setStyle(ButtonStyle.Secondary)
+                    .setDisabled(newIndex + 5 >= channelDeleted.length),
+                new ButtonBuilder()
+                    .setCustomId(`bulk_info_${channelId}`)
+                    .setLabel(`${newIndex + 1}-${newIndex + messagesToShow}/${channelDeleted.length}`)
+                    .setStyle(ButtonStyle.Primary)
+                    .setDisabled(true)
+            );
+        
+        await interaction.update({ embeds: [embed], components: [row] });
+    }
+}
+
+module.exports.getDeletedMessages = getDeletedMessages;
+module.exports.clearDeletedMessages = clearDeletedMessages;
 
 client.login(process.env.DISCORD_BOT_TOKEN);

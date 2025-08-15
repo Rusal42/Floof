@@ -34,6 +34,10 @@ class CommandHandler {
         // Load moderation commands
         const moderationPath = path.join(__dirname, '..', 'moderation');
         this.loadCommandsFromDirectory(moderationPath);
+        
+        // Load owner commands
+        const ownerCommandsPath = path.join(__dirname, '..', 'owner-commands');
+        this.loadCommandsFromDirectory(ownerCommandsPath, { ownerOnly: true });
     }
 
     loadCommandFile(filePath) {
@@ -204,8 +208,9 @@ class CommandHandler {
             // Check if owner only - silently ignore if not owner
             if (command.ownerOnly) {
                 console.log(`Command ${command.name} is owner-only`);
-                if (message.author.id !== process.env.OWNER_ID) {
-                    console.log(`User ${message.author.tag} is not the owner, ignoring command`);
+                const { isOwner } = require('../utils/owner-util');
+                if (!isOwner(message.author.id)) {
+                    console.log(`User ${message.author.tag} is not an owner, ignoring command`);
                     return false;
                 }
             } else {

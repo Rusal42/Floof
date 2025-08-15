@@ -11,10 +11,10 @@ module.exports = {
 
     async execute(message, args) {
         const highfiveGifs = [
-            'https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExZzVpanVic2x5ZGhpNWN2ZjNyNG40bXBobzJteHk0ejZ3Mmw2d3JiayZlcD12MV9naWZzX3NlYXJjaCZjdD1n/xThuWpoG470Q0stGmI/giphy.gif',
-            'https://media.giphy.com/media/v1.Y2lkPWVjZjA1ZTQ3YjgzbnhyYTVxNGZ3MHBsZXpxMmJ5cXhiMXFmeDd5M2xiZzZxajNrYSZlcD12MV9naWZzX3JlbGF0ZWQmY3Q9Zw/Xir746WTkWpiM/giphy.gif',
-            'https://media.giphy.com/media/v1.Y2lkPWVjZjA1ZTQ3cTc3a3EyYWF4MHo0MzQyeXM4d3E2Z2F5azFjdmJqbDI4czVpbGxzcyZlcD12MV9naWZzX3JlbGF0ZWQmY3Q9Zw/VuwYcvElLOnuw/giphy.gif',
-            'https://media.giphy.com/media/v1.Y2lkPWVjZjA1ZTQ3cDRucmtiOHN3OXRjNGcxeW11NHZ4YmdyZHpqMHpxM2V3ODl2M25zaSZlcD12MV9naWZzX3JlbGF0ZWQmY3Q9Zw/aGVvqGKFOXIvC/giphy.gif'
+            'https://i.giphy.com/xThuWpoG470Q0stGmI.gif',
+            'https://i.giphy.com/Xir746WTkWpiM.gif',
+            'https://i.giphy.com/VuwYcvElLOnuw.gif',
+            'https://i.giphy.com/aGVvqGKFOXIvC.gif'
         ];
 
         const randomGif = highfiveGifs[Math.floor(Math.random() * highfiveGifs.length)];

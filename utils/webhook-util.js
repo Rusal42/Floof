@@ -12,11 +12,13 @@ async function sendAsFloofWebhook(message, options) {
             avatar: message.client.user.displayAvatarURL()
         });
     }
-    await webhook.send({
+    const sentMessage = await webhook.send({
         username: 'Floof',
         avatarURL: message.client.user.displayAvatarURL(),
         ...options
     });
+    
+    return sentMessage;
 }
 
 module.exports = { sendAsFloofWebhook };

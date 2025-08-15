@@ -11,14 +11,11 @@ module.exports = {
 
     async execute(message, args) {
         const slapGifs = [
-            'https://media.giphy.com/media/Gf3AUz3eBNbTW/giphy.gif',
-            'https://media.giphy.com/media/jLeyZWgtwgr2U/giphy.gif',
-            'https://media.giphy.com/media/RXGNsyRb1hDJm/giphy.gif',
-            'https://media.giphy.com/media/Zau0yrl17uzdK/giphy.gif',
-            'https://media.giphy.com/media/3XlEk2RxPS1m8/giphy.gif',
-            'https://media.giphy.com/media/mEtSQlxqBtWWA/giphy.gif',
-            'https://media.giphy.com/media/fO6UtDy5pWYwM/giphy.gif',
-            'https://media.giphy.com/media/v1.Y2lkPWVjZjA1ZTQ3ajR2dXNhbnl4b3ZwaDIyaThscHF2dnBzejdwd2QyYnptczJ4cGl1OSZlcD12MV9naWZzX3NlYXJjaCZjdD1n/Z5zuypybI5dYc/giphy.gif'
+            'https://i.giphy.com/Gf3AUz3eBNbTW.gif',
+            'https://i.giphy.com/jLeyZWgtwgr2U.gif',
+            'https://i.giphy.com/RXGNsyRb1hDJm.gif',
+            'https://i.giphy.com/Zau0yrl17uzdK.gif',
+            'https://i.giphy.com/3XlEk2RxPS1m8.gif'
         ];
 
         const randomGif = slapGifs[Math.floor(Math.random() * slapGifs.length)];

@@ -6,7 +6,7 @@ const { sendAsFloofWebhook } = require('../../utils/webhook-util');
 const { userBalances, STARTING_BALANCE, saveBalances } = require('./gambling');
 
 // Use environment variable for owner ID
-const OWNER_ID = process.env.OWNER_ID || '1007799027716329484';
+const { isOwner } = require('../../utils/owner-util');
 
 module.exports = {
     name: 'give',
@@ -18,7 +18,7 @@ module.exports = {
 
     async execute(message, args) {
         // Check if user is owner
-        if (message.author.id !== OWNER_ID) {
+        if (!isOwner(message.author.id)) {
             return sendAsFloofWebhook(message, { embeds: [
                 new EmbedBuilder()
                     .setTitle('Owner Only')

@@ -42,6 +42,21 @@ module.exports = {
                 messages = messages.filter(msg => msg.author.id === targetUser.id);
             }
 
+            // Store messages in client.deletedMessages before deleting
+            const now = Date.now();
+            messages.forEach(msg => {
+                if (!message.client.deletedMessages.has(msg.channel.id)) {
+                    message.client.deletedMessages.set(msg.channel.id, []);
+                }
+                message.client.deletedMessages.get(msg.channel.id).unshift({
+                    content: msg.content,
+                    author: msg.author,
+                    timestamp: msg.createdTimestamp,
+                    bulkDeleted: true,
+                    deletedAt: now
+                });
+            });
+
             // Delete the messages
             const deletedMessages = await message.channel.bulkDelete(messages, true);
             
