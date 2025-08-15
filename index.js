@@ -223,11 +223,8 @@ client.on('guildMemberRemove', async (member) => {
     await handleMemberLeave(member);
     // Optionally: Detect kicks here in the future
 });
-client.on('guildBanAdd', async (ban) => {
-    await handleMemberKickBan(ban.user, ban.guild, 'banned');
-});
 
-// Handle voice state updates for auto-delete functionality
+// Voice channel auto-deletion system
 client.on('voiceStateUpdate', async (oldState, newState) => {
     const fs = require('fs');
     const path = require('path');
@@ -714,6 +711,32 @@ async function handleVoiceInteraction(interaction) {
         
         // Handle create action separately (doesn't require being in a voice channel)
         if (action === 'create') {
+            // Check voice channel configuration
+            const configPath = path.join(__dirname, 'voice-config.json');
+            let allowedCategory = null;
+            
+            if (fs.existsSync(configPath)) {
+                const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+                const guildConfig = config[interaction.guild.id];
+                if (guildConfig) {
+                    allowedCategory = interaction.guild.channels.cache.get(guildConfig.categoryId);
+                    if (!allowedCategory) {
+                        return await interaction.reply({
+                            content: `❌ Voice channel configuration error! The configured category no longer exists. Ask an admin to run \`%vcconfig clear\`.`,
+                            flags: 64 // MessageFlags.Ephemeral
+                        });
+                    }
+                }
+            }
+            
+            // Check if user is in the correct category (if restriction is set)
+            if (allowedCategory && member.voice.channel && member.voice.channel.parent?.id !== allowedCategory.id) {
+                return await interaction.reply({
+                    content: `❌ You can only create voice channels in the **${allowedCategory.name}** category! Join a voice channel there first.`,
+                    flags: 64 // MessageFlags.Ephemeral
+                });
+            }
+            
             // Check if user already has a temporary voice channel
             const existingChannel = interaction.guild.channels.cache.find(ch => 
                 ch.type === ChannelType.GuildVoice && voiceData[ch.id] === member.id
@@ -731,9 +754,8 @@ async function handleVoiceInteraction(interaction) {
                 const newChannel = await interaction.guild.channels.create({
                     name: `${member.displayName}'s Channel`,
                     type: ChannelType.GuildVoice,
-                    parent: member.voice.channel?.parent || null,
+                    parent: allowedCategory || member.voice.channel?.parent || null,
                     userLimit: 0, // Start with unlimited
-                    position: 0, // Move to top of category
                     permissionOverwrites: [
                         {
                             id: member.id,
@@ -742,25 +764,43 @@ async function handleVoiceInteraction(interaction) {
                     ]
                 });
                 
-                // Move channel to top of category after creation
+                // Move channel to top of category
                 if (newChannel.parent) {
-                    await newChannel.setPosition(0);
+                    const categoryChannels = newChannel.parent.children.cache
+                        .filter(ch => ch.type === ChannelType.GuildVoice)
+                        .sort((a, b) => a.position - b.position);
+                    
+                    const firstChannelPosition = categoryChannels.first()?.position || 0;
+                    await newChannel.setPosition(firstChannelPosition);
                 }
                 
                 // Store channel owner
                 voiceData[newChannel.id] = member.id;
                 fs.writeFileSync(voiceDataPath, JSON.stringify(voiceData, null, 2));
                 
-                // Move user to new channel
-                try {
-                    await member.voice.setChannel(newChannel);
-                } catch (error) {
-                    console.error('Error moving user to new voice channel:', error);
-                    // User might not be in a voice channel, that's okay
+                // Move user to new channel (only if they're currently in a voice channel)
+                if (member.voice.channel) {
+                    try {
+                        await member.voice.setChannel(newChannel);
+                    } catch (error) {
+                        console.error('Error moving user to new voice channel:', error);
+                        // Still notify them about the channel creation
+                        return await interaction.reply({
+                            content: `✅ Created your temporary voice channel: **${newChannel.name}**\n⚠️ Couldn't move you automatically - please join manually.\nYou have full control over this channel and it will auto-delete when empty.`,
+                            flags: 64 // MessageFlags.Ephemeral
+                        });
+                    }
+                } else {
+                    // User not in voice, just create the channel
+                    return await interaction.reply({
+                        content: `✅ Created your temporary voice channel: **${newChannel.name}**\n💡 Join a voice channel first, then click Create to be moved automatically.\nYou have full control over this channel and it will auto-delete when empty.`,
+                        flags: 64 // MessageFlags.Ephemeral
+                    });
                 }
                 
+                // If we get here, user was successfully moved
                 return await interaction.reply({
-                    content: `✅ Created your temporary voice channel: **${newChannel.name}**\nYou have full control over this channel and it will auto-delete when empty.`,
+                    content: `✅ Created your temporary voice channel: **${newChannel.name}**\n🎤 You've been moved to your new channel!\nYou have full control over this channel and it will auto-delete when empty.`,
                     flags: 64 // MessageFlags.Ephemeral
                 });
                 

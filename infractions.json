@@ -30,5 +30,93 @@
         "timestamp": "2025-08-15T09:07:08.309Z"
       }
     ]
+  },
+  "1062223859228610660": {
+    "1007799027716329484": [
+      {
+        "id": "1755257334689",
+        "type": "automod",
+        "violations": [
+          {
+            "type": "discordInvites",
+            "reason": "Posted Discord server invite links: discord.gg/bababot",
+            "action": "delete"
+          }
+        ],
+        "moderator": "Auto-Moderation",
+        "timestamp": "2025-08-15T11:28:54.689Z",
+        "channel": "・bottesting",
+        "channelId": "1062444940581412874",
+        "messageContent": "https://discord.gg/bababot",
+        "actions": [
+          "delete"
+        ],
+        "severity": "low"
+      },
+      {
+        "id": "1755258022924",
+        "type": "automod",
+        "violations": [
+          {
+            "type": "spam",
+            "reason": "Sent 6 messages in 10 seconds",
+            "action": "mute"
+          }
+        ],
+        "moderator": "Auto-Moderation",
+        "timestamp": "2025-08-15T11:40:22.924Z",
+        "channel": "・bottesting",
+        "channelId": "1062444940581412874",
+        "messageContent": "%warn <@297048826924105728> skibidi",
+        "actions": [
+          "mute"
+        ],
+        "severity": "medium"
+      }
+    ],
+    "297048826924105728": [
+      {
+        "type": "warn",
+        "reason": "skibidi",
+        "moderator": "1007799027716329484",
+        "timestamp": "2025-08-15T11:39:42.550Z"
+      },
+      {
+        "type": "warn",
+        "reason": "skibidi",
+        "moderator": "1007799027716329484",
+        "timestamp": "2025-08-15T11:40:19.851Z"
+      },
+      {
+        "type": "warn",
+        "reason": "skibidi",
+        "moderator": "1007799027716329484",
+        "timestamp": "2025-08-15T11:40:20.635Z"
+      },
+      {
+        "type": "warn",
+        "reason": "skibidi",
+        "moderator": "1007799027716329484",
+        "timestamp": "2025-08-15T11:40:21.217Z"
+      },
+      {
+        "type": "warn",
+        "reason": "skibidi",
+        "moderator": "1007799027716329484",
+        "timestamp": "2025-08-15T11:40:21.474Z"
+      },
+      {
+        "type": "warn",
+        "reason": "skibidi",
+        "moderator": "1007799027716329484",
+        "timestamp": "2025-08-15T11:40:21.826Z"
+      },
+      {
+        "type": "warn",
+        "reason": "skibidi",
+        "moderator": "1007799027716329484",
+        "timestamp": "2025-08-15T11:40:22.925Z"
+      }
+    ]
   }
 }
