@@ -14,7 +14,8 @@ const client = new Client({
         GatewayIntentBits.MessageContent,
         GatewayIntentBits.DirectMessages,
         GatewayIntentBits.GuildPresences,
-        GatewayIntentBits.GuildMembers // Needed for welcome system
+        GatewayIntentBits.GuildMembers, // Needed for welcome system
+        GatewayIntentBits.GuildVoiceStates // Needed for voice channel management
     ]
 });
 
@@ -173,6 +174,12 @@ client.on('interactionCreate', async (interaction) => {
         await handleTicketInteraction(interaction);
         return;
     }
+    
+    // Handle voice channel button interactions
+    if (interaction.customId.startsWith('voice_')) {
+        await handleVoiceInteraction(interaction);
+        return;
+    }
 });
 
 // Auto-leave any server where the owner is not a member
@@ -218,6 +225,59 @@ client.on('guildMemberRemove', async (member) => {
 });
 client.on('guildBanAdd', async (ban) => {
     await handleMemberKickBan(ban.user, ban.guild, 'banned');
+});
+
+// Handle voice state updates for auto-delete functionality
+client.on('voiceStateUpdate', async (oldState, newState) => {
+    const fs = require('fs');
+    const path = require('path');
+    
+    try {
+        // Load voice channel owners data
+        const voiceDataPath = path.join(__dirname, 'voice-channels.json');
+        if (!fs.existsSync(voiceDataPath)) return;
+        
+        let voiceData = JSON.parse(fs.readFileSync(voiceDataPath, 'utf8'));
+        
+        // Check if someone left a voice channel
+        if (oldState.channel && oldState.channel !== newState.channel) {
+            const channelId = oldState.channel.id;
+            
+            // If this is a temporary voice channel (has an owner in our data)
+            if (voiceData[channelId]) {
+                // Add a small delay to ensure the member has fully left
+                setTimeout(async () => {
+                    try {
+                        // Fetch the channel again to get updated member count
+                        const channel = await oldState.guild.channels.fetch(channelId);
+                        
+                        // Check if channel still exists and is now empty
+                        if (channel && channel.members.size === 0) {
+                            try {
+                                // Delete the empty temporary voice channel
+                                await channel.delete('Temporary voice channel auto-delete: empty');
+                                
+                                // Remove from tracking data
+                                delete voiceData[channelId];
+                                fs.writeFileSync(voiceDataPath, JSON.stringify(voiceData, null, 2));
+                                
+                                console.log(`🗑️ Auto-deleted empty temporary voice channel: ${channel.name}`);
+                            } catch (error) {
+                                console.error('Error auto-deleting voice channel:', error);
+                            }
+                        }
+                    } catch (error) {
+                        // Channel might already be deleted or not found
+                        if (error.code !== 10003) { // Unknown Channel error
+                            console.error('Error checking channel for auto-delete:', error);
+                        }
+                    }
+                }, 1000); // 1 second delay to ensure state is updated
+            }
+        }
+    } catch (error) {
+        console.error('Error in voice state update handler:', error);
+    }
 });
 
 // Import auto moderation
@@ -630,6 +690,265 @@ function clearDeletedMessages(channelId) {
         deletedMessages.delete(channelId);
     } else {
         deletedMessages.clear();
+    }
+}
+
+async function handleVoiceInteraction(interaction) {
+    const { EmbedBuilder, PermissionFlagsBits, ChannelType } = require('discord.js');
+    const fs = require('fs');
+    const path = require('path');
+    
+    try {
+        const member = interaction.member;
+        const action = interaction.customId.replace('voice_', '');
+        
+        // Debug logging
+        console.log(`Voice interaction: ${action} by ${member.displayName} (${member.id})`);
+        
+        // Load voice channel owners data
+        const voiceDataPath = path.join(__dirname, 'voice-channels.json');
+        let voiceData = {};
+        if (fs.existsSync(voiceDataPath)) {
+            voiceData = JSON.parse(fs.readFileSync(voiceDataPath, 'utf8'));
+        }
+        
+        // Handle create action separately (doesn't require being in a voice channel)
+        if (action === 'create') {
+            // Check if user already has a temporary voice channel
+            const existingChannel = interaction.guild.channels.cache.find(ch => 
+                ch.type === ChannelType.GuildVoice && voiceData[ch.id] === member.id
+            );
+            
+            if (existingChannel) {
+                return await interaction.reply({
+                    content: `❌ You already have a temporary voice channel: **${existingChannel.name}**`,
+                    flags: 64 // MessageFlags.Ephemeral
+                });
+            }
+            
+            // Create new temporary voice channel
+            try {
+                const newChannel = await interaction.guild.channels.create({
+                    name: `${member.displayName}'s Channel`,
+                    type: ChannelType.GuildVoice,
+                    parent: member.voice.channel?.parent || null,
+                    userLimit: 0, // Start with unlimited
+                    position: 0, // Move to top of category
+                    permissionOverwrites: [
+                        {
+                            id: member.id,
+                            allow: [PermissionFlagsBits.ManageChannels, PermissionFlagsBits.MoveMembers]
+                        }
+                    ]
+                });
+                
+                // Move channel to top of category after creation
+                if (newChannel.parent) {
+                    await newChannel.setPosition(0);
+                }
+                
+                // Store channel owner
+                voiceData[newChannel.id] = member.id;
+                fs.writeFileSync(voiceDataPath, JSON.stringify(voiceData, null, 2));
+                
+                // Move user to new channel
+                try {
+                    await member.voice.setChannel(newChannel);
+                } catch (error) {
+                    console.error('Error moving user to new voice channel:', error);
+                    // User might not be in a voice channel, that's okay
+                }
+                
+                return await interaction.reply({
+                    content: `✅ Created your temporary voice channel: **${newChannel.name}**\nYou have full control over this channel and it will auto-delete when empty.`,
+                    flags: 64 // MessageFlags.Ephemeral
+                });
+                
+            } catch (error) {
+                console.error('Error creating voice channel:', error);
+                return await interaction.reply({
+                    content: `❌ Failed to create voice channel. Please check bot permissions or try again.`,
+                    flags: 64 // MessageFlags.Ephemeral
+                });
+            }
+        }
+        
+        // For all other actions, user must be in a voice channel
+        const voiceChannel = member.voice.channel;
+        if (!voiceChannel) {
+            return await interaction.reply({
+                content: '❌ You must be in a voice channel to use voice controls!',
+                flags: 64 // MessageFlags.Ephemeral
+            });
+        }
+        
+        // Reload voice data to ensure we have the latest ownership info
+        if (fs.existsSync(voiceDataPath)) {
+            voiceData = JSON.parse(fs.readFileSync(voiceDataPath, 'utf8'));
+        }
+        
+        // Check if user is the owner of this temporary voice channel
+        const isChannelOwner = voiceData[voiceChannel.id] === member.id;
+        const hasManagePermission = member.permissions.has(PermissionFlagsBits.ManageChannels);
+        
+        if (!isChannelOwner && !hasManagePermission) {
+            return await interaction.reply({
+                content: '❌ Only the channel owner or users with Manage Channels permission can use voice controls!',
+                flags: 64 // MessageFlags.Ephemeral
+            });
+        }
+        
+        switch (action) {
+            case 'lock':
+                await voiceChannel.permissionOverwrites.edit(interaction.guild.roles.everyone, {
+                    Connect: false
+                });
+                // Fetch fresh channel data to get updated name
+                const freshChannel = await interaction.guild.channels.fetch(voiceChannel.id);
+                await interaction.reply({
+                    content: `🔒 **${freshChannel.name}** has been locked!`,
+                    flags: 64 // MessageFlags.Ephemeral
+                });
+                break;
+                
+            case 'unlock':
+                await voiceChannel.permissionOverwrites.edit(interaction.guild.roles.everyone, {
+                    Connect: null
+                });
+                const freshChannel2 = await interaction.guild.channels.fetch(voiceChannel.id);
+                await interaction.reply({
+                    content: `🔓 **${freshChannel2.name}** has been unlocked!`,
+                    flags: 64 // MessageFlags.Ephemeral
+                });
+                break;
+                
+            case 'ghost':
+                await voiceChannel.permissionOverwrites.edit(interaction.guild.roles.everyone, {
+                    ViewChannel: false
+                });
+                const freshChannel3 = await interaction.guild.channels.fetch(voiceChannel.id);
+                await interaction.reply({
+                    content: `👁️ **${freshChannel3.name}** is now hidden!`,
+                    flags: 64 // MessageFlags.Ephemeral
+                });
+                break;
+                
+            case 'reveal':
+                await voiceChannel.permissionOverwrites.edit(interaction.guild.roles.everyone, {
+                    ViewChannel: null
+                });
+                const freshChannel4 = await interaction.guild.channels.fetch(voiceChannel.id);
+                await interaction.reply({
+                    content: `👻 **${freshChannel4.name}** is now visible!`,
+                    flags: 64 // MessageFlags.Ephemeral
+                });
+                break;
+                
+            case 'increase':
+                const currentLimit = voiceChannel.userLimit;
+                const newLimit = currentLimit === 0 ? 2 : Math.min(currentLimit + 1, 99);
+                await voiceChannel.setUserLimit(newLimit);
+                const freshChannel5 = await interaction.guild.channels.fetch(voiceChannel.id);
+                await interaction.reply({
+                    content: `➕ **${freshChannel5.name}** user limit increased to ${newLimit}!`,
+                    flags: 64 // MessageFlags.Ephemeral
+                });
+                break;
+                
+            case 'decrease':
+                const currentLimit2 = voiceChannel.userLimit;
+                const newLimit2 = currentLimit2 <= 1 ? 0 : currentLimit2 - 1;
+                await voiceChannel.setUserLimit(newLimit2);
+                const freshChannel6 = await interaction.guild.channels.fetch(voiceChannel.id);
+                await interaction.reply({
+                    content: `➖ **${freshChannel6.name}** user limit ${newLimit2 === 0 ? 'removed' : `decreased to ${newLimit2}`}!`,
+                    flags: 64 // MessageFlags.Ephemeral
+                });
+                break;
+                
+            case 'view':
+                const freshChannel7 = await interaction.guild.channels.fetch(voiceChannel.id);
+                const embed = new EmbedBuilder()
+                    .setTitle(`ℹ️ ${freshChannel7.name} Information`)
+                    .setColor('#7289DA')
+                    .addFields(
+                        {
+                            name: '👥 Members',
+                            value: voiceChannel.members.size > 0 ? 
+                                voiceChannel.members.map(m => m.displayName).join(', ') : 
+                                'No members',
+                            inline: true
+                        },
+                        {
+                            name: '🔢 User Limit',
+                            value: voiceChannel.userLimit === 0 ? 'Unlimited' : voiceChannel.userLimit.toString(),
+                            inline: true
+                        },
+                        {
+                            name: '🔒 Permissions',
+                            value: [
+                                voiceChannel.permissionOverwrites.cache.get(interaction.guild.roles.everyone.id)?.deny.has(PermissionFlagsBits.Connect) ? '🔒 Locked' : '🔓 Unlocked',
+                                voiceChannel.permissionOverwrites.cache.get(interaction.guild.roles.everyone.id)?.deny.has(PermissionFlagsBits.ViewChannel) ? '👁️ Hidden' : '👻 Visible'
+                            ].join('\n'),
+                            inline: true
+                        }
+                    )
+                    .setTimestamp();
+                
+                await interaction.reply({
+                    embeds: [embed],
+                    flags: 64 // MessageFlags.Ephemeral
+                });
+                break;
+                
+            case 'disconnect':
+                if (voiceChannel.members.size === 0) {
+                    return await interaction.reply({
+                        content: '❌ No members to disconnect!',
+                        flags: 64 // MessageFlags.Ephemeral
+                    });
+                }
+                
+                const disconnected = [];
+                for (const [, member] of voiceChannel.members) {
+                    if (member.id !== interaction.user.id) {
+                        try {
+                            await member.voice.disconnect();
+                            disconnected.push(member.displayName);
+                        } catch (error) {
+                            console.error(`Failed to disconnect ${member.displayName}:`, error);
+                        }
+                    }
+                }
+                
+                await interaction.reply({
+                    content: disconnected.length > 0 ? 
+                        `🔗 Disconnected: ${disconnected.join(', ')}` : 
+                        '❌ No members could be disconnected!',
+                    flags: 64 // MessageFlags.Ephemeral
+                });
+                break;
+                
+            case 'start':
+                await interaction.reply({
+                    content: '⭐ Activity feature coming soon! This will allow you to start Discord activities in your voice channel.',
+                    flags: 64 // MessageFlags.Ephemeral
+                });
+                break;
+                
+            default:
+                await interaction.reply({
+                    content: '❌ Unknown voice command!',
+                    flags: 64 // MessageFlags.Ephemeral
+                });
+        }
+        
+    } catch (error) {
+        console.error('Voice interaction error:', error);
+        await interaction.reply({
+            content: '❌ Something went wrong with the voice control!',
+            flags: 64 // MessageFlags.Ephemeral
+        });
     }
 }
 

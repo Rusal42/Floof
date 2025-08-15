@@ -61,7 +61,7 @@ function saveServerLogConfig(guildId, config) {
 
 module.exports = {
     name: 'advancedlog',
-    aliases: ['alog', 'logging', 'logs'],
+    aliases: ['alog', 'logging', 'al', 'logs'],
     description: 'Configure advanced logging for all server events',
     usage: '%advancedlog <setup|toggle|view>',
     category: 'moderation',

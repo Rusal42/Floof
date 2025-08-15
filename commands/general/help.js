@@ -103,11 +103,6 @@ module.exports = {
                 name: '🛡️ **Moderation**',
                 value: 'Kick, ban, timeout, warnings, config!\nUse: `%floofmod`',
                 inline: true
-            },
-            {
-                name: '🏷️ **Role Management**',
-                value: 'Create, delete, assign roles!\nUse: `%floofroles`',
-                inline: true
             }
         );
 
