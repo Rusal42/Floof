@@ -13,6 +13,49 @@ function shouldLog(level) {
     const order = { info: 3, warn: 2, error: 1, silent: 0 };
     return order[WEBSITE_STATS_LOG] >= order[level];
 }
+
+// Lightweight health ping (no user/server payload)
+async function pingWebsiteHealth() {
+    try {
+        if (!WEBSITE_API_URL) return;
+
+        // Derive a safe health URL that won't 405 (avoid POST-only endpoints)
+        const healthUrl = (() => {
+            if (process.env.WEBSITE_HEALTH_URL) return process.env.WEBSITE_HEALTH_URL;
+            try {
+                const u = new URL(WEBSITE_API_URL);
+                // Prefer explicit health endpoint on the same origin
+                return `${u.origin}/api/health`;
+            } catch (_) {
+                // Fallbacks for non-URL strings
+                const base = WEBSITE_API_URL.split('/api/')[0];
+                // If we had an /api/ segment, append /api/health to the base; else return as-is
+                return base ? `${base}/api/health` : WEBSITE_API_URL;
+            }
+        })();
+
+        const headers = { 
+            'Accept': 'text/html,application/json;q=0.9,*/*;q=0.8'
+        };
+        if (BOT_API_TOKEN) headers['x-bot-token'] = BOT_API_TOKEN; // optional
+
+        const response = await fetch(healthUrl, {
+            method: 'GET',
+            headers
+        });
+
+        const ok = response.ok;
+        const statusInfo = `${response.status} ${response.statusText || ''}`.trim();
+        if (ok) {
+            logInfo(`✅ Website health OK (${statusInfo}) @ ${healthUrl}`);
+        } else {
+            const rawText = await response.text().catch(() => '');
+            logWarn('⚠️ Website health check not OK', { url: healthUrl, status: response.status, statusText: response.statusText, raw: rawText?.slice(0, 200) });
+        }
+    } catch (error) {
+        logError('❌ Website health ping error:', error.message);
+    }
+}
 function logInfo(...args) { if (shouldLog('info')) console.log(...args); }
 function logWarn(...args) { if (shouldLog('warn')) console.warn(...args); }
 function logError(...args) { if (shouldLog('error')) console.error(...args); }
@@ -163,20 +206,20 @@ async function updateWebsiteStats(client) {
 function startStatsUpdater(client, intervalMinutes = 5) {
     logInfo(`🌐 Starting website stats updater (every ${intervalMinutes} minutes)`);
     logInfo(`➡️ Using WEBSITE_API_URL: ${WEBSITE_API_URL}`);
-    
-    // Initialize stats tracking
+
+    // Initialize stats tracking (kept for backward compatibility, though not used in health pings)
     initializeStats();
-    
-    // Update immediately when bot starts
+
+    // Health ping shortly after startup
     setTimeout(() => {
-        updateWebsiteStats(client);
-    }, 5000); // Wait 5 seconds for bot to fully initialize
-    
-    // Then update at regular intervals
+        pingWebsiteHealth();
+    }, 5000);
+
+    // Periodic health pings
     const interval = setInterval(() => {
-        updateWebsiteStats(client);
+        pingWebsiteHealth();
     }, intervalMinutes * 60 * 1000);
-    
+
     return interval;
 }
 
@@ -231,6 +274,7 @@ async function sendChangelogUpdate(client, changelogData) {
 module.exports = {
     updateWebsiteStats,
     startStatsUpdater,
+    pingWebsiteHealth,
     incrementCommandUsage,
     calculateUptimePercentage,
     recordDisconnection,
