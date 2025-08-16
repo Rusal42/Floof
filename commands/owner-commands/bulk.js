@@ -38,9 +38,7 @@ module.exports = {
             case 'emoji':
                 return await this.handleEmojis(message, action, args.slice(2));
             
-            case 'messages':
-            case 'message':
-                return await this.handleMessages(message, action, args.slice(2));
+            // Removed bulk message deletion in favor of dedicated %purge command
             
             default:
                 return await this.showMainMenu(message);
@@ -79,15 +77,6 @@ module.exports = {
                         '`%bulk emojis delete <pattern>` - Delete emojis by name pattern',
                         '`%bulk emojis delete all` - Delete all custom emojis',
                         '`%bulk emojis list` - List all custom emojis'
-                    ].join('\n'),
-                    inline: false
-                },
-                {
-                    name: '💬 **Message Management**',
-                    value: [
-                        '`%bulk messages delete <amount>` - Delete messages in current channel',
-                        '`%bulk messages delete user <@user> <amount>` - Delete user\'s messages',
-                        '`%bulk messages delete bot` - Delete all bot messages'
                     ].join('\n'),
                     inline: false
                 }
@@ -249,20 +238,7 @@ module.exports = {
         }
     },
 
-    async handleMessages(message, action, args) {
-        if (!message.guild.members.me.permissions.has(PermissionFlagsBits.ManageMessages)) {
-            return await sendAsFloofWebhook(message, {
-                content: '❌ I need **Manage Messages** permission!'
-            });
-        }
-
-        switch (action) {
-            case 'delete':
-                return await this.deleteMessages(message, args);
-            default:
-                return await this.showMessageHelp(message);
-        }
-    },
+    // Message management removed; use %purge for deletions
 
     // Helper functions
     getSafeRoles(guild) {
