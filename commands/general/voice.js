@@ -5,7 +5,7 @@ const path = require('path');
 
 // Helper functions for voice channel management
 function getVoiceData() {
-    const voiceDataPath = path.join(__dirname, '..', '..', 'voice-channels.json');
+    const voiceDataPath = path.join(__dirname, '..', '..', 'data', 'voice-channels.json');
     if (fs.existsSync(voiceDataPath)) {
         return JSON.parse(fs.readFileSync(voiceDataPath, 'utf8'));
     }
@@ -13,7 +13,7 @@ function getVoiceData() {
 }
 
 function saveVoiceData(data) {
-    const voiceDataPath = path.join(__dirname, '..', '..', 'voice-channels.json');
+    const voiceDataPath = path.join(__dirname, '..', '..', 'data', 'voice-channels.json');
     fs.writeFileSync(voiceDataPath, JSON.stringify(data, null, 2));
 }
 

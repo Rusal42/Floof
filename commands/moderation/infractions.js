@@ -3,7 +3,7 @@ const path = require('path');
 const { PermissionsBitField, EmbedBuilder } = require('discord.js');
 const { sendAsFloofWebhook } = require('../../utils/webhook-util');
 
-const infractionsPath = path.join(__dirname, '../../infractions.json');
+const infractionsPath = path.join(__dirname, '..', '..', 'data', 'infractions.json');
 
 function loadInfractions() {
     if (!fs.existsSync(infractionsPath)) return {};

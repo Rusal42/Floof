@@ -5,7 +5,7 @@ const path = require('path');
 
 // Helper functions for voice config management
 function getVoiceConfig() {
-    const configPath = path.join(__dirname, '..', '..', 'voice-config.json');
+    const configPath = path.join(__dirname, '..', '..', 'data', 'voice-config.json');
     if (fs.existsSync(configPath)) {
         return JSON.parse(fs.readFileSync(configPath, 'utf8'));
     }
@@ -13,7 +13,7 @@ function getVoiceConfig() {
 }
 
 function saveVoiceConfig(data) {
-    const configPath = path.join(__dirname, '..', '..', 'voice-config.json');
+    const configPath = path.join(__dirname, '..', '..', 'data', 'voice-config.json');
     fs.writeFileSync(configPath, JSON.stringify(data, null, 2));
 }
 

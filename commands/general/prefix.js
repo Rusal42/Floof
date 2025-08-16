@@ -5,7 +5,7 @@ const fs = require('fs');
 const path = require('path');
 
 function getPrefixConfig() {
-    const configPath = path.join(__dirname, '..', '..', 'prefix-config.json');
+    const configPath = path.join(__dirname, '..', '..', 'data', 'prefix-config.json');
     if (fs.existsSync(configPath)) {
         return JSON.parse(fs.readFileSync(configPath, 'utf8'));
     }
@@ -13,7 +13,7 @@ function getPrefixConfig() {
 }
 
 function savePrefixConfig(data) {
-    const configPath = path.join(__dirname, '..', '..', 'prefix-config.json');
+    const configPath = path.join(__dirname, '..', '..', 'data', 'prefix-config.json');
     fs.writeFileSync(configPath, JSON.stringify(data, null, 2));
 }
 

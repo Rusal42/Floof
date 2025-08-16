@@ -5,7 +5,7 @@ const fs = require('fs');
 const path = require('path');
 
 // Load changelog data
-const changelogPath = path.join(__dirname, '..', '..', 'changelog-data.json');
+const changelogPath = path.join(__dirname, '..', '..', 'data', 'changelog-data.json');
 
 function loadChangelogs() {
     try {

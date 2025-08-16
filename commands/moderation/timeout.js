@@ -3,9 +3,11 @@ const path = require('path');
 const { PermissionsBitField, EmbedBuilder } = require('discord.js');
 const { sendAsFloofWebhook } = require('../../utils/webhook-util');
 
-const infractionsPath = path.join(__dirname, '../../infractions.json');
+const infractionsPath = path.join(__dirname, '..', '..', 'data', 'infractions.json');
 
 function saveInfractions(data) {
+    // Ensure data directory exists
+    fs.mkdirSync(path.dirname(infractionsPath), { recursive: true });
     fs.writeFileSync(infractionsPath, JSON.stringify(data, null, 2));
 }
 

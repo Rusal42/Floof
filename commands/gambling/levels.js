@@ -3,8 +3,8 @@ const { sendAsFloofWebhook } = require('../../utils/webhook-util');
 const fs = require('fs');
 const path = require('path');
 
-const levelsPath = path.join(__dirname, '../../levels-data.json');
-const levelConfigPath = path.join(__dirname, '../../level-config.json');
+const levelsPath = path.join(__dirname, '../../data/levels-data.json');
+const levelConfigPath = path.join(__dirname, '../../data/level-config.json');
 
 function loadLevels() {
     if (!fs.existsSync(levelsPath)) {
@@ -20,6 +20,8 @@ function loadLevels() {
 
 function saveLevels(levels) {
     try {
+        // Ensure data directory exists
+        fs.mkdirSync(path.dirname(levelsPath), { recursive: true });
         fs.writeFileSync(levelsPath, JSON.stringify(levels, null, 2));
     } catch (error) {
         console.error('Error saving levels:', error);
@@ -40,6 +42,8 @@ function loadLevelConfig() {
 
 function saveLevelConfig(config) {
     try {
+        // Ensure data directory exists
+        fs.mkdirSync(path.dirname(levelConfigPath), { recursive: true });
         fs.writeFileSync(levelConfigPath, JSON.stringify(config, null, 2));
     } catch (error) {
         console.error('Error saving level config:', error);

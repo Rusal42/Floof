@@ -3,7 +3,7 @@ const { sendAsFloofWebhook } = require('../../utils/webhook-util');
 const fs = require('fs');
 const path = require('path');
 
-const remindersPath = path.join(__dirname, '../../reminders.json');
+const remindersPath = path.join(__dirname, '../../data/reminders.json');
 
 function loadReminders() {
     if (!fs.existsSync(remindersPath)) {
@@ -19,6 +19,8 @@ function loadReminders() {
 
 function saveReminders(reminders) {
     try {
+        // Ensure data directory exists
+        fs.mkdirSync(path.dirname(remindersPath), { recursive: true });
         fs.writeFileSync(remindersPath, JSON.stringify(reminders, null, 2));
     } catch (error) {
         console.error('Error saving reminders:', error);

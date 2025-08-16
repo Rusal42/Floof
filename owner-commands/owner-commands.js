@@ -10,7 +10,7 @@ module.exports = {
         const path = require('path');
         const { EmbedBuilder } = require('discord.js');
         const { sendAsFloofWebhook } = require('../utils/webhook-util');
-        const meowlockPath = path.join(__dirname, '../meowlock.json');
+        const meowlockPath = path.join(__dirname, '../data/meowlock.json');
         let allLocks = {};
         if (fs.existsSync(meowlockPath)) {
             try {
@@ -162,7 +162,7 @@ module.exports = {
     meowlock: async (message, args) => {
         const fs = require('fs');
         const path = require('path');
-        const meowlockPath = path.join(__dirname, '../meowlock.json');
+        const meowlockPath = path.join(__dirname, '../data/meowlock.json');
         
         // Check if we have both user and style
         if (args.length < 2) {
@@ -230,6 +230,8 @@ module.exports = {
         allLocks[guildId] = locked;
         
         try {
+            // Ensure data directory exists
+            fs.mkdirSync(path.dirname(meowlockPath), { recursive: true });
             fs.writeFileSync(meowlockPath, JSON.stringify(allLocks, null, 2));
             const embed = new EmbedBuilder()
                 .setDescription(`✅ ${user.tag} is now meowlocked with style: ${style}!`)
@@ -246,7 +248,7 @@ module.exports = {
     meowunlock: async (message, userArg) => {
         const fs = require('fs');
         const path = require('path');
-        const meowlockPath = path.join(__dirname, '../meowlock.json');
+        const meowlockPath = path.join(__dirname, '../data/meowlock.json');
         let user = message.mentions.users.first();
         if (!user && userArg) {
             try {
@@ -269,6 +271,8 @@ module.exports = {
         if (allLocks[guildId]) {
             allLocks[guildId] = allLocks[guildId].filter(entry => entry.id !== user.id);
         }
+        // Ensure data directory exists
+        fs.mkdirSync(path.dirname(meowlockPath), { recursive: true });
         fs.writeFileSync(meowlockPath, JSON.stringify(allLocks, null, 2));
         if ((allLocks[guildId] || []).length < before) {
             const embed = new EmbedBuilder()
@@ -310,13 +314,15 @@ sendAsFloofWebhook(message, { embeds: [embed] });
     meowlockclear: async (message) => {
         const fs = require('fs');
         const path = require('path');
-        const meowlockPath = path.join(__dirname, '../meowlock.json');
+        const meowlockPath = path.join(__dirname, '../data/meowlock.json');
         let allLocks = {};
         if (fs.existsSync(meowlockPath)) allLocks = JSON.parse(fs.readFileSync(meowlockPath));
         const guildId = message.guild?.id;
         if (!guildId) return message.reply('This command can only be used in a server.');
         if (allLocks[guildId]) {
             delete allLocks[guildId];
+            // Ensure data directory exists
+            fs.mkdirSync(path.dirname(meowlockPath), { recursive: true });
             fs.writeFileSync(meowlockPath, JSON.stringify(allLocks, null, 2));
         }
         const embed = new EmbedBuilder()

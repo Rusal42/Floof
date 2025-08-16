@@ -3,7 +3,7 @@ const { sendAsFloofWebhook } = require('../../utils/webhook-util');
 const fs = require('fs');
 const path = require('path');
 
-const logConfigPath = path.join(__dirname, '../../advanced-log-config.json');
+const logConfigPath = path.join(__dirname, '../../data/advanced-log-config.json');
 
 function loadLogConfig() {
     if (!fs.existsSync(logConfigPath)) {
@@ -19,6 +19,8 @@ function loadLogConfig() {
 
 function saveLogConfig(config) {
     try {
+        // Ensure data directory exists
+        fs.mkdirSync(path.dirname(logConfigPath), { recursive: true });
         fs.writeFileSync(logConfigPath, JSON.stringify(config, null, 2));
     } catch (error) {
         console.error('Error saving log config:', error);

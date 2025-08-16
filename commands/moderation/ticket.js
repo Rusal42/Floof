@@ -3,7 +3,7 @@ const { sendAsFloofWebhook } = require('../../utils/webhook-util');
 const fs = require('fs');
 const path = require('path');
 
-const ticketConfigPath = path.join(__dirname, '../../ticket-config.json');
+const ticketConfigPath = path.join(__dirname, '..', '..', 'data', 'ticket-config.json');
 
 function loadTicketConfig() {
     if (!fs.existsSync(ticketConfigPath)) {

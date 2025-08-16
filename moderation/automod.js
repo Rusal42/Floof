@@ -367,7 +367,7 @@ async function warnUser(message, violations) {
  * Log violation to infractions.json
  */
 function logToInfractions(message, violations) {
-    const infractionsPath = path.join(__dirname, '..', 'infractions.json');
+    const infractionsPath = path.join(__dirname, '..', 'data', 'infractions.json');
     
     try {
         // Read existing infractions
@@ -405,7 +405,8 @@ function logToInfractions(message, violations) {
         // Add to user's infractions
         infractions[guildId][userId].push(infraction);
         
-        // Write back to file
+        // Write back to file (ensure directory exists)
+        fs.mkdirSync(path.dirname(infractionsPath), { recursive: true });
         fs.writeFileSync(infractionsPath, JSON.stringify(infractions, null, 2));
         
     } catch (error) {

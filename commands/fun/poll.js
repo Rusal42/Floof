@@ -3,7 +3,7 @@ const { sendAsFloofWebhook } = require('../../utils/webhook-util');
 const fs = require('fs');
 const path = require('path');
 
-const pollsPath = path.join(__dirname, '../../polls-data.json');
+const pollsPath = path.join(__dirname, '../../data/polls-data.json');
 
 function loadPolls() {
     if (!fs.existsSync(pollsPath)) {
@@ -19,6 +19,8 @@ function loadPolls() {
 
 function savePolls(polls) {
     try {
+        // Ensure data directory exists
+        fs.mkdirSync(path.dirname(pollsPath), { recursive: true });
         fs.writeFileSync(pollsPath, JSON.stringify(polls, null, 2));
     } catch (error) {
         console.error('Error saving polls:', error);

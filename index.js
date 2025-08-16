@@ -30,6 +30,38 @@ async function initializeDataDirectory() {
                 console.log(`✅ Created empty config: ${file}`);
             }
         }
+
+        // Attempt to restore infractions from backup if current is empty
+        try {
+            const backupPath = path.join(__dirname, 'infractions.json.backup');
+            const infractionsPath = path.join(dataDir, 'infractions.json');
+
+            // Check backup exists
+            await fs.access(backupPath);
+
+            // Read current infractions (may be newly created `{}`)
+            let currentRaw = '{}';
+            try {
+                currentRaw = await fs.readFile(infractionsPath, 'utf8');
+            } catch {/* ignore, treat as empty */}
+            const currentJson = JSON.parse(currentRaw || '{}');
+
+            // Read backup
+            const backupRaw = await fs.readFile(backupPath, 'utf8');
+            const backupJson = JSON.parse(backupRaw || '{}');
+
+            const currentEmpty = !currentJson || Object.keys(currentJson).length === 0;
+            const backupHasData = backupJson && Object.keys(backupJson).length > 0;
+
+            if (currentEmpty && backupHasData) {
+                await fs.writeFile(infractionsPath, JSON.stringify(backupJson, null, 2), 'utf8');
+                console.log('✅ Restored data/infractions.json from infractions.json.backup');
+            } else {
+                console.log('ℹ️ Skipped infractions restore: current has data or backup empty');
+            }
+        } catch (e) {
+            console.log('ℹ️ No valid infractions backup to restore (or restore skipped):', e.message);
+        }
     } catch (error) {
         console.error('❌ Error initializing data directory:', error);
         process.exit(1);

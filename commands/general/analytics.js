@@ -3,7 +3,7 @@ const { sendAsFloofWebhook } = require('../../utils/webhook-util');
 const fs = require('fs');
 const path = require('path');
 
-const analyticsPath = path.join(__dirname, '../../analytics-data.json');
+const analyticsPath = path.join(__dirname, '../../data/analytics-data.json');
 
 function loadAnalytics() {
     if (!fs.existsSync(analyticsPath)) {
@@ -19,6 +19,8 @@ function loadAnalytics() {
 
 function saveAnalytics(data) {
     try {
+        // Ensure data directory exists
+        fs.mkdirSync(path.dirname(analyticsPath), { recursive: true });
         fs.writeFileSync(analyticsPath, JSON.stringify(data, null, 2));
     } catch (error) {
         console.error('Error saving analytics:', error);
