@@ -1,6 +1,25 @@
 {
   "changelogs": [
     {
+      "id": 5,
+      "version": "v1.2.3",
+      "title": "Website Data & Design Update",
+      "description": "Introduced data verification and visual improvements, with a known API issue",
+      "features": [
+        "• Added automated website data checking"
+      ],
+      "improvements": [
+        "• Improved overall website styling and layout\n• Enhanced UI elements for better readability"
+      ],
+      "fixes": [
+        "• Known Issue: Website API check functionality is currently broken and returns no data\n• Temporary Workaround: Manually refresh the page or use direct API endpoint until fix is deployed"
+      ],
+      "timestamp": "2025-08-15T23:39:30.534Z",
+      "messageId": "1406059759936995398",
+      "channelId": "1393667713208946728",
+      "guildId": "1393659651832152185"
+    },
+    {
       "id": 4,
       "version": "v2.1.2",
       "title": "Cute & Fluffy Makeover",
@@ -90,5 +109,5 @@
       "guildId": "1393659651832152185"
     }
   ],
-  "nextId": 5
+  "nextId": 6
 }
