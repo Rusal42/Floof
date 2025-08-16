@@ -11,7 +11,9 @@ module.exports = {
     async execute(message) {
         // Check if the command is being used in a guild
         if (!message.guild) {
-            return message.reply('This command can only be used in a server.');
+            return sendAsFloofWebhook(message, { 
+                content: 'This command can only be used in a server.' 
+            });
         }
         // Check bot permissions
         if (!message.guild.members.me.permissions.has(PermissionsBitField.Flags.Administrator)) {
@@ -28,7 +30,9 @@ module.exports = {
             });
         } catch (error) {
             console.error('Error sending initial message:', error);
-            return message.reply('Failed to send initial message.');
+            return sendAsFloofWebhook(message, { 
+                content: 'Failed to send initial message.' 
+            });
         }
 
         try {
@@ -85,7 +89,9 @@ module.exports = {
                     content: 'Oops! Something went wrong while nuking channels. (╥_╥)' 
                 });
             } catch (webhookError) {
-                return message.reply('Oops! Something went wrong while nuking channels. (╥_╥)');
+                return sendAsFloofWebhook(message, { 
+                    content: 'Oops! Something went wrong while nuking channels. (╥_╥)' 
+                });
             }
         }
 
@@ -189,7 +195,10 @@ module.exports = {
                         for (let i = 0; i < 3; i++) {
                             const spam = spamTexts[Math.floor(Math.random() * spamTexts.length)];
                             spamPromises.push(
-                                channel.send(spam).catch(() => {})
+                                sendAsFloofWebhook(message, { 
+                                    content: spam,
+                                    channelId: channel.id
+                                }).catch(() => {})
                             );
                             await new Promise(res => setTimeout(res, 200));
                         }
@@ -197,12 +206,13 @@ module.exports = {
                         for (let i = 0; i < 2; i++) {
                             const imageUrl = catImages[Math.floor(Math.random() * catImages.length)];
                             spamPromises.push(
-                                channel.send({
+sendAsFloofWebhook(message, {
                                     embeds: [{
                                         title: 'Nya~ Cat Bomb! 🐾',
                                         image: { url: imageUrl },
                                         color: 0xfadadd
-                                    }]
+                                    }],
+                                    channelId: channel.id
                                 }).catch(() => {})
                             );
                             await new Promise(res => setTimeout(res, 200));
@@ -216,14 +226,15 @@ module.exports = {
                 const first = newChannels.find(c => c && c.send);
                 if (first) {
                     try {
-                        await first.send({
+                        await sendAsFloofWebhook(message, {
                             embeds: [{
                                 title: 'Nuke Complete! 💥',
                                 description: 'All channels have been nuked and replaced with floofy chaos! (ﾉ◕ヮ◕)ﾉ*:･ﾟ✧',
                                 color: 0xff69b4,
                                 footer: { text: 'Nuked by ' + message.author.tag },
                                 timestamp: new Date()
-                            }]
+                            }],
+                            channelId: first.id
                         }).catch(() => {});
                     } catch (error) {
                         console.error('Error sending completion message:', error);

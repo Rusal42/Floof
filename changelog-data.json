@@ -1,6 +1,26 @@
 {
   "changelogs": [
     {
+      "id": 7,
+      "version": "v2.1.4",
+      "title": "Website stats integration hardening",
+      "description": "Improve reliability and diagnostics of bot-to-website stats sync; corrected endpoint configuration.",
+      "features": [
+        "Default production stats endpoint baked into code",
+        "Startup log prints active WEBSITE_API_URL"
+      ],
+      "improvements": [
+        "Error logging now includes HTTP status, statusText, and raw response; safely handles non‑JSON bodies"
+      ],
+      "fixes": [
+        "Fixed misconfigured WEBSITE_API_URL (/api/health -> /api/update-stats); aligned BOT_API_TOKEN between bot and Netlify; stats updates now succeed"
+      ],
+      "timestamp": "2025-08-16T07:08:23.717Z",
+      "messageId": "1406172726699229224",
+      "channelId": "1393667713208946728",
+      "guildId": "1393659651832152185"
+    },
+    {
       "id": 6,
       "version": "v2.1.3",
       "title": "Persistent Configuration & Bug Fixes",
@@ -131,5 +151,5 @@
       "guildId": "1393659651832152185"
     }
   ],
-  "nextId": 7
+  "nextId": 8
 }

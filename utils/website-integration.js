@@ -3,8 +3,19 @@ const fs = require('fs');
 const path = require('path');
 
 // Website API configuration
-const WEBSITE_API_URL = process.env.WEBSITE_API_URL || 'http://localhost:3000/api/stats';
+// Use env var if provided; default to local dev API on port 3001
+const WEBSITE_API_URL = process.env.WEBSITE_API_URL || 'https://floofwebsite.netlify.app/api/update-stats';
 const BOT_API_TOKEN = process.env.BOT_API_TOKEN;
+const WEBSITE_STATS_LOG = (process.env.WEBSITE_STATS_LOG || 'info').toLowerCase(); // info | warn | error | silent
+
+// Logging helpers controlled by WEBSITE_STATS_LOG
+function shouldLog(level) {
+    const order = { info: 3, warn: 2, error: 1, silent: 0 };
+    return order[WEBSITE_STATS_LOG] >= order[level];
+}
+function logInfo(...args) { if (shouldLog('info')) console.log(...args); }
+function logWarn(...args) { if (shouldLog('warn')) console.warn(...args); }
+function logError(...args) { if (shouldLog('error')) console.error(...args); }
 
 // Stats tracking storage
 const statsPath = path.join(__dirname, '..', 'data', 'bot-stats.json');
@@ -35,7 +46,7 @@ function loadStats() {
             return JSON.parse(fs.readFileSync(statsPath, 'utf8'));
         }
     } catch (error) {
-        console.error('Error loading stats:', error);
+        logError('Error loading stats:', error);
     }
     return {
         commandsUsed: 0,
@@ -51,7 +62,7 @@ function saveStats(stats) {
     try {
         fs.writeFileSync(statsPath, JSON.stringify(stats, null, 2));
     } catch (error) {
-        console.error('Error saving stats:', error);
+        logError('Error saving stats:', error);
     }
 }
 
@@ -95,11 +106,11 @@ async function updateWebsiteStats(client) {
         const uptime = calculateUptimePercentage();
         const ping = client.ws.ping;
 
-        console.log(`📊 Updating website stats: ${serverCount} servers, ${userCount} users, ${commandsUsed} commands used`);
+        logInfo(`📊 Updating website stats: ${serverCount} servers, ${userCount} users, ${commandsUsed} commands used`);
 
         // Only send if we have a valid API token and URL
         if (!BOT_API_TOKEN) {
-            console.log('⚠️ BOT_API_TOKEN not configured, skipping website update');
+            logWarn('⚠️ BOT_API_TOKEN not configured, skipping website update');
             return;
         }
 
@@ -120,21 +131,38 @@ async function updateWebsiteStats(client) {
             })
         });
 
-        const result = await response.json();
-        
-        if (result.success) {
-            console.log('✅ Website stats updated successfully');
+        // Read raw response text to ensure we can log non-JSON bodies
+        const rawText = await response.text();
+        let result;
+        try {
+            result = rawText ? JSON.parse(rawText) : {};
+        } catch (_) {
+            result = { error: 'Non-JSON response', raw: rawText };
+        }
+
+        if (response.ok && result.success) {
+            logInfo('✅ Website stats updated successfully');
+        } else if (response.ok) {
+            // OK response but no success flag — treat as informational to avoid noisy errors
+            logWarn('ℹ️ Website responded 200 OK without success flag (suppressed error).', {
+                result: typeof result === 'object' ? result : String(result)
+            });
         } else {
-            console.error('❌ Failed to update website stats:', result.error);
+            logError('❌ Failed to update website stats:', {
+                status: response.status,
+                statusText: response.statusText,
+                result
+            });
         }
     } catch (error) {
-        console.error('❌ Error updating website stats:', error.message);
+        logError('❌ Error updating website stats:', error.message);
     }
 }
 
 // Start the stats updater with configurable interval
 function startStatsUpdater(client, intervalMinutes = 5) {
-    console.log(`🌐 Starting website stats updater (every ${intervalMinutes} minutes)`);
+    logInfo(`🌐 Starting website stats updater (every ${intervalMinutes} minutes)`);
+    logInfo(`➡️ Using WEBSITE_API_URL: ${WEBSITE_API_URL}`);
     
     // Initialize stats tracking
     initializeStats();
@@ -156,11 +184,11 @@ function startStatsUpdater(client, intervalMinutes = 5) {
 async function sendChangelogUpdate(client, changelogData) {
     try {
         if (!BOT_API_TOKEN) {
-            console.log('⚠️ BOT_API_TOKEN not configured, skipping changelog update');
+            logWarn('⚠️ BOT_API_TOKEN not configured, skipping changelog update');
             return;
         }
 
-        const response = await fetch(WEBSITE_API_URL.replace('/stats', '/changelog'), {
+        const response = await fetch(WEBSITE_API_URL.replace('/update-stats', '/changelog'), {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -174,15 +202,29 @@ async function sendChangelogUpdate(client, changelogData) {
             })
         });
 
-        const result = await response.json();
-        
-        if (result.success) {
-            console.log('✅ Changelog update sent to website');
+        const rawText = await response.text();
+        let result;
+        try {
+            result = rawText ? JSON.parse(rawText) : {};
+        } catch (_) {
+            result = { error: 'Non-JSON response', raw: rawText };
+        }
+
+        if (response.ok && result.success) {
+            logInfo('✅ Changelog update sent to website');
+        } else if (response.ok) {
+            logWarn('ℹ️ Changelog endpoint responded 200 OK without success flag (suppressed error).', {
+                result: typeof result === 'object' ? result : String(result)
+            });
         } else {
-            console.error('❌ Failed to send changelog update:', result.error);
+            logError('❌ Failed to send changelog update:', {
+                status: response.status,
+                statusText: response.statusText,
+                result
+            });
         }
     } catch (error) {
-        console.error('❌ Error sending changelog update:', error.message);
+        logError('❌ Error sending changelog update:', error.message);
     }
 }
 

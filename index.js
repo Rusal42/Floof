@@ -579,7 +579,10 @@ client.on('messageCreate', async (message) => {
     
     // Handle all other commands through the command handler
     const commandHandled = await commandHandler.handleCommand(message, usedPrefix);
-    if (commandHandled) return;
+    if (commandHandled) {
+        try { incrementCommandUsage(); } catch (e) { console.error('incrementCommandUsage failed:', e); }
+        return;
+    }
     
     // Public commands available to everyone
     const args = message.content.slice(usedPrefix.length).trim().split(/\s+/);
