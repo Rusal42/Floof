@@ -3,8 +3,8 @@ const { sendAsFloofWebhook } = require('../../utils/webhook-util');
 const fs = require('fs').promises;
 const path = require('path');
 
-// Configuration file path
-const CONFIG_FILE = path.join(__dirname, '..', '..', 'data', 'server-configs.json');
+// Configuration file path - using absolute path to data directory
+const CONFIG_FILE = path.join(process.cwd(), 'data', 'server-configs.json');
 
 module.exports = {
     name: 'revive',

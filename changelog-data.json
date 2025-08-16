@@ -1,6 +1,28 @@
 {
   "changelogs": [
     {
+      "id": 6,
+      "version": "v2.1.3",
+      "title": "Persistent Configuration & Bug Fixes",
+      "description": "Improved configuration persistence and cross-platform support",
+      "features": [
+        "Automatic data directory initialization",
+        "Cross-platform path handling"
+      ],
+      "improvements": [
+        "Better error handling for file operations",
+        "Improved configuration loading"
+      ],
+      "fixes": [
+        "Fixed server configuration persistence",
+        "Fixed path resolution in config commands"
+      ],
+      "timestamp": "2025-08-16T03:48:44.721Z",
+      "messageId": "1406122482666311760",
+      "channelId": "1393667713208946728",
+      "guildId": "1393659651832152185"
+    },
+    {
       "id": 5,
       "version": "v1.2.3",
       "title": "Website Data & Design Update",
@@ -109,5 +131,5 @@
       "guildId": "1393659651832152185"
     }
   ],
-  "nextId": 6
+  "nextId": 7
 }

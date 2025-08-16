@@ -1,5 +1,43 @@
 require('dotenv').config();
 const { Client, GatewayIntentBits, PermissionsBitField, EmbedBuilder } = require('discord.js');
+const fs = require('fs').promises;
+const path = require('path');
+
+// Initialize data directory
+async function initializeDataDirectory() {
+    const dataDir = path.join(__dirname, 'data');
+    const configFiles = [
+        'server-configs.json',
+        'infractions.json',
+        'ticket-config.json',
+        'voice-config.json',
+        'prefix-config.json'
+    ];
+
+    try {
+        // Create data directory if it doesn't exist
+        await fs.mkdir(dataDir, { recursive: true });
+        console.log(`✅ Created/Verified data directory: ${dataDir}`);
+
+        // Initialize empty config files if they don't exist
+        for (const file of configFiles) {
+            const filePath = path.join(dataDir, file);
+            try {
+                await fs.access(filePath);
+                console.log(`✅ Config file exists: ${file}`);
+            } catch {
+                await fs.writeFile(filePath, '{}', 'utf8');
+                console.log(`✅ Created empty config: ${file}`);
+            }
+        }
+    } catch (error) {
+        console.error('❌ Error initializing data directory:', error);
+        process.exit(1);
+    }
+}
+
+// Run initialization
+initializeDataDirectory().catch(console.error);
 const { sendAsFloofWebhook } = require('./utils/webhook-util');
 const CommandHandler = require('./handlers/CommandHandler');
 const { isOwner, getPrimaryOwnerId } = require('./utils/owner-util');
