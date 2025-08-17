@@ -230,7 +230,8 @@ module.exports = {
                         '• Prefix must be 5 characters or less',
                         '• Prefix cannot contain spaces',
                         '• Anyone can set their own custom prefix',
-                        '• You can then use your custom prefix instead of %'
+                        '• You can then use your custom prefix instead of %',
+                        '• If you have no custom prefix, the default is `%`'
                     ].join('\n'),
                     inline: false
                 }

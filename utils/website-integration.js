@@ -60,6 +60,18 @@ function logInfo(...args) { if (shouldLog('info')) console.log(...args); }
 function logWarn(...args) { if (shouldLog('warn')) console.warn(...args); }
 function logError(...args) { if (shouldLog('error')) console.error(...args); }
 
+// Resolve bot version from package.json (read once and cache)
+let BOT_VERSION = '0.0.0';
+try {
+    const pkgPath = path.join(__dirname, '..', 'package.json');
+    if (fs.existsSync(pkgPath)) {
+        const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
+        if (pkg && typeof pkg.version === 'string') BOT_VERSION = pkg.version;
+    }
+} catch (e) {
+    logWarn('Unable to read bot version from package.json, defaulting to 0.0.0');
+}
+
 // Stats tracking storage
 const statsPath = path.join(__dirname, '..', 'data', 'bot-stats.json');
 
@@ -171,6 +183,7 @@ async function updateWebsiteStats(client) {
                 commandsUsed,
                 uptime,
                 ping,
+                version: BOT_VERSION,
                 timestamp: Date.now()
             })
         });
@@ -216,12 +229,23 @@ function startStatsUpdater(client, intervalMinutes = 5) {
         pingWebsiteHealth();
     }, 5000);
 
+    // Immediately send a stats update on startup so uptime reflects current session
+    setTimeout(() => {
+        updateWebsiteStats(client).catch(err => logError('Immediate stats update failed:', err?.message || err));
+    }, 7000);
+
     // Periodic health pings
     const interval = setInterval(() => {
         pingWebsiteHealth();
     }, intervalMinutes * 60 * 1000);
 
-    return interval;
+    // Periodic stats updates (every 60 seconds) to keep uptime fresh on the website
+    const statsInterval = setInterval(() => {
+        updateWebsiteStats(client).catch(err => logError('Periodic stats update failed:', err?.message || err));
+    }, 60 * 1000);
+
+    // Return both intervals so caller could clear if needed
+    return { healthInterval: interval, statsInterval };
 }
 
 // Enhanced stats for changelog updates
@@ -241,6 +265,7 @@ async function sendChangelogUpdate(client, changelogData) {
             body: JSON.stringify({
                 ...changelogData,
                 timestamp: Date.now(),
+                version: BOT_VERSION,
                 serverCount: client.guilds.cache.size,
                 userCount: client.guilds.cache.reduce((acc, guild) => acc + guild.memberCount, 0)
             })
