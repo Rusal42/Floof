@@ -248,7 +248,7 @@ function startStatsUpdater(client, intervalMinutes = 5) {
     return { healthInterval: interval, statsInterval };
 }
 
-// Enhanced stats for changelog updates
+// Changelog hook: only update website version (no full changelog payload)
 async function sendChangelogUpdate(client, changelogData) {
     try {
         if (!BOT_API_TOKEN) {
@@ -256,19 +256,21 @@ async function sendChangelogUpdate(client, changelogData) {
             return;
         }
 
-        const response = await fetch(WEBSITE_API_URL.replace('/update-stats', '/changelog'), {
+        // Only update version on the website using the stats endpoint
+        const minimalPayload = {
+            version: BOT_VERSION,
+            timestamp: Date.now()
+        };
+
+        logInfo('🔖 Updating website version only via /update-stats', minimalPayload);
+
+        const response = await fetch(WEBSITE_API_URL, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
                 'x-bot-token': BOT_API_TOKEN
             },
-            body: JSON.stringify({
-                ...changelogData,
-                timestamp: Date.now(),
-                version: BOT_VERSION,
-                serverCount: client.guilds.cache.size,
-                userCount: client.guilds.cache.reduce((acc, guild) => acc + guild.memberCount, 0)
-            })
+            body: JSON.stringify(minimalPayload)
         });
 
         const rawText = await response.text();
@@ -280,20 +282,20 @@ async function sendChangelogUpdate(client, changelogData) {
         }
 
         if (response.ok && result.success) {
-            logInfo('✅ Changelog update sent to website');
+            logInfo('✅ Website version updated successfully');
         } else if (response.ok) {
-            logWarn('ℹ️ Changelog endpoint responded 200 OK without success flag (suppressed error).', {
+            logWarn('ℹ️ Version update responded 200 OK without success flag (suppressed error).', {
                 result: typeof result === 'object' ? result : String(result)
             });
         } else {
-            logError('❌ Failed to send changelog update:', {
+            logError('❌ Failed to update website version:', {
                 status: response.status,
                 statusText: response.statusText,
                 result
             });
         }
     } catch (error) {
-        logError('❌ Error sending changelog update:', error.message);
+        logError('❌ Error updating website version:', error.message);
     }
 }
 
