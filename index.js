@@ -11,6 +11,7 @@ async function initializeDataDirectory() {
         'infractions.json',
         'ticket-config.json',
         'voice-config.json',
+        'voice-channels.json',
         'prefix-config.json'
     ];
 
@@ -321,48 +322,107 @@ client.on('guildMemberRemove', async (member) => {
 client.on('voiceStateUpdate', async (oldState, newState) => {
     const fs = require('fs');
     const path = require('path');
+    const { ChannelType, PermissionFlagsBits } = require('discord.js');
     
     try {
-        // Load voice channel owners data
-        const voiceDataPath = path.join(__dirname, 'voice-channels.json');
-        if (!fs.existsSync(voiceDataPath)) return;
-        
-        let voiceData = JSON.parse(fs.readFileSync(voiceDataPath, 'utf8'));
-        
-        // Check if someone left a voice channel
+        // Paths for data
+        const voiceDataPath = path.join(__dirname, 'data', 'voice-channels.json');
+        const configPath = path.join(__dirname, 'data', 'voice-config.json');
+
+        // Ensure voice data exists
+        let voiceData = {};
+        if (fs.existsSync(voiceDataPath)) {
+            try { voiceData = JSON.parse(fs.readFileSync(voiceDataPath, 'utf8')) || {}; } catch { voiceData = {}; }
+        }
+
+        // Auto-create on lobby join
+        if (newState.channel && oldState.channel?.id !== newState.channel.id) {
+            // Load lobby config if present
+            let guildConfig = null;
+            if (fs.existsSync(configPath)) {
+                try {
+                    const all = JSON.parse(fs.readFileSync(configPath, 'utf8')) || {};
+                    guildConfig = all[newState.guild.id] || null;
+                } catch { guildConfig = null; }
+            }
+
+            const lobbyId = guildConfig?.lobbyChannelId;
+            if (lobbyId && newState.channel.id === lobbyId) {
+                const member = newState.member;
+
+                // Prevent duplicates: if member already owns a temp channel, move them there
+                const existingChannel = newState.guild.channels.cache.find(ch => 
+                    ch.type === ChannelType.GuildVoice && voiceData[ch.id] === member.id
+                );
+                if (existingChannel) {
+                    try { await member.voice.setChannel(existingChannel); } catch (e) { /* ignore move errors */ }
+                    return;
+                }
+
+                // Choose parent category: prefer configured allowed category, else lobby's parent
+                const allowedCategoryId = guildConfig?.categoryId || newState.channel.parent?.id || null;
+                const parent = allowedCategoryId ? newState.guild.channels.cache.get(allowedCategoryId) : null;
+
+                try {
+                    const newChannel = await newState.guild.channels.create({
+                        name: `${member.displayName}'s Channel`,
+                        type: ChannelType.GuildVoice,
+                        parent: parent || null,
+                        userLimit: 0,
+                        permissionOverwrites: [
+                            {
+                                id: member.id,
+                                allow: [PermissionFlagsBits.ManageChannels, PermissionFlagsBits.MoveMembers]
+                            }
+                        ]
+                    });
+
+                    // Move to top of category if possible
+                    if (newChannel.parent) {
+                        try {
+                            const categoryChannels = newChannel.parent.children.cache
+                                .filter(ch => ch.type === ChannelType.GuildVoice)
+                                .sort((a, b) => a.position - b.position);
+                            const firstPos = categoryChannels.first()?.position || 0;
+                            await newChannel.setPosition(firstPos);
+                        } catch {/* ignore position errors */}
+                    }
+
+                    // Track ownership
+                    voiceData[newChannel.id] = member.id;
+                    fs.writeFileSync(voiceDataPath, JSON.stringify(voiceData, null, 2));
+
+                    // Move member to the new channel
+                    try { await member.voice.setChannel(newChannel); } catch (e) { /* ignore */ }
+                } catch (e) {
+                    console.error('Error auto-creating lobby voice channel:', e);
+                }
+            }
+        }
+
+        // Check if someone left a voice channel -> cleanup temp if empty
         if (oldState.channel && oldState.channel !== newState.channel) {
             const channelId = oldState.channel.id;
-            
-            // If this is a temporary voice channel (has an owner in our data)
             if (voiceData[channelId]) {
-                // Add a small delay to ensure the member has fully left
                 setTimeout(async () => {
                     try {
-                        // Fetch the channel again to get updated member count
                         const channel = await oldState.guild.channels.fetch(channelId);
-                        
-                        // Check if channel still exists and is now empty
                         if (channel && channel.members.size === 0) {
                             try {
-                                // Delete the empty temporary voice channel
                                 await channel.delete('Temporary voice channel auto-delete: empty');
-                                
-                                // Remove from tracking data
                                 delete voiceData[channelId];
                                 fs.writeFileSync(voiceDataPath, JSON.stringify(voiceData, null, 2));
-                                
                                 console.log(`🗑️ Auto-deleted empty temporary voice channel: ${channel.name}`);
                             } catch (error) {
                                 console.error('Error auto-deleting voice channel:', error);
                             }
                         }
                     } catch (error) {
-                        // Channel might already be deleted or not found
-                        if (error.code !== 10003) { // Unknown Channel error
+                        if (error.code !== 10003) { // Unknown Channel
                             console.error('Error checking channel for auto-delete:', error);
                         }
                     }
-                }, 1000); // 1 second delay to ensure state is updated
+                }, 1000);
             }
         }
     } catch (error) {
@@ -828,7 +888,7 @@ async function handleVoiceInteraction(interaction) {
         console.log(`Voice interaction: ${action} by ${member.displayName} (${member.id})`);
         
         // Load voice channel owners data
-        const voiceDataPath = path.join(__dirname, 'voice-channels.json');
+        const voiceDataPath = path.join(__dirname, 'data', 'voice-channels.json');
         let voiceData = {};
         if (fs.existsSync(voiceDataPath)) {
             voiceData = JSON.parse(fs.readFileSync(voiceDataPath, 'utf8'));
@@ -837,7 +897,7 @@ async function handleVoiceInteraction(interaction) {
         // Handle create action separately (doesn't require being in a voice channel)
         if (action === 'create') {
             // Check voice channel configuration
-            const configPath = path.join(__dirname, 'voice-config.json');
+            const configPath = path.join(__dirname, 'data', 'voice-config.json');
             let allowedCategory = null;
             
             if (fs.existsSync(configPath)) {

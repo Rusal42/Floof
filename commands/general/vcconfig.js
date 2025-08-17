@@ -20,7 +20,7 @@ function saveVoiceConfig(data) {
 module.exports = {
     name: 'vcconfig',
     description: 'Configure voice channel creation settings',
-    usage: '%vcconfig [set/clear/view]',
+    usage: '%vcconfig [set/clear/view/setlobby/clearlobby]',
     category: 'general',
     aliases: ['voiceconfig', 'vcc', 'vc'],
     cooldown: 5,
@@ -41,6 +41,10 @@ module.exports = {
                 return await this.handleSetCommand(message, guildId);
             case 'clear':
                 return await this.handleClearCommand(message, guildId);
+            case 'setlobby':
+                return await this.handleSetLobbyCommand(message, guildId);
+            case 'clearlobby':
+                return await this.handleClearLobbyCommand(message, guildId);
             case 'view':
             default:
                 return await this.handleViewCommand(message, guildId);
@@ -146,12 +150,18 @@ module.exports = {
 
             if (guildConfig) {
                 // Try to get the category to check if it still exists
-                const category = message.guild.channels.cache.get(guildConfig.categoryId);
+                const category = guildConfig.categoryId ? message.guild.channels.cache.get(guildConfig.categoryId) : null;
+                const lobby = guildConfig.lobbyChannelId ? message.guild.channels.cache.get(guildConfig.lobbyChannelId) : null;
                 
                 embed.addFields(
                     {
                         name: '📂 Allowed Category',
-                        value: category ? category.name : `${guildConfig.categoryName} (Deleted)`,
+                        value: guildConfig.categoryId ? (category ? category.name : `${guildConfig.categoryName || 'Unknown'} (Deleted)`) : 'Any category (not restricted)',
+                        inline: true
+                    },
+                    {
+                        name: '🎧 Lobby Channel',
+                        value: guildConfig.lobbyChannelId ? (lobby ? lobby.name : `${guildConfig.lobbyChannelName || guildConfig.lobbyChannelId} (Deleted)`) : 'Not set',
                         inline: true
                     },
                     {
@@ -166,7 +176,7 @@ module.exports = {
                     }
                 );
 
-                if (!category) {
+                if (guildConfig.categoryId && !category) {
                     embed.setColor('#ff0000');
                     embed.setFooter({ text: '⚠️ The configured category no longer exists. Use %vcconfig clear to reset.' });
                 }
@@ -186,6 +196,8 @@ module.exports = {
                     value: [
                         '`%vcconfig set` - Set current voice channel\'s category as allowed',
                         '`%vcconfig clear` - Remove category restriction',
+                        '`%vcconfig setlobby` - Set your current voice channel as the lobby that auto-creates VCs',
+                        '`%vcconfig clearlobby` - Clear the lobby channel setting',
                         '`%vcconfig view` - View current settings'
                     ].join('\n'),
                     inline: false
@@ -197,6 +209,72 @@ module.exports = {
             console.error('Error viewing voice config:', error);
             await sendAsFloofWebhook(message, {
                 content: '❌ Failed to load voice channel configuration!'
+            });
+        }
+    }
+    ,
+    async handleSetLobbyCommand(message, guildId) {
+        // Must be in a voice channel to set it as lobby
+        const voiceChannel = message.member.voice.channel;
+        if (!voiceChannel) {
+            return await sendAsFloofWebhook(message, {
+                content: '❌ You must be in a voice channel to set the lobby channel!'
+            });
+        }
+
+        try {
+            const config = getVoiceConfig();
+            const guildConfig = config[guildId] || {};
+            guildConfig.lobbyChannelId = voiceChannel.id;
+            guildConfig.lobbyChannelName = voiceChannel.name;
+            guildConfig.setBy = message.author.id;
+            guildConfig.setAt = new Date().toISOString();
+            config[guildId] = guildConfig;
+            saveVoiceConfig(config);
+
+            const embed = new EmbedBuilder()
+                .setColor('#00ff00')
+                .setTitle('✅ Lobby Channel Set')
+                .setDescription(`Users who join **${voiceChannel.name}** will automatically get a temporary voice channel created for them.`)
+                .addFields(
+                    { name: '🎧 Lobby', value: voiceChannel.name, inline: true },
+                    { name: '📂 Parent Category', value: voiceChannel.parent ? voiceChannel.parent.name : 'None', inline: true }
+                )
+                .setTimestamp();
+
+            await sendAsFloofWebhook(message, { embeds: [embed] });
+        } catch (error) {
+            console.error('Error setting lobby channel:', error);
+            await sendAsFloofWebhook(message, {
+                content: '❌ Failed to save lobby channel configuration!'
+            });
+        }
+    }
+    ,
+    async handleClearLobbyCommand(message, guildId) {
+        try {
+            const config = getVoiceConfig();
+            const guildConfig = config[guildId];
+            if (!guildConfig || !guildConfig.lobbyChannelId) {
+                return await sendAsFloofWebhook(message, { content: '❌ No lobby channel is currently set!' });
+            }
+
+            delete guildConfig.lobbyChannelId;
+            delete guildConfig.lobbyChannelName;
+            config[guildId] = guildConfig;
+            saveVoiceConfig(config);
+
+            const embed = new EmbedBuilder()
+                .setColor('#ff9900')
+                .setTitle('🗑️ Lobby Channel Cleared')
+                .setDescription('Users will no longer have channels auto-created when joining a lobby.')
+                .setTimestamp();
+
+            await sendAsFloofWebhook(message, { embeds: [embed] });
+        } catch (error) {
+            console.error('Error clearing lobby channel:', error);
+            await sendAsFloofWebhook(message, {
+                content: '❌ Failed to clear lobby channel configuration!'
             });
         }
     }

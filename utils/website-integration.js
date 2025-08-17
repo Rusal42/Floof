@@ -5,6 +5,8 @@ const path = require('path');
 // Website API configuration
 // Use env var if provided; default to local dev API on port 3001
 const WEBSITE_API_URL = process.env.WEBSITE_API_URL || 'https://floofwebsite.netlify.app/api/update-stats';
+// Optional explicit rules sync endpoint. If not provided, we will derive from WEBSITE_API_URL's origin.
+const WEBSITE_RULES_URL = process.env.WEBSITE_RULES_URL || '';
 const BOT_API_TOKEN = process.env.BOT_API_TOKEN;
 const WEBSITE_STATS_LOG = (process.env.WEBSITE_STATS_LOG || 'info').toLowerCase(); // info | warn | error | silent
 
@@ -59,6 +61,25 @@ async function pingWebsiteHealth() {
 function logInfo(...args) { if (shouldLog('info')) console.log(...args); }
 function logWarn(...args) { if (shouldLog('warn')) console.warn(...args); }
 function logError(...args) { if (shouldLog('error')) console.error(...args); }
+
+// Resolve a base origin from WEBSITE_API_URL (e.g., https://site.com)
+function resolveWebsiteBase() {
+    try {
+        const u = new URL(WEBSITE_API_URL);
+        return u.origin;
+    } catch (_) {
+        // Fallback: try to split by /api/
+        const base = WEBSITE_API_URL.split('/api/')[0];
+        return base || WEBSITE_API_URL;
+    }
+}
+
+// Derive rules sync URL
+function getRulesSyncUrl() {
+    if (WEBSITE_RULES_URL) return WEBSITE_RULES_URL;
+    const base = resolveWebsiteBase();
+    return `${base}/api/rules-sync`;
+}
 
 // Resolve bot version from package.json (read once and cache)
 let BOT_VERSION = '0.0.0';
@@ -164,19 +185,12 @@ async function updateWebsiteStats(client) {
 
         logInfo(`📊 Updating website stats: ${serverCount} servers, ${userCount} users, ${commandsUsed} commands used, uptime ${uptime}s`);
 
-        // Only send if we have a valid API token and URL
-        if (!BOT_API_TOKEN) {
-            logWarn('⚠️ BOT_API_TOKEN not configured, skipping website update');
-            return;
-        }
-
-        // Send stats to website
+        // Send stats to website (auth optional)
+        const headers = { 'Content-Type': 'application/json' };
+        if (BOT_API_TOKEN) headers['x-bot-token'] = BOT_API_TOKEN;
         const response = await fetch(WEBSITE_API_URL, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'x-bot-token': BOT_API_TOKEN
-            },
+            headers,
             body: JSON.stringify({
                 serverCount,
                 userCount,
@@ -308,5 +322,45 @@ module.exports = {
     recordDisconnection,
     getCommandUsageCount,
     sendChangelogUpdate,
-    initializeStats
+    initializeStats,
+    // Exported for rules syncing
+    sendRulesConfigUpdate
 };
+
+// Send rules configuration to website for display in the Rules area
+// cfg is expected to include keys like rulesChannel, rulesTitle, rulesDescription, rulesFooter, rulesButton, rulesAssignRole
+async function sendRulesConfigUpdate(guild, cfg = {}) {
+    try {
+        const url = getRulesSyncUrl();
+        if (!url) return;
+
+        const payload = {
+            guildId: guild?.id,
+            guildName: guild?.name,
+            rulesChannel: cfg.rulesChannel || null,
+            rulesTitle: cfg.rulesTitle || null,
+            rulesDescription: cfg.rulesDescription || null,
+            rulesFooter: cfg.rulesFooter || null,
+            rulesButton: cfg.rulesButton || null,
+            rulesAssignRole: cfg.rulesAssignRole || null,
+            version: BOT_VERSION,
+            timestamp: Date.now()
+        };
+
+        const headers = { 'Content-Type': 'application/json' };
+        if (BOT_API_TOKEN) headers['x-bot-token'] = BOT_API_TOKEN;
+
+        const res = await fetch(url, { method: 'POST', headers, body: JSON.stringify(payload) });
+        const raw = await res.text().catch(() => '');
+        let parsed;
+        try { parsed = raw ? JSON.parse(raw) : {}; } catch (_) { parsed = { raw }; }
+
+        if (res.ok) {
+            logInfo('✅ Synced rules config to website.', { url, status: res.status });
+        } else {
+            logWarn('⚠️ Rules sync did not succeed', { status: res.status, parsed });
+        }
+    } catch (err) {
+        logError('❌ Error syncing rules config to website:', err?.message || err);
+    }
+}

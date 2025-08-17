@@ -1,0 +1,1004 @@
+{
+  "1393659651832152185": {
+    "1396509391162966174": [
+      {
+        "id": "1755446590655",
+        "type": "automod",
+        "violations": [
+          {
+            "type": "discordInvites",
+            "reason": "Posted Discord server invite links: discordapp.com/invite/HjWfRbqBB8",
+            "action": "delete"
+          }
+        ],
+        "moderator": "Auto-Moderation",
+        "timestamp": "2025-08-17T16:03:10.656Z",
+        "channel": "Call1",
+        "channelId": "1393672285415800985",
+        "messageContent": "discordapp.com/invite/HjWfRbqBB8 @everyone",
+        "actions": [
+          "delete"
+        ],
+        "severity": "low"
+      },
+      {
+        "id": "1755446594605",
+        "type": "automod",
+        "violations": [
+          {
+            "type": "discordInvites",
+            "reason": "Posted Discord server invite links: discordapp.com/invite/HjWfRbqBB8",
+            "action": "delete"
+          }
+        ],
+        "moderator": "Auto-Moderation",
+        "timestamp": "2025-08-17T16:03:14.605Z",
+        "channel": "fluffy-chat",
+        "channelId": "1393667675795886253",
+        "messageContent": "discordapp.com/invite/HjWfRbqBB8 @everyone",
+        "actions": [
+          "delete"
+        ],
+        "severity": "low"
+      },
+      {
+        "id": "1755446598746",
+        "type": "automod",
+        "violations": [
+          {
+            "type": "discordInvites",
+            "reason": "Posted Discord server invite links: discordapp.com/invite/HjWfRbqBB8",
+            "action": "delete"
+          }
+        ],
+        "moderator": "Auto-Moderation",
+        "timestamp": "2025-08-17T16:03:18.746Z",
+        "channel": "Ry<3's Channel",
+        "channelId": "1406535141873946694",
+        "messageContent": "discordapp.com/invite/HjWfRbqBB8 @everyone",
+        "actions": [
+          "delete"
+        ],
+        "severity": "low"
+      },
+      {
+        "id": "1755446602618",
+        "type": "automod",
+        "violations": [
+          {
+            "type": "discordInvites",
+            "reason": "Posted Discord server invite links: discordapp.com/invite/HjWfRbqBB8",
+            "action": "delete"
+          }
+        ],
+        "moderator": "Auto-Moderation",
+        "timestamp": "2025-08-17T16:03:22.619Z",
+        "channel": "black-jack",
+        "channelId": "1394773450056532110",
+        "messageContent": "discordapp.com/invite/HjWfRbqBB8 @everyone",
+        "actions": [
+          "delete"
+        ],
+        "severity": "low"
+      },
+      {
+        "id": "1755446606374",
+        "type": "automod",
+        "violations": [
+          {
+            "type": "discordInvites",
+            "reason": "Posted Discord server invite links: discordapp.com/invite/HjWfRbqBB8",
+            "action": "delete"
+          }
+        ],
+        "moderator": "Auto-Moderation",
+        "timestamp": "2025-08-17T16:03:26.374Z",
+        "channel": "mod-mail",
+        "channelId": "1393667699011354665",
+        "messageContent": "discordapp.com/invite/HjWfRbqBB8 @everyone",
+        "actions": [
+          "delete"
+        ],
+        "severity": "low"
+      },
+      {
+        "id": "1755446610454",
+        "type": "automod",
+        "violations": [
+          {
+            "type": "discordInvites",
+            "reason": "Posted Discord server invite links: discordapp.com/invite/HjWfRbqBB8",
+            "action": "delete"
+          }
+        ],
+        "moderator": "Auto-Moderation",
+        "timestamp": "2025-08-17T16:03:30.454Z",
+        "channel": "cat-pics",
+        "channelId": "1393667681961377902",
+        "messageContent": "discordapp.com/invite/HjWfRbqBB8 @everyone",
+        "actions": [
+          "delete"
+        ],
+        "severity": "low"
+      },
+      {
+        "id": "1755446614225",
+        "type": "automod",
+        "violations": [
+          {
+            "type": "discordInvites",
+            "reason": "Posted Discord server invite links: discordapp.com/invite/HjWfRbqBB8",
+            "action": "delete"
+          }
+        ],
+        "moderator": "Auto-Moderation",
+        "timestamp": "2025-08-17T16:03:34.225Z",
+        "channel": "pet-gallery",
+        "channelId": "1393667682645311703",
+        "messageContent": "discordapp.com/invite/HjWfRbqBB8 @everyone",
+        "actions": [
+          "delete"
+        ],
+        "severity": "low"
+      },
+      {
+        "id": "1755446618157",
+        "type": "automod",
+        "violations": [
+          {
+            "type": "discordInvites",
+            "reason": "Posted Discord server invite links: discordapp.com/invite/HjWfRbqBB8",
+            "action": "delete"
+          }
+        ],
+        "moderator": "Auto-Moderation",
+        "timestamp": "2025-08-17T16:03:38.157Z",
+        "channel": "make-your-ticket",
+        "channelId": "1405787532985237616",
+        "messageContent": "discordapp.com/invite/HjWfRbqBB8 @everyone",
+        "actions": [
+          "delete"
+        ],
+        "severity": "low"
+      },
+      {
+        "id": "1755446622014",
+        "type": "automod",
+        "violations": [
+          {
+            "type": "discordInvites",
+            "reason": "Posted Discord server invite links: discordapp.com/invite/HjWfRbqBB8",
+            "action": "delete"
+          }
+        ],
+        "moderator": "Auto-Moderation",
+        "timestamp": "2025-08-17T16:03:42.014Z",
+        "channel": "art",
+        "channelId": "1393667683920117962",
+        "messageContent": "discordapp.com/invite/HjWfRbqBB8 @everyone",
+        "actions": [
+          "delete"
+        ],
+        "severity": "low"
+      },
+      {
+        "id": "1755446625845",
+        "type": "automod",
+        "violations": [
+          {
+            "type": "discordInvites",
+            "reason": "Posted Discord server invite links: discordapp.com/invite/HjWfRbqBB8",
+            "action": "delete"
+          }
+        ],
+        "moderator": "Auto-Moderation",
+        "timestamp": "2025-08-17T16:03:45.845Z",
+        "channel": "gambling",
+        "channelId": "1393667686994678004",
+        "messageContent": "discordapp.com/invite/HjWfRbqBB8 @everyone",
+        "actions": [
+          "delete"
+        ],
+        "severity": "low"
+      },
+      {
+        "id": "1755446629635",
+        "type": "automod",
+        "violations": [
+          {
+            "type": "discordInvites",
+            "reason": "Posted Discord server invite links: discordapp.com/invite/HjWfRbqBB8",
+            "action": "delete"
+          }
+        ],
+        "moderator": "Auto-Moderation",
+        "timestamp": "2025-08-17T16:03:49.635Z",
+        "channel": "12-hr-shifts",
+        "channelId": "1395232870020288642",
+        "messageContent": "discordapp.com/invite/HjWfRbqBB8 @everyone",
+        "actions": [
+          "delete"
+        ],
+        "severity": "low"
+      },
+      {
+        "id": "1755446633416",
+        "type": "automod",
+        "violations": [
+          {
+            "type": "discordInvites",
+            "reason": "Posted Discord server invite links: discordapp.com/invite/HjWfRbqBB8",
+            "action": "delete"
+          }
+        ],
+        "moderator": "Auto-Moderation",
+        "timestamp": "2025-08-17T16:03:53.416Z",
+        "channel": "casoino-talk",
+        "channelId": "1394787105930215595",
+        "messageContent": "discordapp.com/invite/HjWfRbqBB8 @everyone",
+        "actions": [
+          "delete"
+        ],
+        "severity": "low"
+      },
+      {
+        "id": "1755446637512",
+        "type": "automod",
+        "violations": [
+          {
+            "type": "discordInvites",
+            "reason": "Posted Discord server invite links: discordapp.com/invite/HjWfRbqBB8",
+            "action": "delete"
+          }
+        ],
+        "moderator": "Auto-Moderation",
+        "timestamp": "2025-08-17T16:03:57.512Z",
+        "channel": "suggestions",
+        "channelId": "1393667698252054629",
+        "messageContent": "discordapp.com/invite/HjWfRbqBB8 @everyone",
+        "actions": [
+          "delete"
+        ],
+        "severity": "low"
+      },
+      {
+        "id": "1755446641316",
+        "type": "automod",
+        "violations": [
+          {
+            "type": "discordInvites",
+            "reason": "Posted Discord server invite links: discordapp.com/invite/HjWfRbqBB8",
+            "action": "delete"
+          }
+        ],
+        "moderator": "Auto-Moderation",
+        "timestamp": "2025-08-17T16:04:01.316Z",
+        "channel": "media",
+        "channelId": "1393667679495131318",
+        "messageContent": "discordapp.com/invite/HjWfRbqBB8 @everyone",
+        "actions": [
+          "delete"
+        ],
+        "severity": "low"
+      },
+      {
+        "id": "1755446645153",
+        "type": "automod",
+        "violations": [
+          {
+            "type": "discordInvites",
+            "reason": "Posted Discord server invite links: discordapp.com/invite/HjWfRbqBB8",
+            "action": "delete"
+          }
+        ],
+        "moderator": "Auto-Moderation",
+        "timestamp": "2025-08-17T16:04:05.153Z",
+        "channel": "bot-commands",
+        "channelId": "1394779391988338930",
+        "messageContent": "discordapp.com/invite/HjWfRbqBB8 @everyone",
+        "actions": [
+          "delete"
+        ],
+        "severity": "low"
+      },
+      {
+        "id": "1755446649187",
+        "type": "automod",
+        "violations": [
+          {
+            "type": "discordInvites",
+            "reason": "Posted Discord server invite links: discordapp.com/invite/HjWfRbqBB8",
+            "action": "delete"
+          }
+        ],
+        "moderator": "Auto-Moderation",
+        "timestamp": "2025-08-17T16:04:09.187Z",
+        "channel": "Join to Create",
+        "channelId": "1406347255585308702",
+        "messageContent": "discordapp.com/invite/HjWfRbqBB8 @everyone",
+        "actions": [
+          "delete"
+        ],
+        "severity": "low"
+      },
+      {
+        "id": "1755446653078",
+        "type": "automod",
+        "violations": [
+          {
+            "type": "discordInvites",
+            "reason": "Posted Discord server invite links: discordapp.com/invite/HjWfRbqBB8",
+            "action": "delete"
+          }
+        ],
+        "moderator": "Auto-Moderation",
+        "timestamp": "2025-08-17T16:04:13.078Z",
+        "channel": "bugs",
+        "channelId": "1393667697161797722",
+        "messageContent": "discordapp.com/invite/HjWfRbqBB8 @everyone",
+        "actions": [
+          "delete"
+        ],
+        "severity": "low"
+      }
+    ]
+  },
+  "1062223859228610660": {
+    "1007799027716329484": [
+      {
+        "id": "1755257334689",
+        "type": "automod",
+        "violations": [
+          {
+            "type": "discordInvites",
+            "reason": "Posted Discord server invite links: discord.gg/bababot",
+            "action": "delete"
+          }
+        ],
+        "moderator": "Auto-Moderation",
+        "timestamp": "2025-08-15T11:28:54.689Z",
+        "channel": "・bottesting",
+        "channelId": "1062444940581412874",
+        "messageContent": "https://discord.gg/bababot",
+        "actions": [
+          "delete"
+        ],
+        "severity": "low"
+      },
+      {
+        "id": "1755258022924",
+        "type": "automod",
+        "violations": [
+          {
+            "type": "spam",
+            "reason": "Sent 6 messages in 10 seconds",
+            "action": "mute"
+          }
+        ],
+        "moderator": "Auto-Moderation",
+        "timestamp": "2025-08-15T11:40:22.924Z",
+        "channel": "・bottesting",
+        "channelId": "1062444940581412874",
+        "messageContent": "%warn <@297048826924105728> skibidi",
+        "actions": [
+          "mute"
+        ],
+        "severity": "medium"
+      }
+    ],
+    "297048826924105728": [
+      {
+        "type": "warn",
+        "reason": "skibidi",
+        "moderator": "1007799027716329484",
+        "timestamp": "2025-08-15T11:39:42.550Z"
+      },
+      {
+        "type": "warn",
+        "reason": "skibidi",
+        "moderator": "1007799027716329484",
+        "timestamp": "2025-08-15T11:40:19.851Z"
+      },
+      {
+        "type": "warn",
+        "reason": "skibidi",
+        "moderator": "1007799027716329484",
+        "timestamp": "2025-08-15T11:40:20.635Z"
+      },
+      {
+        "type": "warn",
+        "reason": "skibidi",
+        "moderator": "1007799027716329484",
+        "timestamp": "2025-08-15T11:40:21.217Z"
+      },
+      {
+        "type": "warn",
+        "reason": "skibidi",
+        "moderator": "1007799027716329484",
+        "timestamp": "2025-08-15T11:40:21.474Z"
+      },
+      {
+        "type": "warn",
+        "reason": "skibidi",
+        "moderator": "1007799027716329484",
+        "timestamp": "2025-08-15T11:40:21.826Z"
+      },
+      {
+        "type": "warn",
+        "reason": "skibidi",
+        "moderator": "1007799027716329484",
+        "timestamp": "2025-08-15T11:40:22.925Z"
+      }
+    ]
+  },
+  "1233375464672985109": {
+    "962923585096269844": [
+      {
+        "id": "1755299324638",
+        "type": "automod",
+        "violations": [
+          {
+            "type": "discordInvites",
+            "reason": "Posted Discord server invite links: discordapp.com/invite/jMf6v6wZxF",
+            "action": "delete"
+          }
+        ],
+        "moderator": "Auto-Moderation",
+        "timestamp": "2025-08-15T23:08:44.638Z",
+        "channel": "fluffy-setup-here",
+        "channelId": "1406020472268652634",
+        "messageContent": "discordapp.com/invite/jMf6v6wZxF @everyone",
+        "actions": [
+          "delete"
+        ],
+        "severity": "low"
+      }
+    ],
+    "741438320701210744": [
+      {
+        "id": "1755449503795",
+        "type": "automod",
+        "violations": [
+          {
+            "type": "discordInvites",
+            "reason": "Posted Discord server invite links: discordapp.com/invite/HjWfRbqBB8",
+            "action": "delete"
+          }
+        ],
+        "moderator": "Auto-Moderation",
+        "timestamp": "2025-08-17T16:51:43.795Z",
+        "channel": "suggestions",
+        "channelId": "1406288205828849744",
+        "messageContent": "discordapp.com/invite/HjWfRbqBB8 @everyone",
+        "actions": [
+          "delete"
+        ],
+        "severity": "low"
+      },
+      {
+        "id": "1755449508428",
+        "type": "automod",
+        "violations": [
+          {
+            "type": "discordInvites",
+            "reason": "Posted Discord server invite links: discordapp.com/invite/HjWfRbqBB8",
+            "action": "delete"
+          }
+        ],
+        "moderator": "Auto-Moderation",
+        "timestamp": "2025-08-17T16:51:48.428Z",
+        "channel": "fan-art",
+        "channelId": "1406288195880091719",
+        "messageContent": "discordapp.com/invite/HjWfRbqBB8 @everyone",
+        "actions": [
+          "delete"
+        ],
+        "severity": "low"
+      },
+      {
+        "id": "1755449512896",
+        "type": "automod",
+        "violations": [
+          {
+            "type": "discordInvites",
+            "reason": "Posted Discord server invite links: discordapp.com/invite/HjWfRbqBB8",
+            "action": "delete"
+          }
+        ],
+        "moderator": "Auto-Moderation",
+        "timestamp": "2025-08-17T16:51:52.896Z",
+        "channel": "memes-and-giggles",
+        "channelId": "1406288187646545981",
+        "messageContent": "discordapp.com/invite/HjWfRbqBB8 @everyone",
+        "actions": [
+          "delete"
+        ],
+        "severity": "low"
+      }
+    ]
+  },
+  "1387539570568200404": {
+    "1370443415971692686": [
+      {
+        "id": "1755392449960",
+        "type": "automod",
+        "violations": [
+          {
+            "type": "discordInvites",
+            "reason": "Posted Discord server invite links: discordapp.com/invite/YC4YjbUN",
+            "action": "delete"
+          }
+        ],
+        "moderator": "Auto-Moderation",
+        "timestamp": "2025-08-17T01:00:49.960Z",
+        "channel": "fluffy-setup-here",
+        "channelId": "1394081147742589011",
+        "messageContent": "discordapp.com/invite/YC4YjbUN @everyone @here @everyone",
+        "actions": [
+          "delete"
+        ],
+        "severity": "low"
+      },
+      {
+        "id": "1755392455872",
+        "type": "automod",
+        "violations": [
+          {
+            "type": "discordInvites",
+            "reason": "Posted Discord server invite links: discordapp.com/invite/YC4YjbUN",
+            "action": "delete"
+          }
+        ],
+        "moderator": "Auto-Moderation",
+        "timestamp": "2025-08-17T01:00:55.872Z",
+        "channel": "welcome",
+        "channelId": "1394081185571012732",
+        "messageContent": "discordapp.com/invite/YC4YjbUN @everyone @here @everyone",
+        "actions": [
+          "delete"
+        ],
+        "severity": "low"
+      },
+      {
+        "id": "1755392458344",
+        "type": "automod",
+        "violations": [
+          {
+            "type": "discordInvites",
+            "reason": "Posted Discord server invite links: discordapp.com/invite/YC4YjbUN",
+            "action": "delete"
+          }
+        ],
+        "moderator": "Auto-Moderation",
+        "timestamp": "2025-08-17T01:00:58.344Z",
+        "channel": "rules",
+        "channelId": "1394081187324235877",
+        "messageContent": "discordapp.com/invite/YC4YjbUN @everyone @here @everyone",
+        "actions": [
+          "delete"
+        ],
+        "severity": "low"
+      },
+      {
+        "id": "1755392461889",
+        "type": "automod",
+        "violations": [
+          {
+            "type": "discordInvites",
+            "reason": "Posted Discord server invite links: discordapp.com/invite/YC4YjbUN",
+            "action": "delete"
+          }
+        ],
+        "moderator": "Auto-Moderation",
+        "timestamp": "2025-08-17T01:01:01.889Z",
+        "channel": "announcements",
+        "channelId": "1394081189412995266",
+        "messageContent": "discordapp.com/invite/YC4YjbUN @everyone @here @everyone",
+        "actions": [
+          "delete"
+        ],
+        "severity": "low"
+      },
+      {
+        "id": "1755392466142",
+        "type": "automod",
+        "violations": [
+          {
+            "type": "discordInvites",
+            "reason": "Posted Discord server invite links: discordapp.com/invite/YC4YjbUN",
+            "action": "delete"
+          }
+        ],
+        "moderator": "Auto-Moderation",
+        "timestamp": "2025-08-17T01:01:06.142Z",
+        "channel": "fluffy-chat",
+        "channelId": "1394081191564677232",
+        "messageContent": "discordapp.com/invite/YC4YjbUN @everyone @here @everyone",
+        "actions": [
+          "delete"
+        ],
+        "severity": "low"
+      },
+      {
+        "id": "1755392469559",
+        "type": "automod",
+        "violations": [
+          {
+            "type": "discordInvites",
+            "reason": "Posted Discord server invite links: discordapp.com/invite/YC4YjbUN",
+            "action": "delete"
+          }
+        ],
+        "moderator": "Auto-Moderation",
+        "timestamp": "2025-08-17T01:01:09.559Z",
+        "channel": "introductions",
+        "channelId": "1394081193166901328",
+        "messageContent": "discordapp.com/invite/YC4YjbUN @everyone @here @everyone",
+        "actions": [
+          "delete"
+        ],
+        "severity": "low"
+      },
+      {
+        "id": "1755392474048",
+        "type": "automod",
+        "violations": [
+          {
+            "type": "discordInvites",
+            "reason": "Posted Discord server invite links: discordapp.com/invite/YC4YjbUN",
+            "action": "delete"
+          }
+        ],
+        "moderator": "Auto-Moderation",
+        "timestamp": "2025-08-17T01:01:14.048Z",
+        "channel": "daily-meows",
+        "channelId": "1394081194274066432",
+        "messageContent": "discordapp.com/invite/YC4YjbUN @everyone @here @everyone",
+        "actions": [
+          "delete"
+        ],
+        "severity": "low"
+      },
+      {
+        "id": "1755392478043",
+        "type": "automod",
+        "violations": [
+          {
+            "type": "discordInvites",
+            "reason": "Posted Discord server invite links: discordapp.com/invite/YC4YjbUN",
+            "action": "delete"
+          }
+        ],
+        "moderator": "Auto-Moderation",
+        "timestamp": "2025-08-17T01:01:18.043Z",
+        "channel": "memes-and-giggles",
+        "channelId": "1394081195356323993",
+        "messageContent": "discordapp.com/invite/YC4YjbUN @everyone @here @everyone",
+        "actions": [
+          "delete"
+        ],
+        "severity": "low"
+      },
+      {
+        "id": "1755392481263",
+        "type": "automod",
+        "violations": [
+          {
+            "type": "discordInvites",
+            "reason": "Posted Discord server invite links: discordapp.com/invite/YC4YjbUN",
+            "action": "delete"
+          }
+        ],
+        "moderator": "Auto-Moderation",
+        "timestamp": "2025-08-17T01:01:21.263Z",
+        "channel": "cat-pics",
+        "channelId": "1394081197415600298",
+        "messageContent": "discordapp.com/invite/YC4YjbUN @everyone @here @everyone",
+        "actions": [
+          "delete"
+        ],
+        "severity": "low"
+      },
+      {
+        "id": "1755392485397",
+        "type": "automod",
+        "violations": [
+          {
+            "type": "discordInvites",
+            "reason": "Posted Discord server invite links: discordapp.com/invite/YC4YjbUN",
+            "action": "delete"
+          }
+        ],
+        "moderator": "Auto-Moderation",
+        "timestamp": "2025-08-17T01:01:25.397Z",
+        "channel": "pet-gallery",
+        "channelId": "1394081198120112305",
+        "messageContent": "discordapp.com/invite/YC4YjbUN @everyone @here @everyone",
+        "actions": [
+          "delete"
+        ],
+        "severity": "low"
+      },
+      {
+        "id": "1755392492248",
+        "type": "automod",
+        "violations": [
+          {
+            "type": "discordInvites",
+            "reason": "Posted Discord server invite links: discordapp.com/invite/YC4YjbUN",
+            "action": "delete"
+          }
+        ],
+        "moderator": "Auto-Moderation",
+        "timestamp": "2025-08-17T01:01:32.248Z",
+        "channel": "floof-art",
+        "channelId": "1394081199630188756",
+        "messageContent": "discordapp.com/invite/YC4YjbUN @everyone @here @everyone",
+        "actions": [
+          "delete"
+        ],
+        "severity": "low"
+      },
+      {
+        "id": "1755392493368",
+        "type": "automod",
+        "violations": [
+          {
+            "type": "discordInvites",
+            "reason": "Posted Discord server invite links: discordapp.com/invite/YC4YjbUN",
+            "action": "delete"
+          }
+        ],
+        "moderator": "Auto-Moderation",
+        "timestamp": "2025-08-17T01:01:33.368Z",
+        "channel": "fan-art",
+        "channelId": "1394081200544550913",
+        "messageContent": "discordapp.com/invite/YC4YjbUN @everyone @here @everyone",
+        "actions": [
+          "delete"
+        ],
+        "severity": "low"
+      },
+      {
+        "id": "1755392496398",
+        "type": "automod",
+        "violations": [
+          {
+            "type": "discordInvites",
+            "reason": "Posted Discord server invite links: discordapp.com/invite/YC4YjbUN",
+            "action": "delete"
+          }
+        ],
+        "moderator": "Auto-Moderation",
+        "timestamp": "2025-08-17T01:01:36.398Z",
+        "channel": "gaming-lounge",
+        "channelId": "1394081203383959642",
+        "messageContent": "discordapp.com/invite/YC4YjbUN @everyone @here @everyone",
+        "actions": [
+          "delete"
+        ],
+        "severity": "low"
+      },
+      {
+        "id": "1755392499935",
+        "type": "automod",
+        "violations": [
+          {
+            "type": "discordInvites",
+            "reason": "Posted Discord server invite links: discordapp.com/invite/YC4YjbUN",
+            "action": "delete"
+          }
+        ],
+        "moderator": "Auto-Moderation",
+        "timestamp": "2025-08-17T01:01:39.935Z",
+        "channel": "bot-commands",
+        "channelId": "1394081206659715234",
+        "messageContent": "discordapp.com/invite/YC4YjbUN @everyone @here @everyone",
+        "actions": [
+          "delete"
+        ],
+        "severity": "low"
+      },
+      {
+        "id": "1755392504079",
+        "type": "automod",
+        "violations": [
+          {
+            "type": "discordInvites",
+            "reason": "Posted Discord server invite links: discordapp.com/invite/YC4YjbUN",
+            "action": "delete"
+          }
+        ],
+        "moderator": "Auto-Moderation",
+        "timestamp": "2025-08-17T01:01:44.079Z",
+        "channel": "minigames",
+        "channelId": "1394081207897292922",
+        "messageContent": "discordapp.com/invite/YC4YjbUN @everyone @here @everyone",
+        "actions": [
+          "delete"
+        ],
+        "severity": "low"
+      },
+      {
+        "id": "1755392508327",
+        "type": "automod",
+        "violations": [
+          {
+            "type": "discordInvites",
+            "reason": "Posted Discord server invite links: discordapp.com/invite/YC4YjbUN",
+            "action": "delete"
+          }
+        ],
+        "moderator": "Auto-Moderation",
+        "timestamp": "2025-08-17T01:01:48.327Z",
+        "channel": "help-desk",
+        "channelId": "1394081210728321066",
+        "messageContent": "discordapp.com/invite/YC4YjbUN @everyone @here @everyone",
+        "actions": [
+          "delete"
+        ],
+        "severity": "low"
+      },
+      {
+        "id": "1755392511706",
+        "type": "automod",
+        "violations": [
+          {
+            "type": "discordInvites",
+            "reason": "Posted Discord server invite links: discordapp.com/invite/YC4YjbUN",
+            "action": "delete"
+          }
+        ],
+        "moderator": "Auto-Moderation",
+        "timestamp": "2025-08-17T01:01:51.706Z",
+        "channel": "suggestions",
+        "channelId": "1394081212112306177",
+        "messageContent": "discordapp.com/invite/YC4YjbUN @everyone @here @everyone",
+        "actions": [
+          "delete"
+        ],
+        "severity": "low"
+      },
+      {
+        "id": "1755392533649",
+        "type": "automod",
+        "violations": [
+          {
+            "type": "discordInvites",
+            "reason": "Posted Discord server invite links: discordapp.com/invite/YC4YjbUN",
+            "action": "delete"
+          }
+        ],
+        "moderator": "Auto-Moderation",
+        "timestamp": "2025-08-17T01:02:13.649Z",
+        "channel": "mod-mail",
+        "channelId": "1394081213135851674",
+        "messageContent": "discordapp.com/invite/YC4YjbUN @everyone @here @everyone",
+        "actions": [
+          "delete"
+        ],
+        "severity": "low"
+      },
+      {
+        "id": "1755392535543",
+        "type": "automod",
+        "violations": [
+          {
+            "type": "discordInvites",
+            "reason": "Posted Discord server invite links: discordapp.com/invite/YC4YjbUN",
+            "action": "delete"
+          }
+        ],
+        "moderator": "Auto-Moderation",
+        "timestamp": "2025-08-17T01:02:15.543Z",
+        "channel": "mod-lounge",
+        "channelId": "1394081219674902579",
+        "messageContent": "discordapp.com/invite/YC4YjbUN @everyone @here @everyone",
+        "actions": [
+          "delete"
+        ],
+        "severity": "low"
+      },
+      {
+        "id": "1755392539479",
+        "type": "automod",
+        "violations": [
+          {
+            "type": "discordInvites",
+            "reason": "Posted Discord server invite links: discordapp.com/invite/YC4YjbUN",
+            "action": "delete"
+          }
+        ],
+        "moderator": "Auto-Moderation",
+        "timestamp": "2025-08-17T01:02:19.479Z",
+        "channel": "event-planning",
+        "channelId": "1394081221029527632",
+        "messageContent": "discordapp.com/invite/YC4YjbUN @everyone @here @everyone",
+        "actions": [
+          "delete"
+        ],
+        "severity": "low"
+      },
+      {
+        "id": "1755392543281",
+        "type": "automod",
+        "violations": [
+          {
+            "type": "discordInvites",
+            "reason": "Posted Discord server invite links: discordapp.com/invite/YC4YjbUN",
+            "action": "delete"
+          }
+        ],
+        "moderator": "Auto-Moderation",
+        "timestamp": "2025-08-17T01:02:23.281Z",
+        "channel": "floof-dev-chat",
+        "channelId": "1394081222887473255",
+        "messageContent": "discordapp.com/invite/YC4YjbUN @everyone @here @everyone",
+        "actions": [
+          "delete"
+        ],
+        "severity": "low"
+      },
+      {
+        "id": "1755392547433",
+        "type": "automod",
+        "violations": [
+          {
+            "type": "discordInvites",
+            "reason": "Posted Discord server invite links: discordapp.com/invite/YC4YjbUN",
+            "action": "delete"
+          }
+        ],
+        "moderator": "Auto-Moderation",
+        "timestamp": "2025-08-17T01:02:27.433Z",
+        "channel": "floof-ideas",
+        "channelId": "1394081224460599517",
+        "messageContent": "discordapp.com/invite/YC4YjbUN @everyone @here @everyone",
+        "actions": [
+          "delete"
+        ],
+        "severity": "low"
+      },
+      {
+        "id": "1755392552055",
+        "type": "automod",
+        "violations": [
+          {
+            "type": "discordInvites",
+            "reason": "Posted Discord server invite links: discordapp.com/invite/YC4YjbUN",
+            "action": "delete"
+          }
+        ],
+        "moderator": "Auto-Moderation",
+        "timestamp": "2025-08-17T01:02:32.055Z",
+        "channel": "floof-changelog",
+        "channelId": "1394081225345466400",
+        "messageContent": "discordapp.com/invite/YC4YjbUN @everyone @here @everyone",
+        "actions": [
+          "delete"
+        ],
+        "severity": "low"
+      },
+      {
+        "id": "1755392555169",
+        "type": "automod",
+        "violations": [
+          {
+            "type": "discordInvites",
+            "reason": "Posted Discord server invite links: discordapp.com/invite/YC4YjbUN",
+            "action": "delete"
+          }
+        ],
+        "moderator": "Auto-Moderation",
+        "timestamp": "2025-08-17T01:02:35.169Z",
+        "channel": "floof-testing",
+        "channelId": "1394081227492823050",
+        "messageContent": "discordapp.com/invite/YC4YjbUN @everyone @here @everyone",
+        "actions": [
+          "delete"
+        ],
+        "severity": "low"
+      }
+    ]
+  }
+}

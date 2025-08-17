@@ -20,7 +20,7 @@ function savePrefixConfig(data) {
 module.exports = {
     name: 'prefix',
     description: 'Manage custom prefixes for users',
-    usage: '%prefix set <prefix> | %prefix remove/clear | %prefix list (Manage Server only)',
+    usage: '%prefix set <prefix> | %prefix remove/clear',
     category: 'general',
     aliases: ['setprefix', 'pf'],
     cooldown: 3,
@@ -40,9 +40,49 @@ module.exports = {
             case 'reset':
                 return await this.handleRemoveCommand(message, args, guildId, userId);
             case 'list':
-            default:
                 return await this.handleListCommand(message, guildId);
+            default:
+                return await this.handleHelp(message);
         }
+    },
+
+    async handleHelp(message) {
+        const embed = new EmbedBuilder()
+            .setColor('#7289DA')
+            .setTitle('🔧 Prefix Commands')
+            .setDescription('Manage your personal command prefix.')
+            .addFields(
+                {
+                    name: '⚙️ Commands',
+                    value: [
+                        '`%prefix set <prefix>` - Set your custom prefix',
+                        '`%prefix remove/clear` - Remove your custom prefix'
+                    ].join('\n'),
+                    inline: false
+                },
+                {
+                    name: '💡 Examples',
+                    value: [
+                        '`%prefix set !` - Set ! as your prefix',
+                        '`%prefix set >>` - Set >> as your prefix',
+                        '`%prefix clear` - Remove your custom prefix'
+                    ].join('\n'),
+                    inline: false
+                },
+                {
+                    name: '📝 Rules',
+                    value: [
+                        '• Prefix must be 5 characters or less',
+                        '• Prefix cannot contain spaces',
+                        '• Anyone can set their own custom prefix',
+                        '• If you have no custom prefix, the default is `%`'
+                    ].join('\n'),
+                    inline: false
+                }
+            )
+            .setTimestamp();
+
+        return await sendAsFloofWebhook(message, { embeds: [embed] });
     },
 
     async handleSetCommand(message, args, guildId, userId) {
@@ -210,8 +250,7 @@ module.exports = {
                     name: '⚙️ Commands',
                     value: [
                         '`%prefix set <prefix>` - Set your custom prefix',
-                        '`%prefix remove/clear` - Remove your custom prefix',
-                        '`%prefix list` - View all custom prefixes'
+                        '`%prefix remove/clear` - Remove your custom prefix'
                     ].join('\n'),
                     inline: false
                 },

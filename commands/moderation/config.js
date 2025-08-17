@@ -1,6 +1,7 @@
 const { EmbedBuilder, PermissionFlagsBits, ChannelType } = require('discord.js');
 const { sendAsFloofWebhook } = require('../../utils/webhook-util');
 const { postRulesMenu } = require('../../creation/rules-menu');
+const { sendRulesConfigUpdate } = require('../../utils/website-integration');
 const { postColorMenu, setupColorRoles } = require('../../creation/setup-color-roles');
 const fs = require('fs').promises;
 const path = require('path');
@@ -236,6 +237,11 @@ module.exports = {
             return await sendAsFloofWebhook(message, { content: '❌ Invalid channel. Please mention a valid text channel.' });
         }
         await this.updateConfig(message.guild.id, 'rulesChannel', channel.id);
+        // Sync to website Rules area
+        try {
+            const cfg = await this.getConfig(message.guild.id);
+            await sendRulesConfigUpdate(message.guild, cfg);
+        } catch (_) {}
         const embed = new EmbedBuilder()
             .setTitle('✅ Rules Channel Set')
             .setDescription(`Rules menu will default to ${channel}`)
@@ -281,6 +287,11 @@ module.exports = {
         if (footer) await this.updateConfig(message.guild.id, 'rulesFooter', footer);
         if (button) await this.updateConfig(message.guild.id, 'rulesButton', button);
         if (role) await this.updateConfig(message.guild.id, 'rulesAssignRole', role);
+        // Sync to website Rules area
+        try {
+            const cfg = await this.getConfig(message.guild.id);
+            await sendRulesConfigUpdate(message.guild, cfg);
+        } catch (_) {}
         return await sendAsFloofWebhook(message, { content: '✅ Updated rules menu content.' });
     },
 
@@ -666,6 +677,11 @@ module.exports = {
 
         if (setting.toLowerCase() === 'all') {
             await this.updateConfig(message.guild.id, null, null, true); // Reset all
+            // Sync rules to website (now empty)
+            try {
+                const cfg = await this.getConfig(message.guild.id);
+                await sendRulesConfigUpdate(message.guild, cfg);
+            } catch (_) {}
             return await sendAsFloofWebhook(message, {
                 content: '✅ All server configuration has been reset.'
             });
@@ -704,6 +720,15 @@ module.exports = {
         } else {
             await this.updateConfig(message.guild.id, keyOrKeys, null, false, true); // Delete specific setting
         }
+        // If we reset rules-related settings, sync to website
+        try {
+            const rulesKeys = new Set(['rulesChannel','rulesTitle','rulesDescription','rulesFooter','rulesButton','rulesAssignRole']);
+            const affected = Array.isArray(keyOrKeys) ? keyOrKeys : [keyOrKeys];
+            if (affected.some(k => rulesKeys.has(k))) {
+                const cfg = await this.getConfig(message.guild.id);
+                await sendRulesConfigUpdate(message.guild, cfg);
+            }
+        } catch (_) {}
         return await sendAsFloofWebhook(message, {
             content: `✅ Reset ${setting} configuration.`
         });
