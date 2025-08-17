@@ -1,5 +1,7 @@
 const { EmbedBuilder, PermissionFlagsBits, ChannelType } = require('discord.js');
 const { sendAsFloofWebhook } = require('../../utils/webhook-util');
+const { postRulesMenu } = require('../../creation/rules-menu');
+const { postColorMenu, setupColorRoles } = require('../../creation/setup-color-roles');
 const fs = require('fs').promises;
 const path = require('path');
 
@@ -13,14 +15,14 @@ module.exports = {
     category: 'moderation',
     aliases: ['configure', 'settings', 'cfg', 'c'],
     cooldown: 5,
-    permissions: [PermissionFlagsBits.ManageGuild],
+    permissions: [PermissionFlagsBits.Administrator],
 
     async execute(message, args) {
         try {
-            // Check if user has permission
-            if (!message.member.permissions.has(PermissionFlagsBits.ManageGuild)) {
+            // Check if user has Administrator permission
+            if (!message.member.permissions.has(PermissionFlagsBits.Administrator)) {
                 return await sendAsFloofWebhook(message, {
-                    content: '❌ You need **Manage Server** permission to use this command.'
+                    content: '❌ You need **Administrator** permission to use this command.'
                 });
             }
 
@@ -47,12 +49,12 @@ module.exports = {
                     return await this.setWelcomeChannel(message, value);
                 
                 case 'prefix':
-                    return await this.setPrefix(message, value);
-                
                 case 'userprefix':
                 case 'user-prefix':
                 case 'customprefix':
-                    return await this.setUserPrefix(message, args.slice(1));
+                    return await sendAsFloofWebhook(message, {
+                        content: 'ℹ️ Prefix is now user-controlled. Use `%prefix <symbol>` to set your own. Admin-based prefix settings have been deprecated.'
+                    });
                 
                 case 'gambling':
                 case 'gambling-channel':
@@ -68,6 +70,32 @@ module.exports = {
                 case 'changelogchannel':
                     return await this.setChangelogChannel(message, value);
                 
+                case 'rulesmenu':
+                case 'rules-menu':
+                    return await this.sendRulesMenu(message, args.slice(1));
+
+                case 'colormenu':
+                case 'color-menu':
+                    return await this.sendColorMenu(message, args.slice(1));
+
+                case 'ruleschannel':
+                case 'rules-channel':
+                    return await this.setRulesChannel(message, value);
+
+                case 'colorschannel':
+                case 'colors-channel':
+                case 'colorchannel':
+                case 'color-channel':
+                    return await this.setColorsChannel(message, value);
+
+                case 'rulescontent':
+                case 'rules-content':
+                    return await this.setRulesContent(message, args.slice(1));
+
+                case 'colorcontent':
+                case 'color-content':
+                    return await this.setColorContent(message, args.slice(1));
+
                 case 'levels':
                 case 'leveling':
                 case 'level':
@@ -108,9 +136,14 @@ module.exports = {
                         '`%config gambling #channel` - Set gambling channel',
                         '`%config revive @role` - Set revive notification role',
                         '`%config changelog #channel` - Set changelog channel',
+                        '`%config ruleschannel #channel` - Set default rules menu channel',
+                        '`%config colorschannel #channel` - Set default color menu channel',
+                        '`%config rulescontent title:"..." description:"..." footer:"..." button:"..." role:"Member"` - Customize rules menu',
+                        '`%config colorcontent title:"..." description:"..."` - Customize color menu',
+                        '`%config rulesmenu [#channel]` - Post rules menu (uses defaults if channel omitted)',
+                        '`%config colormenu [#channel]` - Create color roles (if needed) and post color select menu',
                         '`%config levels` - Configure leveling system',
-                        '`%config prefix !` - Set custom command prefix',
-                        '`%config userprefix @user !` - Set custom prefix for user',
+                        'Users: `%prefix !` - Set your personal prefix (no admin needed)',
                         '`%config view` - View current configuration',
                         '`%config reset [setting]` - Reset configuration'
                     ].join('\n'),
@@ -130,6 +163,144 @@ module.exports = {
             .setFooter({ text: 'Use %config <setting> <value> to configure' });
 
         return await sendAsFloofWebhook(message, { embeds: [embed] });
+    },
+
+    async sendRulesMenu(message, args) {
+        try {
+            // args: [#channel?]
+            const maybeChannel = args[0];
+            const cfg = await this.getConfig(message.guild.id);
+            const channel = maybeChannel ? this.parseChannel(message, maybeChannel)
+                : (cfg.rulesChannel ? message.guild.channels.cache.get(cfg.rulesChannel) : message.channel);
+            if (!channel || channel.type !== ChannelType.GuildText) {
+                return await sendAsFloofWebhook(message, { content: '❌ Please specify a valid text channel.' });
+            }
+            // Bot needs SendMessages/EmbedLinks and optionally ManageRoles
+            const botPerms = channel.permissionsFor(message.guild.members.me);
+            if (!botPerms?.has([PermissionFlagsBits.SendMessages, PermissionFlagsBits.EmbedLinks])) {
+                return await sendAsFloofWebhook(message, { content: `❌ I cannot send messages in ${channel}.` });
+            }
+            const options = {
+                title: cfg.rulesTitle,
+                description: cfg.rulesDescription,
+                footer: cfg.rulesFooter,
+                buttonLabel: cfg.rulesButton,
+                assignRoleName: cfg.rulesAssignRole
+            };
+            if (options.assignRoleName && !message.guild.members.me.permissions.has(PermissionFlagsBits.ManageRoles)) {
+                return await sendAsFloofWebhook(message, { content: '❌ I need Manage Roles to auto-assign the configured role.' });
+            }
+            await postRulesMenu(channel, message.guild, options);
+            return await sendAsFloofWebhook(message, { content: `✅ Rules menu posted in ${channel}.` });
+        } catch (e) {
+            console.error('sendRulesMenu error:', e);
+            return await sendAsFloofWebhook(message, { content: '❌ Failed to post rules menu.' });
+        }
+    },
+
+    async sendColorMenu(message, args) {
+        try {
+            // args: [#channel?]
+            const maybeChannel = args[0];
+            const cfg = await this.getConfig(message.guild.id);
+            const channel = maybeChannel ? this.parseChannel(message, maybeChannel)
+                : (cfg.colorsChannel ? message.guild.channels.cache.get(cfg.colorsChannel) : message.channel);
+            if (!channel || channel.type !== ChannelType.GuildText) {
+                return await sendAsFloofWebhook(message, { content: '❌ Please specify a valid text channel.' });
+            }
+            // Ensure color roles exist and bot can manage roles
+            if (!message.guild.members.me.permissions.has(PermissionFlagsBits.ManageRoles)) {
+                return await sendAsFloofWebhook(message, { content: '❌ I need Manage Roles to set up color roles.' });
+            }
+            // Try to set up roles (idempotent)
+            await setupColorRoles(message.guild);
+            const botPerms = channel.permissionsFor(message.guild.members.me);
+            if (!botPerms?.has([PermissionFlagsBits.SendMessages, PermissionFlagsBits.EmbedLinks])) {
+                return await sendAsFloofWebhook(message, { content: `❌ I cannot send messages in ${channel}.` });
+            }
+            const options = { title: cfg.colorTitle, description: cfg.colorDescription };
+            await postColorMenu(channel, options);
+            return await sendAsFloofWebhook(message, { content: `✅ Color menu posted in ${channel}.` });
+        } catch (e) {
+            console.error('sendColorMenu error:', e);
+            return await sendAsFloofWebhook(message, { content: '❌ Failed to post color menu.' });
+        }
+    },
+
+    async setRulesChannel(message, channelInput) {
+        if (!channelInput) {
+            return await sendAsFloofWebhook(message, { content: '❌ Please specify a channel: `%config ruleschannel #channel`' });
+        }
+        const channel = this.parseChannel(message, channelInput);
+        if (!channel || channel.type !== ChannelType.GuildText) {
+            return await sendAsFloofWebhook(message, { content: '❌ Invalid channel. Please mention a valid text channel.' });
+        }
+        await this.updateConfig(message.guild.id, 'rulesChannel', channel.id);
+        const embed = new EmbedBuilder()
+            .setTitle('✅ Rules Channel Set')
+            .setDescription(`Rules menu will default to ${channel}`)
+            .setColor(0x00FF7F);
+        return await sendAsFloofWebhook(message, { embeds: [embed] });
+    },
+
+    async setColorsChannel(message, channelInput) {
+        if (!channelInput) {
+            return await sendAsFloofWebhook(message, { content: '❌ Please specify a channel: `%config colorschannel #channel`' });
+        }
+        const channel = this.parseChannel(message, channelInput);
+        if (!channel || channel.type !== ChannelType.GuildText) {
+            return await sendAsFloofWebhook(message, { content: '❌ Invalid channel. Please mention a valid text channel.' });
+        }
+        await this.updateConfig(message.guild.id, 'colorsChannel', channel.id);
+        const embed = new EmbedBuilder()
+            .setTitle('✅ Colors Channel Set')
+            .setDescription(`Color menu will default to ${channel}`)
+            .setColor(0x00FF7F);
+        return await sendAsFloofWebhook(message, { embeds: [embed] });
+    },
+
+    async setRulesContent(message, args) {
+        if (!args.length) {
+            return await sendAsFloofWebhook(message, { content: 'Usage: `%config rulescontent title:"..." description:"..." footer:"..." button:"..." role:"Member"` (any subset)' });
+        }
+        const joined = args.join(' ');
+        const extract = (key) => {
+            const m = joined.match(new RegExp(key + ':"([\s\S]*?)"'));
+            return m ? m[1] : undefined;
+        };
+        const title = extract('title');
+        const description = extract('description');
+        const footer = extract('footer');
+        const button = extract('button');
+        const role = extract('role');
+        if (title) await this.updateConfig(message.guild.id, 'rulesTitle', title);
+        if (description) {
+            const normalized = description.replace(/\\n/g, '\n');
+            await this.updateConfig(message.guild.id, 'rulesDescription', normalized);
+        }
+        if (footer) await this.updateConfig(message.guild.id, 'rulesFooter', footer);
+        if (button) await this.updateConfig(message.guild.id, 'rulesButton', button);
+        if (role) await this.updateConfig(message.guild.id, 'rulesAssignRole', role);
+        return await sendAsFloofWebhook(message, { content: '✅ Updated rules menu content.' });
+    },
+
+    async setColorContent(message, args) {
+        if (!args.length) {
+            return await sendAsFloofWebhook(message, { content: 'Usage: `%config colorcontent title:"..." description:"..."` (any subset)' });
+        }
+        const joined = args.join(' ');
+        const extract = (key) => {
+            const m = joined.match(new RegExp(key + ':"([\s\S]*?)"'));
+            return m ? m[1] : undefined;
+        };
+        const title = extract('title');
+        const description = extract('description');
+        if (title) await this.updateConfig(message.guild.id, 'colorTitle', title);
+        if (description) {
+            const normalized = description.replace(/\\n/g, '\n');
+            await this.updateConfig(message.guild.id, 'colorDescription', normalized);
+        }
+        return await sendAsFloofWebhook(message, { content: '✅ Updated color menu content.' });
     },
 
     async setModLogChannel(message, channelInput) {
@@ -397,125 +568,16 @@ module.exports = {
         return await sendAsFloofWebhook(message, { embeds: [embed] });
     },
 
+    // Deprecated: admin/user-managed prefix via %config userprefix
     async setUserPrefix(message, args) {
-        const { isOwner } = require('../../utils/owner-util');
-        
-        if (!isOwner(message.author.id) && !message.member?.permissions.has(PermissionFlagsBits.ManageGuild)) {
-            return await sendAsFloofWebhook(message, {
-                content: '❌ You need **Manage Server** permission or be a bot owner to manage user prefixes!'
-            });
-        }
-
-        if (args.length < 2) {
-            return await sendAsFloofWebhook(message, {
-                content: '❌ Usage: `%config userprefix @user <prefix>`\nExample: `%config userprefix @John !`'
-            });
-        }
-
-        const targetUser = message.mentions.users.first();
-        if (!targetUser) {
-            return await sendAsFloofWebhook(message, {
-                content: '❌ Please mention a user! Usage: `%config userprefix @user <prefix>`'
-            });
-        }
-
-        const newPrefix = args.slice(1).join(' ');
-        if (newPrefix.length > 5) {
-            return await sendAsFloofWebhook(message, {
-                content: '❌ Prefix must be 5 characters or less!'
-            });
-        }
-
-        if (newPrefix.includes(' ')) {
-            return await sendAsFloofWebhook(message, {
-                content: '❌ Prefix cannot contain spaces!'
-            });
-        }
-
-        try {
-            const fs = require('fs');
-            const path = require('path');
-            const configPath = path.join(__dirname, '..', '..', 'prefix-config.json');
-            
-            let config = {};
-            if (fs.existsSync(configPath)) {
-                config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
-            }
-            
-            if (!config[message.guild.id]) {
-                config[message.guild.id] = {};
-            }
-            
-            config[message.guild.id][targetUser.id] = {
-                prefix: newPrefix,
-                setBy: message.author.id,
-                setAt: new Date().toISOString()
-            };
-            
-            fs.writeFileSync(configPath, JSON.stringify(config, null, 2));
-
-            const embed = new EmbedBuilder()
-                .setColor('#00ff00')
-                .setTitle('✅ Custom User Prefix Set')
-                .setDescription(`Custom prefix set for **${targetUser.displayName}**`)
-                .addFields(
-                    {
-                        name: '👤 User',
-                        value: targetUser.displayName,
-                        inline: true
-                    },
-                    {
-                        name: '🔧 Prefix',
-                        value: `\`${newPrefix}\``,
-                        inline: true
-                    },
-                    {
-                        name: '👤 Set by',
-                        value: message.author.displayName,
-                        inline: true
-                    }
-                )
-                .setTimestamp();
-
-            await sendAsFloofWebhook(message, { embeds: [embed] });
-        } catch (error) {
-            console.error('Error setting custom user prefix:', error);
-            await sendAsFloofWebhook(message, {
-                content: '❌ Failed to set custom user prefix!'
-            });
-        }
-    },
-
-    async setPrefix(message, newPrefix) {
-        if (!newPrefix) {
-            return await sendAsFloofWebhook(message, {
-                content: '❌ Please specify a prefix: `%config prefix !`'
-            });
-        }
-
-        if (newPrefix.length > 3) {
-            return await sendAsFloofWebhook(message, {
-                content: '❌ Prefix must be 3 characters or less.'
-            });
-        }
-
-        await this.updateConfig(message.guild.id, 'prefix', newPrefix);
-
-        const embed = new EmbedBuilder()
-            .setTitle('✅ Prefix Updated')
-            .setDescription(`Command prefix changed to \`${newPrefix}\``)
-            .setColor(0x00FF7F)
-            .addFields({
-                name: '📝 Example:',
-                value: `Use \`${newPrefix}help\` instead of \`%help\``
-            });
-
-        return await sendAsFloofWebhook(message, { embeds: [embed] });
+        return await sendAsFloofWebhook(message, {
+            content: 'ℹ️ This command is deprecated. Anyone can set their own prefix with `%prefix set <symbol>`.'
+        });
     },
 
     async showCurrentConfig(message) {
         const config = await this.getConfig(message.guild.id);
-        
+
         const embed = new EmbedBuilder()
             .setTitle('⚙️ Current Server Configuration')
             .setDescription(`Configuration for **${message.guild.name}**`)
@@ -558,13 +620,17 @@ module.exports = {
             });
         }
 
-        if (config.prefix) {
-            embed.addFields({
-                name: '🔧 Custom Prefix',
-                value: `\`${config.prefix}\``,
-                inline: true
-            });
+        if (config.rulesChannel) {
+            const channel = message.guild.channels.cache.get(config.rulesChannel);
+            embed.addFields({ name: '📜 Rules Channel', value: channel ? `${channel}` : 'Channel not found', inline: true });
         }
+
+        if (config.colorsChannel) {
+            const channel = message.guild.channels.cache.get(config.colorsChannel);
+            embed.addFields({ name: '🎨 Colors Channel', value: channel ? `${channel}` : 'Channel not found', inline: true });
+        }
+
+        // Deprecated: showing server-wide prefix
 
         if (config.reviveRole) {
             const role = message.guild.roles.cache.get(config.reviveRole);
@@ -612,17 +678,32 @@ module.exports = {
             'gambling': 'gamblingChannel',
             'revive': 'reviveRole',
             'changelog': 'changelogChannel',
-            'prefix': 'prefix'
+            'ruleschannel': 'rulesChannel',
+            'rules-channel': 'rulesChannel',
+            'colorschannel': 'colorsChannel',
+            'colors-channel': 'colorsChannel',
+            'colorchannel': 'colorsChannel',
+            'color-channel': 'colorsChannel',
+            'rulescontent': ['rulesTitle','rulesDescription','rulesFooter','rulesButton','rulesAssignRole'],
+            'rules-content': ['rulesTitle','rulesDescription','rulesFooter','rulesButton','rulesAssignRole'],
+            'colorcontent': ['colorTitle','colorDescription'],
+            'color-content': ['colorTitle','colorDescription']
         };
 
-        const configKey = settingMap[setting.toLowerCase()];
-        if (!configKey) {
+        const keyOrKeys = settingMap[setting.toLowerCase()];
+        if (!keyOrKeys) {
             return await sendAsFloofWebhook(message, {
-                content: '❌ Invalid setting. Available: `modlog`, `roles`, `welcome`, `gambling`, `revive`, `changelog`, `prefix`, `all`'
+                content: '❌ Invalid setting. Available: `modlog`, `roles`, `welcome`, `gambling`, `revive`, `changelog`, `ruleschannel`, `colorschannel`, `rulescontent`, `colorcontent`, `all`'
             });
         }
 
-        await this.updateConfig(message.guild.id, configKey, null, false, true); // Delete specific setting
+        if (Array.isArray(keyOrKeys)) {
+            for (const k of keyOrKeys) {
+                await this.updateConfig(message.guild.id, k, null, false, true);
+            }
+        } else {
+            await this.updateConfig(message.guild.id, keyOrKeys, null, false, true); // Delete specific setting
+        }
         return await sendAsFloofWebhook(message, {
             content: `✅ Reset ${setting} configuration.`
         });

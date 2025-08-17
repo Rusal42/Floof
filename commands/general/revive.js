@@ -12,14 +12,14 @@ module.exports = {
     usage: '%revive',
     category: 'general',
     aliases: [],
-    permissions: [PermissionFlagsBits.ManageMessages],
+    permissions: [PermissionFlagsBits.ManageChannels],
     cooldown: 30,
 
     async execute(message, args) {
-        // Check if user has Manage Messages permission
-        if (!message.member.permissions.has(PermissionFlagsBits.ManageMessages)) {
+        // Check if user has Manage Channels permission
+        if (!message.member.permissions.has(PermissionFlagsBits.ManageChannels)) {
             return await sendAsFloofWebhook(message, {
-                content: '❌ You need the `Manage Messages` permission to use this command!'
+                content: '❌ You need the `Manage Channels` permission to use this command!'
             });
         }
 

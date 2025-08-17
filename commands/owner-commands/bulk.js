@@ -1,4 +1,4 @@
-const { EmbedBuilder, PermissionFlagsBits, ChannelType } = require('discord.js');
+const { EmbedBuilder, PermissionFlagsBits, ChannelType, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const { sendAsFloofWebhook } = require('../../utils/webhook-util');
 const { isOwner } = require('../../utils/owner-util');
 
@@ -297,42 +297,58 @@ module.exports = {
                     value: [
                         '• This action cannot be undone',
                         '• All data will be permanently lost',
-                        '• React with ✅ to confirm or ❌ to cancel'
+                        '• Click "Confirm" to proceed or "Cancel" to abort'
                     ].join('\n'),
                     inline: false
                 }
             )
-            .setFooter({ text: 'React within 30 seconds to confirm' });
+            .setFooter({ text: 'Use the buttons within 30 seconds to confirm' });
 
-        const confirmMessage = await sendAsFloofWebhook(message, { embeds: [embed] });
-        
+        const row = new ActionRowBuilder().addComponents(
+            new ButtonBuilder().setCustomId('confirm_bulk').setLabel('Confirm').setStyle(ButtonStyle.Danger),
+            new ButtonBuilder().setCustomId('cancel_bulk').setLabel('Cancel').setStyle(ButtonStyle.Secondary)
+        );
+
+        const confirmMessage = await sendAsFloofWebhook(message, { embeds: [embed], components: [row] });
+
         try {
-            await confirmMessage.react('✅');
-            await confirmMessage.react('❌');
-
-            const filter = (reaction, user) => {
-                return ['✅', '❌'].includes(reaction.emoji.name) && user.id === message.author.id;
-            };
-
-            const collected = await confirmMessage.awaitReactions({ 
-                filter, 
-                max: 1, 
-                time: 30000, 
-                errors: ['time'] 
+            const collector = confirmMessage.channel.createMessageComponentCollector({
+                filter: (i) => ['confirm_bulk', 'cancel_bulk'].includes(i.customId) && i.user.id === message.author.id && i.message.id === confirmMessage.id,
+                time: 30000,
+                max: 1
             });
 
-            const reaction = collected.first();
+            collector.on('collect', async (interaction) => {
+                await interaction.deferUpdate();
+                const disabledRow = new ActionRowBuilder().addComponents(
+                    ButtonBuilder.from(row.components[0]).setDisabled(true),
+                    ButtonBuilder.from(row.components[1]).setDisabled(true)
+                );
+                await confirmMessage.edit({ components: [disabledRow] });
 
-            if (reaction.emoji.name === '❌') {
-                return await sendAsFloofWebhook(message, {
-                    content: `❌ ${type.charAt(0).toUpperCase() + type.slice(1)} deletion cancelled.`
-                });
-            }
+                if (interaction.customId === 'cancel_bulk') {
+                    return await sendAsFloofWebhook(message, {
+                        content: `❌ ${type.charAt(0).toUpperCase() + type.slice(1)} deletion cancelled.`
+                    });
+                }
 
-            if (reaction.emoji.name === '✅') {
-                return await executeFunction(message, items, type);
-            }
+                if (interaction.customId === 'confirm_bulk') {
+                    return await executeFunction(message, items, type);
+                }
+            });
 
+            collector.on('end', async (collected) => {
+                if (collected.size === 0) {
+                    const disabledRow = new ActionRowBuilder().addComponents(
+                        ButtonBuilder.from(row.components[0]).setDisabled(true),
+                        ButtonBuilder.from(row.components[1]).setDisabled(true)
+                    );
+                    await confirmMessage.edit({ components: [disabledRow] });
+                    await sendAsFloofWebhook(message, {
+                        content: `⏰ Confirmation timed out. ${type.charAt(0).toUpperCase() + type.slice(1)} deletion cancelled.`
+                    });
+                }
+            });
         } catch (error) {
             return await sendAsFloofWebhook(message, {
                 content: `⏰ Confirmation timed out. ${type.charAt(0).toUpperCase() + type.slice(1)} deletion cancelled.`

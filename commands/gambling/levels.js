@@ -188,9 +188,9 @@ module.exports = {
                 {
                     name: '⚙️ **Admin Commands**',
                     value: [
-                        '`%levels config` - Configure leveling system',
-                        '`%levels reset @user` - Reset user\'s XP',
-                        '`%levels reset all` - Reset all XP (dangerous!)'
+                        '`%levels config` - Configure leveling system (Requires: Administrator)',
+                        '`%levels reset @user` - Reset user\'s XP (Requires: Administrator)',
+                        '`%levels reset all` - Reset all XP (dangerous!) (Requires: Administrator)'
                     ].join('\n'),
                     inline: false
                 }
@@ -304,9 +304,9 @@ module.exports = {
     },
 
     async configLevels(message, args) {
-        if (!message.member.permissions.has(PermissionsBitField.Flags.ManageGuild)) {
+        if (!message.member.permissions.has(PermissionsBitField.Flags.Administrator)) {
             const embed = new EmbedBuilder()
-                .setDescription('❌ You need `Manage Server` permission to configure levels.')
+                .setDescription('❌ You need `Administrator` permission to configure levels.')
                 .setColor(0xFF0000);
             return sendAsFloofWebhook(message, { embeds: [embed] });
         }

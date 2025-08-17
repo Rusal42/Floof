@@ -146,10 +146,11 @@ async function updateWebsiteStats(client) {
         const serverCount = client.guilds.cache.size;
         const userCount = client.guilds.cache.reduce((acc, guild) => acc + guild.memberCount, 0);
         const commandsUsed = getCommandUsageCount();
-        const uptime = calculateUptimePercentage();
+        // Real uptime in seconds: prefer Discord client's uptime (ms), fallback to process uptime
+        const uptime = Math.floor(((client?.uptime ?? (process.uptime() * 1000)) || 0) / 1000);
         const ping = client.ws.ping;
 
-        logInfo(`📊 Updating website stats: ${serverCount} servers, ${userCount} users, ${commandsUsed} commands used`);
+        logInfo(`📊 Updating website stats: ${serverCount} servers, ${userCount} users, ${commandsUsed} commands used, uptime ${uptime}s`);
 
         // Only send if we have a valid API token and URL
         if (!BOT_API_TOKEN) {

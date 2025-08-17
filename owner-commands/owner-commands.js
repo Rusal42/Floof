@@ -2,7 +2,7 @@
 // Commands only the bot owner (by user ID) can run.
 
 const { sendAsFloofWebhook } = require('../utils/webhook-util');
-const { EmbedBuilder } = require('discord.js');
+const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 
 module.exports = {
     meowlocked: async (message) => {
@@ -77,42 +77,45 @@ module.exports = {
                 .setFooter({ text: `Showing ${chunk.length} servers` });
         });
         
-        // Send the first embed
-        const reply = await message.channel.send({ embeds: [embeds[0]] });
-        
-        // If there's only one page, we're done
-        if (embeds.length === 1) return;
-        
-        // Add pagination reactions
-        await reply.react('⬅️');
-        await reply.react('➡️');
-        
-        // Pagination logic
+        // Send the first embed with pagination buttons
         let currentPage = 0;
-        const filter = (reaction, user) => {
-            return ['⬅️', '➡️'].includes(reaction.emoji.name) && user.id === message.author.id;
-        };
-        
-        const collector = reply.createReactionCollector({ filter, time: 300000 }); // 5 minutes
-        
-        collector.on('collect', async (reaction, user) => {
+        const getRow = () => new ActionRowBuilder().addComponents(
+            new ButtonBuilder().setCustomId('servers_prev').setEmoji('⬅️').setStyle(ButtonStyle.Secondary).setDisabled(currentPage === 0),
+            new ButtonBuilder().setCustomId('servers_next').setEmoji('➡️').setStyle(ButtonStyle.Secondary).setDisabled(currentPage >= embeds.length - 1)
+        );
+
+        const reply = await message.channel.send({ embeds: [embeds[currentPage]], components: embeds.length > 1 ? [getRow()] : [] });
+
+        if (embeds.length === 1) return;
+
+        const collector = reply.createMessageComponentCollector({
+            filter: (i) => ['servers_prev', 'servers_next'].includes(i.customId) && i.user.id === message.author.id,
+            time: 300000 // 5 minutes
+        });
+
+        collector.on('collect', async (interaction) => {
             try {
-                await reaction.users.remove(user.id);
-                
-                if (reaction.emoji.name === '➡️' && currentPage < embeds.length - 1) {
+                if (interaction.customId === 'servers_next' && currentPage < embeds.length - 1) {
                     currentPage++;
-                } else if (reaction.emoji.name === '⬅️' && currentPage > 0) {
+                } else if (interaction.customId === 'servers_prev' && currentPage > 0) {
                     currentPage--;
                 }
-                
-                await reply.edit({ embeds: [embeds[currentPage]] });
+                await interaction.update({ embeds: [embeds[currentPage]], components: [getRow()] });
             } catch (error) {
                 console.error('Error handling pagination:', error);
             }
         });
-        
-        collector.on('end', () => {
-            reply.reactions.removeAll().catch(console.error);
+
+        collector.on('end', async () => {
+            try {
+                const disabledRow = new ActionRowBuilder().addComponents(
+                    new ButtonBuilder().setCustomId('servers_prev').setEmoji('⬅️').setStyle(ButtonStyle.Secondary).setDisabled(true),
+                    new ButtonBuilder().setCustomId('servers_next').setEmoji('➡️').setStyle(ButtonStyle.Secondary).setDisabled(true)
+                );
+                await reply.edit({ components: [disabledRow] }).catch(() => {});
+            } catch (e) {
+                // ignore
+            }
         });
     },
 

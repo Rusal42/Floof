@@ -20,7 +20,7 @@ function savePrefixConfig(data) {
 module.exports = {
     name: 'prefix',
     description: 'Manage custom prefixes for users',
-    usage: '%prefix set <prefix> | %prefix remove/clear | %prefix list',
+    usage: '%prefix set <prefix> | %prefix remove/clear | %prefix list (Manage Server only)',
     category: 'general',
     aliases: ['setprefix', 'pf'],
     cooldown: 3,
@@ -166,6 +166,14 @@ module.exports = {
     },
 
     async handleListCommand(message, guildId) {
+        // Manage Server only (or bot owner)
+        const canManage = message.member?.permissions?.has(PermissionFlagsBits.ManageGuild);
+        if (!canManage && !isOwner(message.author.id)) {
+            return await sendAsFloofWebhook(message, {
+                content: '❌ You need **Manage Server** permission to list all custom prefixes.'
+            });
+        }
+
         try {
             const config = getPrefixConfig();
             const guildConfig = config[guildId];

@@ -567,7 +567,7 @@ client.on('messageCreate', async (message) => {
     // Check if message starts with command prefix (% or custom prefix)
     
     function getPrefixConfig() {
-        const configPath = path.join(__dirname, 'prefix-config.json');
+        const configPath = path.join(__dirname, 'data', 'prefix-config.json');
         if (fs.existsSync(configPath)) {
             return JSON.parse(fs.readFileSync(configPath, 'utf8'));
         }

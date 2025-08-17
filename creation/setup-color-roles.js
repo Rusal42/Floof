@@ -11,12 +11,12 @@ const COLOR_ROLES = [
   { name: 'Snow White', color: '#f8f8ff' }
 ];
 
-async function sendColorMenu(message) {
+async function postColorMenu(channel, options = {}) {
   const { ActionRowBuilder, StringSelectMenuBuilder, StringSelectMenuOptionBuilder, EmbedBuilder } = require('discord.js');
-  const memberRole = message.guild.roles.cache.find(r => r.name.toLowerCase() === 'member');
-  if (!memberRole) return message.reply('Could not find the Member role.');
-  const colorRoles = COLOR_ROLES.map(r => message.guild.roles.cache.find(role => role.name === r.name)).filter(Boolean);
-  if (colorRoles.length === 0) return message.reply('No color roles found. Please run %setupcolorroles first!');
+  if (!channel || !channel.isTextBased()) throw new Error('Invalid target channel for color menu');
+  const guild = channel.guild;
+  const colorRoles = COLOR_ROLES.map(r => guild.roles.cache.find(role => role.name === r.name)).filter(Boolean);
+  if (colorRoles.length === 0) throw new Error('No color roles found. Run setupColorRoles first.');
 
   const selectMenu = new StringSelectMenuBuilder()
     .setCustomId('floof_color_select')
@@ -29,17 +29,11 @@ async function sendColorMenu(message) {
     );
   const row = new ActionRowBuilder().addComponents(selectMenu);
   const embed = new EmbedBuilder()
-    .setTitle('🎨 Choose Your Name Color!')
-    .setDescription('Pick a color below. You can only have one color role at a time. Changing your color will remove your old color role.')
+    .setTitle(options.title || '🎨 Choose Your Name Color!')
+    .setDescription(options.description || 'Pick a color below. You can only have one color role at a time. Changing your color will remove your old color role.')
     .setColor(0xffb6c1);
 
-  // Send to your role channel
-  const roleChannel = message.guild.channels.cache.get('1393670713042534480');
-  if (roleChannel && roleChannel.isTextBased()) {
-    await roleChannel.send({ embeds: [embed], components: [row] });
-  } else {
-    await message.reply('Could not find the role channel to send the color menu!');
-  }
+  await channel.send({ embeds: [embed], components: [row] });
 }
 
 async function handleColorMenuInteraction(interaction) {
@@ -63,20 +57,17 @@ async function handleColorMenuInteraction(interaction) {
   await interaction.reply({ content: 'Your color role has been updated! ✨', flags: 64 });
 }
 
-async function colormenu(message) {
-  const OWNER_ID = '1007799027716329484';
-  const { ActionRowBuilder, StringSelectMenuBuilder, StringSelectMenuOptionBuilder, EmbedBuilder } = require('discord.js');
-  if (message.author.id !== OWNER_ID) return message.reply('Only the owner can use this command!');
-  if (!message.guild.members.me.permissions.has(PermissionsBitField.Flags.ManageRoles)) {
-    return message.reply('I need the Manage Roles permission to create color roles!');
+async function setupColorRoles(guild, memberRoleName = 'member') {
+  if (!guild.members.me.permissions.has(PermissionsBitField.Flags.ManageRoles)) {
+    throw new Error('Manage Roles permission required to create color roles');
   }
-  const memberRole = message.guild.roles.cache.find(r => r.name.toLowerCase() === 'member');
-  if (!memberRole) return message.reply('Could not find the Member role.');
+  const memberRole = guild.roles.cache.find(r => r.name.toLowerCase() === memberRoleName.toLowerCase());
+  if (!memberRole) throw new Error('Could not find the Member role.');
   let createdRoles = [];
   for (const { name, color } of COLOR_ROLES) {
-    let role = message.guild.roles.cache.find(r => r.name === name);
+    let role = guild.roles.cache.find(r => r.name === name);
     if (!role) {
-      role = await message.guild.roles.create({ name, color, permissions: 0, reason: 'Floof color role setup' });
+      role = await guild.roles.create({ name, color, permissions: 0, reason: 'Floof color role setup' });
     }
     createdRoles.push(role);
   }
@@ -86,33 +77,46 @@ async function colormenu(message) {
       await role.setPosition(memberRole.position + 1);
     }
   }
-  // Now send the color menu
-  const colorRoles = COLOR_ROLES.map(r => message.guild.roles.cache.find(role => role.name === r.name)).filter(Boolean);
-  if (colorRoles.length === 0) return message.reply('No color roles found.');
-  const selectMenu = new StringSelectMenuBuilder()
-    .setCustomId('floof_color_select')
-    .setPlaceholder('Choose your color!')
-    .addOptions(
-      colorRoles.map(role => new StringSelectMenuOptionBuilder()
-        .setLabel(role.name)
-        .setValue(role.id)
-      )
-    );
-  const row = new ActionRowBuilder().addComponents(selectMenu);
-  const embed = new EmbedBuilder()
-    .setTitle('🎨 Choose Your Name Color!')
-    .setDescription('Pick a color below. You can only have one color role at a time. Changing your color will remove your old color role.')
-    .setColor(0xffb6c1);
-  const roleChannel = message.guild.channels.cache.get('1393670713042534480');
-  if (roleChannel && roleChannel.isTextBased()) {
-    await roleChannel.send({ embeds: [embed], components: [row] });
-  } else {
-    await message.reply('Could not find the role channel to send the color menu!');
+  return createdRoles;
+}
+
+// Backward-compatible commands
+async function colormenu(message) {
+  try {
+    if (!message.member?.permissions.has(PermissionsBitField.Flags.Administrator)) {
+      return message.reply('❌ You need Administrator to use this command. Use `%config colormenu` instead.');
+    }
+    await setupColorRoles(message.guild);
+    // optional channel mention as first arg
+    const maybeChannel = (message.content.split(/\s+/)[1]) || '';
+    const channel = /^<#\d+>$/.test(maybeChannel)
+      ? message.guild.channels.cache.get(maybeChannel.replace(/[^\d]/g, ''))
+      : message.channel;
+    await postColorMenu(channel);
+  } catch (err) {
+    await message.reply(String(err.message || err));
+  }
+}
+
+async function sendColorMenu(message) {
+  try {
+    if (!message.member?.permissions.has(PermissionsBitField.Flags.Administrator)) {
+      return message.reply('❌ You need Administrator to use this command. Use `%config colormenu` instead.');
+    }
+    const maybeChannel = (message.content.split(/\s+/)[1]) || '';
+    const channel = /^<#\d+>$/.test(maybeChannel)
+      ? message.guild.channels.cache.get(maybeChannel.replace(/[^\d]/g, ''))
+      : message.channel;
+    await postColorMenu(channel);
+  } catch (err) {
+    await message.reply(String(err.message || err));
   }
 }
 
 module.exports = {
   colormenu,
   handleColorMenuInteraction,
-  sendColorMenu
+  sendColorMenu,
+  setupColorRoles,
+  postColorMenu
 };

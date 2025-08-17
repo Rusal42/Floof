@@ -1,5 +1,5 @@
-const { EmbedBuilder, PermissionFlagsBits } = require('discord.js');
-const { sendAsFloofWebhook } = require('../../utils/webhook-util');
+const { EmbedBuilder, PermissionFlagsBits, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
+const { sendAsFloofWebhook } = require('../utils/webhook-util');
 const fs = require('fs');
 const path = require('path');
 
@@ -43,7 +43,6 @@ function getLevelColor(level) {
 }
 
 function getLevelName(level) {
-    // Find the highest tier name that applies to this level
     const tierLevels = Object.keys(LEVEL_TIERS).map(Number).sort((a, b) => b - a);
     for (const tierLevel of tierLevels) {
         if (level >= tierLevel) {
@@ -54,18 +53,123 @@ function getLevelName(level) {
 }
 
 module.exports = {
-    name: 'createlevelroles_deprecated',
-    aliases: [],
-    description: 'Deprecated: use %createlevelroles (moderation) instead',
-    usage: '%createlevelroles',
-    category: 'owner',
-    ownerOnly: true,
-    cooldown: 3,
+    name: 'createlevelroles',
+    aliases: ['clr', 'makelevelroles', 'autolevelroles'],
+    description: 'Automatically create level roles 1-100 with color progression',
+    usage: '%createlevelroles [start] [end]',
+    category: 'moderation',
+    permissions: [PermissionFlagsBits.Administrator],
+    cooldown: 30,
 
-    async execute(message) {
-        return await sendAsFloofWebhook(message, {
-            content: 'ℹ️ This command has moved. Please use **%createlevelroles** (now under Moderation, requires Administrator).'
-        });
+    async execute(message, args) {
+        // Check if user has Administrator permission
+        if (!message.member.permissions.has(PermissionFlagsBits.Administrator)) {
+            return await sendAsFloofWebhook(message, {
+                content: '❌ You need the **Administrator** permission to use this command.'
+            });
+        }
+
+        // Check bot permissions
+        if (!message.guild.members.me.permissions.has(PermissionFlagsBits.ManageRoles)) {
+            return await sendAsFloofWebhook(message, {
+                content: '❌ I need the **Manage Roles** permission to create level roles!'
+            });
+        }
+
+        // Parse arguments for custom range
+        let startLevel = 1;
+        let endLevel = 100;
+
+        if (args.length >= 1) {
+            const start = parseInt(args[0]);
+            if (!isNaN(start) && start >= 1 && start <= 100) {
+                startLevel = start;
+            }
+        }
+
+        if (args.length >= 2) {
+            const end = parseInt(args[1]);
+            if (!isNaN(end) && end >= startLevel && end <= 100) {
+                endLevel = end;
+            }
+        }
+
+        const totalRoles = endLevel - startLevel + 1;
+
+        // Confirmation embed
+        const confirmEmbed = new EmbedBuilder()
+            .setTitle('🎭 Level Role Creation')
+            .setDescription(`About to create **${totalRoles}** level roles (Level ${startLevel}-${endLevel})`)
+            .setColor('#FFD700')
+            .addFields(
+                {
+                    name: '📊 Details',
+                    value: [
+                        `**Range:** Level ${startLevel} to ${endLevel}`,
+                        `**Total Roles:** ${totalRoles}`,
+                        `**Color System:** 10 different colors with progression`,
+                        `**Naming:** Tier-based names (Newcomer, Elite, Legend, etc.)`
+                    ].join('\n'),
+                    inline: false
+                },
+                {
+                    name: '⚠️ Warning',
+                    value: [
+                        '• This will create many roles in your server',
+                        '• Existing roles with same names will be skipped',
+                        '• Process may take 1-2 minutes to complete',
+                        '• Click "Confirm" to proceed or "Cancel" to abort'
+                    ].join('\n'),
+                    inline: false
+                }
+            )
+            .setFooter({ text: 'Use the buttons within 30 seconds to confirm' });
+
+        const row = new ActionRowBuilder().addComponents(
+            new ButtonBuilder().setCustomId('confirm_clr').setLabel('Confirm').setStyle(ButtonStyle.Success),
+            new ButtonBuilder().setCustomId('cancel_clr').setLabel('Cancel').setStyle(ButtonStyle.Danger)
+        );
+
+        const confirmMessage = await sendAsFloofWebhook(message, { embeds: [confirmEmbed], components: [row] });
+
+        try {
+            const collector = confirmMessage.channel.createMessageComponentCollector({
+                filter: (i) => ['confirm_clr', 'cancel_clr'].includes(i.customId) && i.user.id === message.author.id && i.message.id === confirmMessage.id,
+                time: 30000,
+                max: 1
+            });
+
+            collector.on('collect', async (interaction) => {
+                await interaction.deferUpdate();
+                // disable buttons
+                const disabledRow = new ActionRowBuilder().addComponents(
+                    ButtonBuilder.from(row.components[0]).setDisabled(true),
+                    ButtonBuilder.from(row.components[1]).setDisabled(true)
+                );
+                await confirmMessage.edit({ components: [disabledRow] });
+
+                if (interaction.customId === 'cancel_clr') {
+                    return await sendAsFloofWebhook(message, { content: '❌ Level role creation cancelled.' });
+                }
+
+                if (interaction.customId === 'confirm_clr') {
+                    return await this.createLevelRoles(message, startLevel, endLevel);
+                }
+            });
+
+            collector.on('end', async (collected) => {
+                if (collected.size === 0) {
+                    const disabledRow = new ActionRowBuilder().addComponents(
+                        ButtonBuilder.from(row.components[0]).setDisabled(true),
+                        ButtonBuilder.from(row.components[1]).setDisabled(true)
+                    );
+                    await confirmMessage.edit({ components: [disabledRow] });
+                    await sendAsFloofWebhook(message, { content: '⏰ Confirmation timed out. Level role creation cancelled.' });
+                }
+            });
+        } catch (error) {
+            return await sendAsFloofWebhook(message, { content: '⏰ Confirmation timed out. Level role creation cancelled.' });
+        }
     },
 
     async createLevelRoles(message, startLevel, endLevel) {
@@ -97,7 +201,7 @@ module.exports = {
                 }
 
                 // Create the role
-                const newRole = await message.guild.roles.create({
+                await message.guild.roles.create({
                     name: roleName,
                     color: roleColor,
                     permissions: '0', // No special permissions
@@ -110,13 +214,13 @@ module.exports = {
                 // Small delay to avoid rate limits
                 if (level % 10 === 0) {
                     await new Promise(resolve => setTimeout(resolve, 1000));
-                    
+
                     // Update progress every 10 roles
                     const updateEmbed = new EmbedBuilder()
                         .setTitle('🔄 Creating Level Roles...')
                         .setDescription(`Progress: ${level}/${endLevel} roles processed\nCreated: ${createdCount} | Skipped: ${skippedCount}`)
                         .setColor('#FFA500');
-                    
+
                     await progressMessage.edit({ embeds: [updateEmbed] });
                 }
 
@@ -170,10 +274,10 @@ module.exports = {
 
     async autoConfigureLevelRoles(message, startLevel, endLevel) {
         try {
-            // Load leveling system config
-            const levelConfigPath = path.join(__dirname, '..', '..', 'level-config.json');
+            // Load leveling system config (project root level-config.json for compatibility with existing logic)
+            const levelConfigPath = path.join(__dirname, '..', 'level-config.json');
             let config = {};
-            
+
             if (fs.existsSync(levelConfigPath)) {
                 config = JSON.parse(fs.readFileSync(levelConfigPath, 'utf8'));
             }
@@ -195,7 +299,7 @@ module.exports = {
             for (let level = startLevel; level <= endLevel; level++) {
                 const roleName = getLevelName(level);
                 const role = message.guild.roles.cache.find(r => r.name === roleName);
-                
+
                 if (role) {
                     config[message.guild.id].levelRoles[level] = role.id;
                 }

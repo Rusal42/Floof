@@ -1,27 +1,40 @@
 const { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder, PermissionsBitField } = require('discord.js');
+const fs = require('fs');
+const path = require('path');
 
-// Usage: %makerulesmenu [roleName]
-// Posts the rules with an "I agree" button. Assigns roleName if provided.
-async function makeRulesMenu(message, args) {
-    const OWNER_ID = '1007799027716329484';
-    const TARGET_CHANNEL_ID = '1393667672511746099';
-    if (message.author.id !== OWNER_ID) return;
-    const assignRoleName = args[1];
-    if (!message.guild.members.me.permissions.has(PermissionsBitField.Flags.ManageRoles)) {
-        return message.reply('Floof needs Manage Roles permission to assign roles!');
+const CONFIG_FILE = path.join(process.cwd(), 'data', 'server-configs.json');
+
+function getServerConfig(guildId) {
+    try {
+        const raw = fs.readFileSync(CONFIG_FILE, 'utf8');
+        const all = JSON.parse(raw);
+        return all[guildId] || {};
+    } catch {
+        return {};
+    }
+}
+
+// Usage: %makerulesmenu [#channel] [roleName]
+// Posts the rules with an "I agree" button. Options allow custom title/description/footer/button.
+// options: { title?, description?, footer?, buttonLabel?, assignRoleName? }
+async function postRulesMenu(channel, guild, options = {}) {
+    const { title, description, footer, buttonLabel, assignRoleName } = options;
+    // Ensure bot can manage roles if an assign role is specified
+    if (assignRoleName && !guild.members.me.permissions.has(PermissionsBitField.Flags.ManageRoles)) {
+        throw new Error('Manage Roles permission required to assign roles from rules menu');
     }
     // Find or create the role if specified
     let assignRole = null;
     if (assignRoleName) {
-        assignRole = message.guild.roles.cache.find(r => r.name === assignRoleName);
+        assignRole = guild.roles.cache.find(r => r.name === assignRoleName);
         if (!assignRole) {
             try {
-                assignRole = await message.guild.roles.create({ name: assignRoleName, reason: 'Floof rules menu setup' });
+                assignRole = await guild.roles.create({ name: assignRoleName, reason: 'Floof rules menu setup' });
             } catch {}
         }
     }
 
-    const rules = [
+    const defaultRules = [
         'Be kind and respectful! ✨',
         'No spam or self-promo.',
         'Keep things cozy and safe for all floofs.',
@@ -33,24 +46,26 @@ async function makeRulesMenu(message, args) {
     ];
 
     const embed = new EmbedBuilder()
-        .setTitle('🐾 Floof\'s Fluffy Den Rules')
-        .setDescription(rules.map((r, i) => `${i + 1}. ${r}`).join('\n'))
-        .setColor(0xffb6c1)
-        .setFooter({ text: 'Click the button below to agree and join the fluff!' });
+        .setTitle(title || '🐾 Floof\'s Fluffy Den Rules')
+        .setDescription(
+            description
+                ? description
+                : defaultRules.map((r, i) => `${i + 1}. ${r}`).join('\n')
+        )
+        .setColor(0xffb6c1);
+    if (footer) embed.setFooter({ text: footer });
 
     const row = new ActionRowBuilder().addComponents(
         new ButtonBuilder()
             .setCustomId('floof_rules_agree')
-            .setLabel('I agree! 🐾')
+            .setLabel(buttonLabel || 'I agree! 🐾')
             .setStyle(ButtonStyle.Success)
     );
 
-    const channel = message.guild.channels.cache.get(TARGET_CHANNEL_ID);
     if (!channel || !channel.isTextBased()) {
-        return message.reply('Could not find the target channel for the rules menu!');
+        throw new Error('Invalid target channel for the rules menu');
     }
     await channel.send({ embeds: [embed], components: [row] });
-    await message.reply('Rules menu sent to <#' + TARGET_CHANNEL_ID + '>!');
 }
 
 // Handler for the rules button
@@ -58,8 +73,10 @@ async function handleRulesMenuInteraction(interaction) {
     if (!interaction.isButton()) return;
     if (interaction.customId !== 'floof_rules_agree') return;
     const member = interaction.member;
-    // Always assign the 'Member' role when the button is pressed
-    const assignRole = interaction.guild.roles.cache.find(r => r.name.toLowerCase() === 'member');
+    // Assign configured role (default: Member)
+    const cfg = getServerConfig(interaction.guild.id);
+    const roleName = (cfg.rulesAssignRole || 'Member').toLowerCase();
+    const assignRole = interaction.guild.roles.cache.find(r => r.name.toLowerCase() === roleName);
     if (!assignRole) {
         return interaction.reply({ content: 'Sorry, I could not find the "Member" role! Please let a mod know.', flags: 64 });
     }
@@ -75,4 +92,24 @@ async function handleRulesMenuInteraction(interaction) {
     }
 }
 
-module.exports = { makeRulesMenu, handleRulesMenuInteraction };
+// Backward-compatible command-style function. Accepts optional #channel and role name.
+async function makeRulesMenu(message, args) {
+    if (!message.member?.permissions.has(PermissionsBitField.Flags.Administrator)) {
+        return message.reply('❌ You need Administrator to use this command. Use `%config rulesmenu` instead.');
+    }
+    const maybeChannel = args[0];
+    const roleArg = args[1];
+    const channel = maybeChannel && /^<#\d+>$/.test(maybeChannel)
+        ? message.guild.channels.cache.get(maybeChannel.replace(/[^\d]/g, ''))
+        : message.channel;
+    try {
+        await postRulesMenu(channel, message.guild, roleArg);
+        if (channel && channel.id !== message.channel.id) {
+            await message.reply(`Rules menu sent to ${channel}!`);
+        }
+    } catch (e) {
+        await message.reply('Failed to send rules menu: ' + e.message);
+    }
+}
+
+module.exports = { makeRulesMenu, handleRulesMenuInteraction, postRulesMenu };
