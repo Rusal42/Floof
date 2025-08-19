@@ -8,7 +8,7 @@ const DEFAULT_AUTOMOD_CONFIG = {
     spam: {
         enabled: true,
         maxMessages: 5,        // Max messages in timeframe
-        timeWindow: 10000,     // Time window in ms (10 seconds)
+        timeWindow: 5000,      // Time window in ms (5 seconds)
         // Dynamic mute settings
         muteTime: 300000,      // Backward-compat base mute (ms)
         muteBase: 300000,      // Base mute duration (ms) when threshold exceeded (default 5m)
@@ -34,14 +34,16 @@ const DEFAULT_AUTOMOD_CONFIG = {
     // Discord invite link detection
     invites: {
         enabled: true,
-        action: 'delete',      // 'delete', 'warn', or 'mute'
+        action: 'mute',        // default: 10m timeout
+        muteTime: 600000,      // 10 minutes (ms)
         allowedDomains: [],    // Whitelist specific servers if needed
     },
     
     // Link protection (simple on/off with whitelist)
     links: {
         enabled: true,
-        action: 'delete',      // 'delete', 'warn', or 'mute'
+        action: 'mute',        // default: 10m timeout
+        muteTime: 600000,      // 10 minutes (ms)
         whitelist: []          // Array of user IDs allowed to send links
     },
     
@@ -57,6 +59,15 @@ const DEFAULT_AUTOMOD_CONFIG = {
         enabled: true,
         minRepeats: 4,        // Number of similar messages in a row to trigger
         action: 'warn'        // Action on detection
+    },
+
+    // Wall of text detection
+    wallText: {
+        enabled: true,
+        maxLength: 1500,      // Characters threshold
+        maxLines: 25,         // Lines threshold
+        action: 'mute',
+        muteTime: 300000      // 5 minutes (ms)
     }
 };
 
@@ -70,6 +81,33 @@ function readServerConfig() {
         return JSON.parse(raw);
     } catch {
         return {};
+    }
+}
+
+/**
+ * Check for wall of text (too many characters or lines)
+ */
+function checkWallText(message, config) {
+    try {
+        const content = message.content || '';
+        const maxLen = config.wallText?.maxLength ?? 1500;
+        const maxLines = config.wallText?.maxLines ?? 25;
+        const lineCount = content.split('\n').length;
+
+        if (content.length > maxLen || lineCount > maxLines) {
+            return {
+                type: 'wallText',
+                violation: true,
+                reason: content.length > maxLen
+                    ? `Message too long (${content.length} > ${maxLen} chars)`
+                    : `Too many lines (${lineCount} > ${maxLines})`,
+                action: config.wallText.action || 'mute',
+                duration: (config.wallText.action === 'mute') ? (config.wallText.muteTime || 300000) : undefined
+            };
+        }
+        return { violation: false };
+    } catch (_) {
+        return { violation: false };
     }
 }
 
@@ -155,11 +193,17 @@ async function handleAutoModeration(message) {
         const linkResult = checkLinkSpam(message, guildConfig);
         if (linkResult.violation) violations.push(linkResult);
     }
-    
+
     // Check for mention spam
     if (guildConfig.mentions.enabled) {
         const mentionResult = checkMentionSpam(message, guildConfig);
         if (mentionResult.violation) violations.push(mentionResult);
+    }
+
+    // Check for wall of text
+    if (guildConfig.wallText?.enabled) {
+        const wallResult = checkWallText(message, guildConfig);
+        if (wallResult.violation) violations.push(wallResult);
     }
     
     // Process violations
@@ -193,7 +237,7 @@ function checkSimilarSpam(message, config) {
         return {
             type: 'similarSpam',
             violation: true,
-            reason: `Sent ${keep + 1} very similar messages in a row`,
+            reason: `Similar message spam`,
             action: config.similarSpam.action || 'warn',
             duration: (config.similarSpam.action === 'mute')
                 ? (config.similarSpam.muteTime || 300000)
@@ -239,7 +283,8 @@ function checkSpam(message, config) {
             isSpam: true,
             reason: `Sent ${recentMessages.length} messages in ${config.spam.timeWindow / 1000} seconds`,
             action: 'mute',
-            duration
+            duration,
+            windowMs: config.spam.timeWindow
         };
     }
     
@@ -317,6 +362,7 @@ function checkLinkSpam(message, config) {
             violation: true,
             reason: `Posted ${links.length} link(s) (links are disabled for non-whitelisted users)`,
             action: config.links.action,
+            duration: (config.links.action === 'mute') ? (config.links.muteTime || 600000) : undefined,
             linkCount: links.length
         };
     }
@@ -353,6 +399,7 @@ function checkDiscordInvites(message, config) {
             violation: true,
             reason: `Posted Discord server invite links: ${foundInvites.join(', ')}`,
             action: config.invites.action,
+            duration: (config.invites.action === 'mute') ? (config.invites.muteTime || 600000) : undefined,
             invites: foundInvites
         };
     }
@@ -364,9 +411,12 @@ function checkDiscordInvites(message, config) {
  * Check for mention spam
  */
 function checkMentionSpam(message, config) {
-    const totalMentions = message.mentions.users.size + message.mentions.roles.size;
-    
-    if (totalMentions > config.mentions.maxMentions) {
+    const userMentions = message.mentions.users?.size || 0;
+    const roleMentions = message.mentions.roles?.size || 0;
+    const everyoneHere = message.mentions.everyone ? 1 : 0; // counts @everyone/@here
+    const totalMentions = userMentions + roleMentions + everyoneHere;
+
+    if (totalMentions >= config.mentions.maxMentions) {
         return {
             type: 'mentionSpam',
             violation: true,
@@ -379,66 +429,87 @@ function checkMentionSpam(message, config) {
     return { violation: false };
 }
 
+// Delete prior spam messages from the same user within the spam window
+async function cleanupSpamMessages(message, windowMs) {
+    try {
+        const now = Date.now();
+        // Fetch recent messages (cap at 50 to limit API calls)
+        const fetched = await message.channel.messages.fetch({ limit: 50 });
+        const toDelete = fetched.filter(m =>
+            m.author?.id === message.author.id &&
+            (now - (m.createdTimestamp || 0)) <= windowMs &&
+            m.id !== message.id
+        );
+        for (const [, msg] of toDelete) {
+            try { await msg.delete(); } catch (_) {}
+        }
+    } catch (e) {
+        console.log('Spam cleanup failed:', e.message);
+    }
+}
+
 /**
  * Process violations and take appropriate action
  */
 async function processViolations(message, violations) {
     const userId = message.author.id;
     
-    // Delete message if any violation requires it
-    const shouldDelete = violations.some(v => v.action === 'delete');
-    if (shouldDelete) {
-        try {
-            await message.delete();
-        } catch (error) {
-            console.log('Could not delete message:', error.message);
-        }
-    }
-    
-    // Handle muting
-    const muteViolation = violations.find(v => v.action === 'mute');
-    if (muteViolation) {
-        await muteUser(message.member, muteViolation.duration || 300000, muteViolation.reason);
-    }
-    
-    // Handle warnings
-    const warnViolations = violations.filter(v => v.action === 'warn');
-    if (warnViolations.length > 0) {
-        await warnUser(message, warnViolations);
-    }
-    
-    // Public notification in channel about the action taken (styled embed)
+    // If spam detected, clean up prior messages within the spam window
     try {
-        const primary = getPrimaryAction(violations);
-        if (primary) {
-            const mins = primary.action === 'mute' && (primary.duration || 0) > 0
-                ? Math.max(1, Math.round((primary.duration || 0) / 60000))
-                : null;
-            let title;
-            if (primary.action === 'mute') {
-                title = `${message.author.tag} has been timed out for ${mins}m`;
-            } else if (primary.action === 'warn') {
-                title = `${message.author.tag} has been warned`;
-            } else if (primary.action === 'delete') {
-                title = `${message.author.tag}'s message was removed`;
-            } else {
-                title = `${message.author.tag} actioned`;
-            }
+        const spamV = violations.find(v => v.type === 'spam' && v.windowMs);
+        if (spamV && spamV.windowMs) {
+            await cleanupSpamMessages(message, spamV.windowMs);
+        }
+    } catch (_) {}
+    
+    // Always escalate: convert all violations to a timeout (mute) action
+    const DEFAULT_TIMEOUT = 300000; // 5 minutes
+    const escalated = violations.map(v => ({
+        ...v,
+        action: 'mute',
+        duration: v.duration || DEFAULT_TIMEOUT
+    }));
 
-            const reason = primary.reason || violations.map(v => v.reason).filter(Boolean).join('; ');
+    // Delete message since we are timing out
+    try {
+        await message.delete();
+    } catch (error) {
+        console.log('Could not delete message:', error.message);
+    }
+
+    // Apply timeout (use the strongest/first violation for duration/reason)
+    const primary = getPrimaryAction(escalated) || escalated[0];
+    if (primary) {
+        await muteUser(message.member, primary.duration || DEFAULT_TIMEOUT, primary.reason);
+        // Clear tracked histories so future detection starts fresh post-timeout
+        try {
+            userMessageHistory.delete(userId);
+            userContentHistory.delete(userId);
+            userWarnings.delete(userId);
+        } catch (_) {}
+    }
+
+    // Public notification in channel: only show timeout message
+    try {
+        if (primary) {
+            const mins = Math.max(1, Math.round((primary.duration || DEFAULT_TIMEOUT) / 60000));
+            const title = `${message.author.tag} has been timed out for ${mins}m`;
+            const hasInvite = escalated.some(v => v.type === 'discordInvites');
+            const reason = hasInvite
+                ? 'Sending server invite links'
+                : (primary.reason || escalated.map(v => v.reason).filter(Boolean).join('; '));
 
             const embed = new EmbedBuilder()
                 .setTitle(title)
                 .setColor(0xff6961)
-                .addFields({ name: 'Reason', value: reason || 'No reason provided' })
-                .setFooter({ text: `${message.author.tag} | ${message.author.id}` });
+                .addFields({ name: 'Reason', value: reason || 'No reason provided' });
 
             await message.channel.send({ embeds: [embed] });
         }
     } catch (_) {}
 
     // Log to moderation channel
-    await logViolation(message, violations);
+    await logViolation(message, escalated);
 }
 
 // Determine the strongest action among violations for public notification
@@ -569,8 +640,7 @@ function logToInfractions(message, violations) {
  * Log violation to moderation channel
  */
 async function logViolation(message, violations) {
-    // Log to infractions.json first
-    logToInfractions(message, violations);
+    // Do not write automod actions to infractions.json; only human-issued warnings should be recorded
     // Resolve per-guild mod log channel
     const guildCfg = getGuildConfig(message.guild.id);
     const modLogId = guildCfg.modLogChannel;
@@ -579,19 +649,22 @@ async function logViolation(message, violations) {
     if (!modChannel) return;
     
     const embed = new EmbedBuilder()
-        .setTitle('🛡️ Auto-Moderation Action')
-        .setDescription(`**User:** ${message.author} (${message.author.tag})\n**Channel:** ${message.channel}\n**Action:** ${violations.map(v => v.action).join(', ')}\n\n**Violations:**\n${violations.map(v => `• **${v.type}**: ${v.reason}`).join('\n')}`)
+        .setTitle('🛡️ Auto-Moderation')
+        .setDescription(`**User:** ${message.author} (${message.author.tag})\n**Channel:** ${message.channel}\n**Action:** ${violations.map(v => v.action).join(', ')}`)
         .setColor(0xff6961)
         .setTimestamp()
-        .setFooter({ text: 'Floof Auto-Moderation' });
-    
-    if (message.content && message.content.length > 0) {
+        .addFields(
+            { name: 'Reason', value: violations.map(v => v.reason).filter(Boolean).join('; ') || 'No reason provided' }
+        );
+    // If link-related violation, include the exact message content for moderator review
+    const hasLinkViolation = violations.some(v => v.type === 'linkSpam' || v.type === 'discordInvites');
+    if (hasLinkViolation && message.content && message.content.length > 0) {
         embed.addFields({
-            name: 'Original Message',
+            name: 'Message',
             value: message.content.length > 1000 ? message.content.substring(0, 1000) + '...' : message.content
         });
     }
-    
+
     await modChannel.send({ embeds: [embed] });
 }
 

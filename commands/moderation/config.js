@@ -137,7 +137,8 @@ module.exports = {
                         value: [
                             '`%config automod view` - View current automod settings',
                             '`%config automod enable <module>` | `disable <module>`',
-                            'Modules: spam, links, invites, caps, mentions, badwords, similarspam'
+                            'Modules: spam, links, invites, caps, mentions, badwords, similarspam, walltext',
+                            '`%config automod enable all` - Enable all modules with defaults'
                         ].join('\n')
                     },
                     {
@@ -172,6 +173,10 @@ module.exports = {
                         value: '`%config automod badwords add <word>` | `remove <word>` | `list` | `clear` | `action <delete|warn|mute>`'
                     },
                     {
+                        name: 'Wall of Text',
+                        value: '`%config automod set walltext maxlen <chars>` | `walltext maxlines <n>` | `walltext action <delete|warn|mute>` | `walltext mutetime <minutes>`'
+                    },
+                    {
                         name: 'Reset',
                         value: '`%config automod reset [module|all]`'
                     }
@@ -188,19 +193,31 @@ module.exports = {
             await this.updateConfig(guildId, 'automod', automod);
         };
 
-        const modules = ['spam','links','invites','caps','mentions','badwords','similarspam'];
+        const modules = ['spam','links','invites','caps','mentions','badwords','similarspam','walltext'];
         const ensure = (key, def) => {
             if (!automod[key]) automod[key] = { ...def };
         };
 
         // Defaults to align with automod.js
-        ensure('spam', { enabled: true, maxMessages: 5, timeWindow: 10000, muteTime: 300000 });
-        ensure('badWords', { enabled: false, words: [], action: 'delete' });
-        ensure('caps', { enabled: false, threshold: 0.7, minLength: 10, action: 'warn' });
-        ensure('invites', { enabled: true, action: 'delete', allowedDomains: [] });
-        ensure('links', { enabled: true, action: 'delete', whitelist: [] });
-        ensure('mentions', { enabled: true, maxMentions: 5, action: 'delete' });
-        ensure('similarSpam', { enabled: true, minRepeats: 4, action: 'warn', muteTime: 300000 });
+        const defaults = {
+            spam: { enabled: true, maxMessages: 5, timeWindow: 5000, muteTime: 300000, muteBase: 300000, muteStep: 120000, muteMax: 900000 },
+            badWords: { enabled: false, words: [], action: 'delete' },
+            caps: { enabled: false, threshold: 0.7, minLength: 10, action: 'warn' },
+            invites: { enabled: true, action: 'mute', muteTime: 600000, allowedDomains: [] },
+            links: { enabled: true, action: 'mute', muteTime: 600000, whitelist: [] },
+            mentions: { enabled: true, maxMentions: 5, action: 'delete' },
+            similarSpam: { enabled: true, minRepeats: 4, action: 'warn', muteTime: 300000 },
+            wallText: { enabled: true, maxLength: 1500, maxLines: 25, action: 'mute', muteTime: 300000 }
+        };
+
+        ensure('spam', defaults.spam);
+        ensure('badWords', defaults.badWords);
+        ensure('caps', defaults.caps);
+        ensure('invites', defaults.invites);
+        ensure('links', defaults.links);
+        ensure('mentions', defaults.mentions);
+        ensure('similarSpam', defaults.similarSpam);
+        ensure('wallText', defaults.wallText);
 
         const sendOK = async (text) => sendAsFloofWebhook(message, { content: `✅ ${text}` });
         const sendErr = async (text) => sendAsFloofWebhook(message, { content: `❌ ${text}` });
@@ -218,13 +235,26 @@ module.exports = {
                 'caps': 'caps',
                 'mention': 'mentions', 'mentions': 'mentions',
                 'bw': 'badWords', 'bad': 'badWords', 'badwords': 'badWords',
-                'sim': 'similarSpam', 'simspam': 'similarSpam', 'similarspam': 'similarSpam', 'similar': 'similarSpam'
+                'sim': 'similarSpam', 'simspam': 'similarSpam', 'similarspam': 'similarSpam', 'similar': 'similarSpam',
+                'wall': 'wallText', 'walltext': 'wallText', 'wall-text': 'wallText'
             };
             const modRaw = args[1]?.toLowerCase();
+            // Special: enable/disable all modules at once
+            if (modRaw === 'all' || modRaw === '*') {
+                const keys = Object.keys(defaults);
+                for (const key of keys) {
+                    const current = automod[key] || {};
+                    // Apply defaults while preserving any existing custom values
+                    automod[key] = { ...defaults[key], ...current, enabled: (sub === 'enable') };
+                }
+                await save();
+                return await sendOK(`${sub === 'enable' ? 'Enabled' : 'Disabled'} all modules${sub === 'enable' ? ' with defaults' : ''}.`);
+            }
             const k = moduleAlias[modRaw];
             if (!k || !automod[k]) return await sendErr('Specify a valid module to enable/disable.');
-            automod[k] = automod[k] || {};
-            automod[k].enabled = (sub === 'enable');
+            // When enabling a single module, make sure its defaults are present
+            const current = automod[k] || {};
+            automod[k] = { ...defaults[k], ...current, enabled: (sub === 'enable') };
             await save();
             return await sendOK(`${k} ${sub}d.`);
         }
@@ -237,7 +267,8 @@ module.exports = {
                 'caps': 'caps',
                 'mention': 'mentions', 'mentions': 'mentions',
                 'bw': 'badWords', 'bad': 'badWords', 'badwords': 'badWords',
-                'sim': 'similarSpam', 'simspam': 'similarSpam', 'similarspam': 'similarSpam', 'similar': 'similarSpam'
+                'sim': 'similarSpam', 'simspam': 'similarSpam', 'similarspam': 'similarSpam', 'similar': 'similarSpam',
+                'wall': 'wallText', 'walltext': 'wallText', 'wall-text': 'wallText'
             };
             const keyAlias = {
                 'max': 'max',
@@ -249,7 +280,8 @@ module.exports = {
                 'action': 'action', 'act': 'action',
                 'minrepeats': 'minrepeats', 'repeats': 'minrepeats', 'min': 'minrepeats',
                 'threshold': 'threshold', 'th': 'threshold',
-                'minlen': 'minlen', 'minlength': 'minlen'
+                'minlen': 'minlen', 'minlength': 'minlen',
+                'maxlen': 'maxlen', 'maxlength': 'maxlen', 'maxlines': 'maxlines'
             };
             const modRaw = args[1]?.toLowerCase();
             const keyRaw = args[2]?.toLowerCase();
@@ -284,14 +316,18 @@ module.exports = {
                         if (key === 'action') {
                             const a = parseAction(val); if (!a) return await sendErr('Action must be delete|warn|mute');
                             automod.links.action = a;
-                        } else return await sendErr('Keys: action');
+                        } else if (key === 'mutetime') {
+                            automod.links.muteTime = Math.max(60000, Math.floor(parseFloat(val) * 60000));
+                        } else return await sendErr('Keys: action, mutetime (min)');
                         break;
                     }
                     case 'invites': {
                         if (key === 'action') {
                             const a = parseAction(val); if (!a) return await sendErr('Action must be delete|warn|mute');
                             automod.invites.action = a;
-                        } else return await sendErr('Keys: action');
+                        } else if (key === 'mutetime') {
+                            automod.invites.muteTime = Math.max(60000, Math.floor(parseFloat(val) * 60000));
+                        } else return await sendErr('Keys: action, mutetime (min)');
                         break;
                     }
                     case 'mentions': {
@@ -333,6 +369,19 @@ module.exports = {
                         } else return await sendErr('Keys: minrepeats, action, mutetime (min)');
                         break;
                     }
+                    case 'wallText': {
+                        if (key === 'maxlen') {
+                            automod.wallText.maxLength = Math.max(200, parseInt(val));
+                        } else if (key === 'maxlines') {
+                            automod.wallText.maxLines = Math.max(5, parseInt(val));
+                        } else if (key === 'action') {
+                            const a = parseAction(val); if (!a) return await sendErr('Action must be delete|warn|mute');
+                            automod.wallText.action = a;
+                        } else if (key === 'mutetime') {
+                            automod.wallText.muteTime = Math.max(60000, Math.floor(parseFloat(val) * 60000));
+                        } else return await sendErr('Keys: maxlen, maxlines, action, mutetime (min)');
+                        break;
+                    }
                     default:
                         return await sendErr('Unknown module for set.');
                 }
@@ -341,7 +390,7 @@ module.exports = {
             }
 
             await save();
-            return await sendOK(`Updated ${mod} ${key}.`);
+            return await sendOK(`Updated ${m} ${key}.`);
         }
 
         if (sub === 'badwords') {
@@ -420,9 +469,14 @@ module.exports = {
                         '`%config welcome #channel` - Set welcome channel',
                         '`%config gambling #channel` - Set gambling channel',
                         '`%config revive @role` - Set revive notification role',
-                        '`%config changelog #channel` - Set changelog channel',
                         '`%config automod` - Configure automod (spam, badwords, links, invites, caps, mentions)',
-                        '`%config ruleschannel #channel` - Set default rules menu channel',
+                        '`%config ruleschannel #channel` - Set default rules menu channel'
+                    ].join('\n'),
+                    inline: false
+                },
+                {
+                    name: '📋 More Settings',
+                    value: [
                         '`%config colorschannel #channel` - Set default color menu channel',
                         '`%config rulescontent title:"..." description:"..." footer:"..." button:"..." role:"Member"` - Customize rules menu',
                         '`%config colorcontent title:"..." description:"..."` - Customize color menu',

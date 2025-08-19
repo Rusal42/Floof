@@ -35,7 +35,7 @@ module.exports = {
 
     async execute(message, args) {
         if (!(await requirePerms(message, PermissionFlagsBits.ManageChannels, 'manage sticky messages'))) return;
-        if (!(await requireBotPermsInChannel(message, message.channel, [PermissionFlagsBits.SendMessages, PermissionFlagsBits.ManageMessages], 'post and manage sticky messages'))) return;
+        if (!(await requireBotPermsInChannel(message, message.channel, [PermissionFlagsBits.SendMessages, PermissionFlagsBits.ManageMessages, PermissionFlagsBits.EmbedLinks], 'post and manage sticky messages'))) return;
 
         const sub = (args.shift() || '').toLowerCase();
         const all = loadAll();
@@ -69,14 +69,12 @@ module.exports = {
                 try { await message.channel.messages.delete(prev.lastMessageId).catch(() => {}); } catch {}
             }
 
-            // Send new sticky
-            let payload;
-            if (title) {
-                payload = { embeds: [new EmbedBuilder().setTitle(title).setDescription(content).setColor(0xFFB347)] };
-            } else {
-                payload = { content };
-            }
-            const sent = await message.channel.send(payload);
+            // Send new sticky as an embed by default
+            const stickyEmbed = new EmbedBuilder();
+            if (title) stickyEmbed.setTitle(title);
+            if (content) stickyEmbed.setDescription(content);
+            stickyEmbed.setColor(0xFFB347);
+            const sent = await message.channel.send({ embeds: [stickyEmbed] });
             all[guildId][message.channel.id] = { content, title: title || null, lastMessageId: sent.id };
             saveAll(all);
 
@@ -87,7 +85,9 @@ module.exports = {
                     { name: 'Preview', value: content.slice(0, 1024) }
                 )
                 .setColor(0x57F287);
-            return sendAsFloofWebhook(message, { embeds: [embed] });
+            const confirmation = await sendAsFloofWebhook(message, { embeds: [embed] });
+            setTimeout(() => confirmation.delete().catch(() => {}), 3000);
+            return;
         }
 
         if (sub === 'off' || sub === 'remove' || sub === 'clear' || sub === 'delete') {
@@ -100,7 +100,9 @@ module.exports = {
             }
             all[guildId][message.channel.id] = null;
             saveAll(all);
-            return sendAsFloofWebhook(message, { content: '✅ Sticky removed for this channel.' });
+            const confirmation = await sendAsFloofWebhook(message, { content: '✅ Sticky removed for this channel.' });
+            setTimeout(() => confirmation.delete().catch(() => {}), 3000);
+            return;
         }
 
         if (sub === 'show' || sub === 'view') {
@@ -137,19 +139,14 @@ module.exports = {
                 try {
                     const msg = await message.channel.messages.fetch(prev.lastMessageId).catch(() => null);
                     if (msg) {
-                        if (title || prev.title) {
-                            await msg.edit({ embeds: [new EmbedBuilder().setTitle(title || prev.title || '').setDescription(content).setColor(0xFFB347)] });
-                        } else {
-                            await msg.edit({ content });
-                        }
+                        // Always edit as an embed
+                        await msg.edit({ embeds: [new EmbedBuilder().setTitle((title ?? prev.title) || null).setDescription(content).setColor(0xFFB347)] });
                         success = true;
                     }
                 } catch {}
             }
             if (!success) {
-                const payload = (title || prev.title)
-                    ? { embeds: [new EmbedBuilder().setTitle(title || prev.title || '').setDescription(content).setColor(0xFFB347)] }
-                    : { content };
+                const payload = { embeds: [new EmbedBuilder().setTitle((title || prev.title) || null).setDescription(content).setColor(0xFFB347)] };
                 const sent = await message.channel.send(payload);
                 prev.lastMessageId = sent.id;
             }
@@ -157,7 +154,9 @@ module.exports = {
             if (title !== null) prev.title = title; // allow updating/adding title
             all[guildId][message.channel.id] = prev;
             saveAll(all);
-            return sendAsFloofWebhook(message, { content: '✅ Sticky updated.' });
+            const confirmation = await sendAsFloofWebhook(message, { content: '✅ Sticky updated.' });
+            setTimeout(() => confirmation.delete().catch(() => {}), 3000);
+            return;
         }
 
         // Default: show usage

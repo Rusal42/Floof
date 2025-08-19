@@ -12,7 +12,8 @@ async function initializeDataDirectory() {
         'ticket-config.json',
         'voice-config.json',
         'voice-channels.json',
-        'prefix-config.json'
+        'prefix-config.json',
+        'meowlock.json'
     ];
 
     try {
@@ -441,11 +442,18 @@ client.on('messageCreate', async (message) => {
     // --- Meowlock Intercept ---
     const fs = require('fs');
     const path = require('path');
-    const meowlockPath = path.join(__dirname, 'meowlock.json');
+    const meowlockPath = path.join(__dirname, 'data', 'meowlock.json');
     const guildId = message.guild?.id;
     if (!guildId) return; // Only run in guilds
     let allLocks = {};
-    if (fs.existsSync(meowlockPath)) allLocks = JSON.parse(fs.readFileSync(meowlockPath));
+    if (fs.existsSync(meowlockPath)) {
+        try {
+            const raw = fs.readFileSync(meowlockPath, 'utf8');
+            allLocks = JSON.parse(raw || '{}');
+        } catch {
+            allLocks = {};
+        }
+    }
     const locked = Array.isArray(allLocks[guildId]) ? allLocks[guildId] : [];
     const meowEntry = locked.find(entry => entry.id === message.author.id);
     if (meowEntry) {
@@ -725,24 +733,8 @@ client.on('messageCreate', async (message) => {
             await ownerCommands.avatar(message, userArg);
             return;
         }
-        if (commandName === 'meowlock') {
-            // Pass all arguments to the meowlock function
-            await ownerCommands.meowlock(message, args);
-            return;
-        }
-        if (commandName === 'meowunlock') {
-            const userArg = args[0];
-            await ownerCommands.meowunlock(message, userArg);
-            return;
-        }
-        if (commandName === 'meowlockclear') {
-            await ownerCommands.meowlockclear(message);
-            return;
-        }
-        if (commandName === 'meowlocked') {
-            await ownerCommands.meowlocked(message);
-            return;
-        }
+        // Meowlock commands are registered as owner-only via the command handler.
+        // Legacy moderator access removed to enforce strict owner-only usage.
         if (commandName === 'leaveservers') {
             const leaveCommand = commandHandler.commands.get('leaveservers');
             if (leaveCommand) {

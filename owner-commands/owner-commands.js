@@ -3,9 +3,16 @@
 
 const { sendAsFloofWebhook } = require('../utils/webhook-util');
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
+const { isOwner, getPrimaryOwnerId } = require('../utils/owner-util');
 
 module.exports = {
     meowlocked: async (message) => {
+        if (!isOwner(message.author.id)) {
+            const embed = new EmbedBuilder()
+                .setDescription('❌ Only Floof\'s owner can use this command.')
+                .setColor(0xFF0000);
+            return sendAsFloofWebhook(message, { embeds: [embed] });
+        }
         const fs = require('fs');
         const path = require('path');
         const { EmbedBuilder } = require('discord.js');
@@ -14,7 +21,8 @@ module.exports = {
         let allLocks = {};
         if (fs.existsSync(meowlockPath)) {
             try {
-                allLocks = JSON.parse(fs.readFileSync(meowlockPath));
+                const raw = fs.readFileSync(meowlockPath, 'utf8');
+                allLocks = JSON.parse(raw || '{}');
             } catch (e) {
                 allLocks = {};
             }
@@ -163,6 +171,12 @@ module.exports = {
         await message.delete();
     },
     meowlock: async (message, args) => {
+        if (!isOwner(message.author.id)) {
+            const embed = new EmbedBuilder()
+                .setDescription('❌ Only Floof\'s owner can use this command.')
+                .setColor(0xFF0000);
+            return sendAsFloofWebhook(message, { embeds: [embed] });
+        }
         const fs = require('fs');
         const path = require('path');
         const meowlockPath = path.join(__dirname, '../data/meowlock.json');
@@ -249,6 +263,12 @@ module.exports = {
         }
     },
     meowunlock: async (message, userArg) => {
+        if (!isOwner(message.author.id)) {
+            const embed = new EmbedBuilder()
+                .setDescription('❌ Only Floof\'s owner can use this command.')
+                .setColor(0xFF0000);
+            return sendAsFloofWebhook(message, { embeds: [embed] });
+        }
         const fs = require('fs');
         const path = require('path');
         const meowlockPath = path.join(__dirname, '../data/meowlock.json');
@@ -267,7 +287,14 @@ module.exports = {
     return sendAsFloofWebhook(message, { embeds: [embed] });
 }
         let allLocks = {};
-        if (fs.existsSync(meowlockPath)) allLocks = JSON.parse(fs.readFileSync(meowlockPath));
+        if (fs.existsSync(meowlockPath)) {
+            try {
+                const raw = fs.readFileSync(meowlockPath, 'utf8');
+                allLocks = JSON.parse(raw || '{}');
+            } catch (e) {
+                allLocks = {};
+            }
+        }
         const guildId = message.guild?.id;
         if (!guildId) return message.reply('This command can only be used in a server.');
         const before = (allLocks[guildId] || []).length;
@@ -315,11 +342,24 @@ sendAsFloofWebhook(message, { embeds: [embed] });
         await message.delete();
     },
     meowlockclear: async (message) => {
+        if (!isOwner(message.author.id)) {
+            const embed = new EmbedBuilder()
+                .setDescription('❌ Only Floof\'s owner can use this command.')
+                .setColor(0xFF0000);
+            return sendAsFloofWebhook(message, { embeds: [embed] });
+        }
         const fs = require('fs');
         const path = require('path');
         const meowlockPath = path.join(__dirname, '../data/meowlock.json');
         let allLocks = {};
-        if (fs.existsSync(meowlockPath)) allLocks = JSON.parse(fs.readFileSync(meowlockPath));
+        if (fs.existsSync(meowlockPath)) {
+            try {
+                const raw = fs.readFileSync(meowlockPath, 'utf8');
+                allLocks = JSON.parse(raw || '{}');
+            } catch (e) {
+                allLocks = {};
+            }
+        }
         const guildId = message.guild?.id;
         if (!guildId) return message.reply('This command can only be used in a server.');
         if (allLocks[guildId]) {
