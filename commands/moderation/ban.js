@@ -1,5 +1,6 @@
 const { PermissionsBitField, EmbedBuilder } = require('discord.js');
 const { sendAsFloofWebhook } = require('../../utils/webhook-util');
+const { requirePerms } = require('../../utils/permissions');
 
 module.exports = {
     name: 'ban',
@@ -11,10 +12,8 @@ module.exports = {
     cooldown: 3,
 
     async execute(message, args) {
-        // Check permissions
-        if (!message.member.permissions.has(PermissionsBitField.Flags.BanMembers)) {
-            return message.reply('Nyaa~ You need the Ban Members permission to use this!');
-        }
+        // Standardized permission check
+        if (!(await requirePerms(message, PermissionsBitField.Flags.BanMembers, 'ban members'))) return;
 
         if (args.length < 1) {
             const embed = new EmbedBuilder()

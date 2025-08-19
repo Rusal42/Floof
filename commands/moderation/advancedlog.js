@@ -2,6 +2,7 @@ const { PermissionsBitField, EmbedBuilder, AuditLogEvent } = require('discord.js
 const { sendAsFloofWebhook } = require('../../utils/webhook-util');
 const fs = require('fs');
 const path = require('path');
+const { requirePerms } = require('../../utils/permissions');
 
 const logConfigPath = path.join(__dirname, '../../data/advanced-log-config.json');
 
@@ -71,12 +72,8 @@ module.exports = {
     cooldown: 5,
 
     async execute(message, args) {
-        if (!message.member.permissions.has(PermissionsBitField.Flags.ManageGuild)) {
-            const embed = new EmbedBuilder()
-                .setDescription('❌ You need `Manage Server` permission to configure logging.')
-                .setColor(0xFF0000);
-            return sendAsFloofWebhook(message, { embeds: [embed] });
-        }
+        const ok = await requirePerms(message, PermissionsBitField.Flags.ManageGuild, 'configure logging');
+        if (!ok) return;
 
         if (!args.length) {
             return this.showHelp(message);

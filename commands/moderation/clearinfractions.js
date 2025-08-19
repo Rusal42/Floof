@@ -2,6 +2,7 @@ const fs = require('fs');
 const path = require('path');
 const { PermissionsBitField, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const { sendAsFloofWebhook } = require('../../utils/webhook-util');
+const { requirePerms } = require('../../utils/permissions');
 
 const infractionsPath = path.join(__dirname, '..', '..', 'data', 'infractions.json');
 
@@ -38,13 +39,8 @@ module.exports = {
     cooldown: 5,
 
     async execute(message, args) {
-        // Check if user has administrator permission
-        if (!message.member.permissions.has(PermissionsBitField.Flags.Administrator)) {
-            const embed = new EmbedBuilder()
-                .setDescription('❌ You need the `Administrator` permission to use this command.')
-                .setColor(0xFF0000);
-            return sendAsFloofWebhook(message, { embeds: [embed] });
-        }
+        const ok = await requirePerms(message, PermissionsBitField.Flags.Administrator, 'clear infractions');
+        if (!ok) return;
 
         if (!args.length) {
             const embed = new EmbedBuilder()

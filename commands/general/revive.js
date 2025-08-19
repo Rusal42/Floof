@@ -8,8 +8,8 @@ const CONFIG_FILE = path.join(process.cwd(), 'data', 'server-configs.json');
 
 module.exports = {
     name: 'revive',
-    description: 'Ping the configured revive role with a random question to get conversations started',
-    usage: '%revive',
+    description: 'Ping the configured revive role with a custom embedded message to revive chat',
+    usage: '%revive <your message>',
     category: 'general',
     aliases: [],
     permissions: [PermissionFlagsBits.ManageChannels],
@@ -40,29 +40,23 @@ module.exports = {
             });
         }
 
-        // Random questions for conversation starters
-        const questions = [
-            'If you could have any superpower, what would it be?',
-            'What\'s your favorite comfort food?',
-            'What\'s the weirdest dream you\'ve ever had?',
-            'If you could travel anywhere in the world, where would you go?',
-            'What\'s your favorite childhood memory?',
-            'If you could meet any historical figure, who would it be?',
-            'What\'s your biggest fear?',
-            'What\'s the best advice you\'ve ever received?',
-            'If you could learn any skill instantly, what would it be?',
-            'What\'s your favorite way to spend a rainy day?',
-            'If you could only eat one food for the rest of your life, what would it be?',
-            'What\'s the most interesting place you\'ve ever visited?',
-            'If you could have dinner with anyone, dead or alive, who would it be?',
-            'What\'s your favorite book or movie?',
-            'If you won the lottery, what\'s the first thing you\'d do?'
-        ];
+        // Require a custom message
+        const custom = args.join(' ').trim();
+        if (!custom) {
+            return await sendAsFloofWebhook(message, {
+                content: '❌ Please provide a message. Usage: `%revive <your message>`'
+            });
+        }
 
-        const randomQuestion = questions[Math.floor(Math.random() * questions.length)];
-        
+        const embed = new EmbedBuilder()
+            .setTitle('📣 Revive Ping')
+            .setDescription(custom)
+            .setColor(0xF1C40F)
+            .setFooter({ text: `Requested by ${message.member.displayName}` });
+
         await message.channel.send({
-            content: `${role} Let's get active! Question: ${randomQuestion}`
+            content: `${role}`,
+            embeds: [embed]
         });
         
         // Delete the command message

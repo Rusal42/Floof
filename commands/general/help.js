@@ -242,7 +242,10 @@ module.exports = {
             slots: '`%slots 100` - Bet 100 coins on slots\n`%slots all` - Bet all your coins',
             work: '`%work` - Work to earn coins (has cooldown)',
             kick: '`%kick @user Spamming` - Kick user with reason\n`%kick @user` - Kick user without reason',
-            prefix: '`%prefix set !` - Set ! as your custom prefix\n`%prefix remove` - Remove your custom prefix\n`%prefix list` - View all custom prefixes'
+            prefix: '`%prefix set !` - Set ! as your custom prefix\n`%prefix remove` - Remove your custom prefix\n`%prefix list` - View all custom prefixes',
+            lock: '`%lock` - Lock the current channel\n`%lock #general Spam wave` - Lock a specific channel with reason',
+            unlock: '`%unlock` - Unlock the current channel\n`%unlock #general All clear` - Unlock a specific channel with reason',
+            sticky: '`%sticky set Be respectful and follow the rules.`\n`%sticky set --title Rules | Be respectful and follow the rules.`\n`%sticky edit --title Updated Rules | No spam, be kind.`\n`%sticky off`'
         };
 
         if (examples[command.name]) {

@@ -1,5 +1,6 @@
 const { EmbedBuilder, PermissionsBitField } = require('discord.js');
 const { sendAsFloofWebhook } = require('../../utils/webhook-util');
+const { requirePerms } = require('../../utils/permissions');
 
 module.exports = {
     name: 'setup',
@@ -10,12 +11,8 @@ module.exports = {
     cooldown: 5,
 
     async execute(message, args) {
-        // Check if user has admin permissions
-        if (!message.member.permissions.has(PermissionsBitField.Flags.Administrator)) {
-            return await sendAsFloofWebhook(message, { 
-                content: '❌ You need Administrator permission to use setup commands!' 
-            });
-        }
+        const ok = await requirePerms(message, PermissionsBitField.Flags.Administrator, 'use setup commands');
+        if (!ok) return;
 
         const category = args[0]?.toLowerCase();
 

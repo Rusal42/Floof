@@ -2,6 +2,7 @@ const { EmbedBuilder, PermissionFlagsBits, ChannelType } = require('discord.js')
 const { sendAsFloofWebhook } = require('../../utils/webhook-util');
 const fs = require('fs');
 const path = require('path');
+const { requirePerms } = require('../../utils/permissions');
 
 // Helper functions for voice config management
 function getVoiceConfig() {
@@ -20,21 +21,23 @@ function saveVoiceConfig(data) {
 module.exports = {
     name: 'vcconfig',
     description: 'Configure voice channel creation settings',
-    usage: '%vcconfig [set/clear/view/setlobby/clearlobby]',
+    usage: '%vcconfig [view|set|clear|setlobby|clearlobby]\n- view: anyone can run\n- set/clear/setlobby/clearlobby: requires Manage Channels',
     category: 'general',
     aliases: ['voiceconfig', 'vcc', 'vc'],
     cooldown: 5,
 
     async execute(message, args) {
-        // Check if user has manage channels permission
-        if (!message.member.permissions.has(PermissionFlagsBits.ManageChannels)) {
-            return await sendAsFloofWebhook(message, {
-                content: '❌ You need **Manage Channels** permission to configure voice channel settings!'
-            });
-        }
-
         const subcommand = args[0]?.toLowerCase();
         const guildId = message.guild.id;
+
+        // Allow public access to view
+        if (!subcommand || subcommand === 'view') {
+            return await this.handleViewCommand(message, guildId);
+        }
+
+        // Modifying subcommands require Manage Channels
+        const ok = await requirePerms(message, PermissionFlagsBits.ManageChannels, 'modify voice channel settings');
+        if (!ok) return;
 
         switch (subcommand) {
             case 'set':
@@ -45,7 +48,6 @@ module.exports = {
                 return await this.handleSetLobbyCommand(message, guildId);
             case 'clearlobby':
                 return await this.handleClearLobbyCommand(message, guildId);
-            case 'view':
             default:
                 return await this.handleViewCommand(message, guildId);
         }
@@ -180,6 +182,41 @@ module.exports = {
                     embed.setColor('#ff0000');
                     embed.setFooter({ text: '⚠️ The configured category no longer exists. Use %vcconfig clear to reset.' });
                 }
+
+                // Permissions audit for bot in category and lobby
+                const me = message.guild.members.me;
+                const neededPerms = [
+                    PermissionFlagsBits.ViewChannel,
+                    PermissionFlagsBits.Connect,
+                    PermissionFlagsBits.MoveMembers,
+                    PermissionFlagsBits.ManageChannels
+                ];
+
+                const fmtPerms = (chan) => {
+                    if (!chan) return 'N/A';
+                    const perms = chan.permissionsFor(me);
+                    if (!perms) return 'N/A';
+                    const results = [
+                        `${perms.has(PermissionFlagsBits.ViewChannel) ? '✅' : '❌'} View`,
+                        `${perms.has(PermissionFlagsBits.Connect) ? '✅' : '❌'} Connect`,
+                        `${perms.has(PermissionFlagsBits.MoveMembers) ? '✅' : '❌'} Move`,
+                        `${perms.has(PermissionFlagsBits.ManageChannels) ? '✅' : '❌'} Manage`
+                    ];
+                    return results.join(' | ');
+                };
+
+                embed.addFields(
+                    {
+                        name: '🔐 Bot Permissions (Category)',
+                        value: guildConfig.categoryId ? (category ? fmtPerms(category) : 'Category missing') : 'No restriction set',
+                        inline: false
+                    },
+                    {
+                        name: '🔐 Bot Permissions (Lobby)',
+                        value: guildConfig.lobbyChannelId ? (lobby ? fmtPerms(lobby) : 'Lobby channel missing') : 'Lobby not set',
+                        inline: false
+                    }
+                );
             } else {
                 embed.addFields(
                     {
@@ -198,7 +235,7 @@ module.exports = {
                         '`%vcconfig clear` - Remove category restriction',
                         '`%vcconfig setlobby` - Set your current voice channel as the lobby that auto-creates VCs',
                         '`%vcconfig clearlobby` - Clear the lobby channel setting',
-                        '`%vcconfig view` - View current settings'
+                        '`%vcconfig view` - View current settings (anyone)'
                     ].join('\n'),
                     inline: false
                 }

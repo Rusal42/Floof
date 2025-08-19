@@ -1,5 +1,6 @@
 const { EmbedBuilder, PermissionFlagsBits } = require('discord.js');
 const { sendAsFloofWebhook } = require('../../utils/webhook-util');
+const { requirePerms, requireBotPermsInChannel } = require('../../utils/permissions');
 
 module.exports = {
     name: 'slowmode',
@@ -11,21 +12,9 @@ module.exports = {
     cooldown: 3,
 
     async execute(message, args) {
-        // Check if user has permission to manage channels
-        if (!message.member.permissions.has(PermissionFlagsBits.ManageChannels)) {
-            const embed = new EmbedBuilder()
-                .setDescription('❌ You need the `Manage Channels` permission to use this command.')
-                .setColor(0xFF0000);
-            return sendAsFloofWebhook(message, { embeds: [embed] });
-        }
-
-        // Check if bot has permission to manage channels
-        if (!message.guild.members.me.permissions.has(PermissionFlagsBits.ManageChannels)) {
-            const embed = new EmbedBuilder()
-                .setDescription('❌ I need the `Manage Channels` permission to execute this command.')
-                .setColor(0xFF0000);
-            return sendAsFloofWebhook(message, { embeds: [embed] });
-        }
+        // Standardized permission checks
+        if (!(await requirePerms(message, PermissionFlagsBits.ManageChannels, 'set slowmode'))) return;
+        if (!(await requireBotPermsInChannel(message, message.channel, PermissionFlagsBits.ManageChannels, 'set slowmode'))) return;
 
         if (!args.length) {
             const embed = new EmbedBuilder()

@@ -40,6 +40,15 @@ module.exports = {
                 return await this.handleSubcommand(message, args, voiceChannel);
             }
 
+            // Only allow admins/managers to open the big interface to prevent spam
+            const hasManage = message.member.permissions.has(PermissionFlagsBits.ManageChannels) ||
+                              message.member.permissions.has(PermissionFlagsBits.Administrator);
+            if (!hasManage) {
+                return await sendAsFloofWebhook(message, {
+                    content: '🔒 The VoiceMaster interface is limited to staff. Use `%vc help` for text commands.'
+                });
+            }
+
             // Show interface if no subcommand
             const embed = new EmbedBuilder()
                 .setColor('#7289DA')

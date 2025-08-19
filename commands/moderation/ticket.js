@@ -2,6 +2,7 @@ const { PermissionsBitField, EmbedBuilder, ActionRowBuilder, ButtonBuilder, Butt
 const { sendAsFloofWebhook } = require('../../utils/webhook-util');
 const fs = require('fs');
 const path = require('path');
+const { requirePerms } = require('../../utils/permissions');
 
 const ticketConfigPath = path.join(__dirname, '..', '..', 'data', 'ticket-config.json');
 
@@ -312,12 +313,8 @@ module.exports = {
     },
 
     async setupTickets(message, args, serverConfig) {
-        if (!message.member.permissions.has(PermissionsBitField.Flags.Administrator)) {
-            const embed = new EmbedBuilder()
-                .setDescription('❌ You need Administrator permission to setup tickets.')
-                .setColor(0xFF0000);
-            return sendAsFloofWebhook(message, { embeds: [embed] });
-        }
+        const ok = await requirePerms(message, PermissionsBitField.Flags.Administrator, 'setup tickets');
+        if (!ok) return;
 
         if (!args.length) {
             const embed = new EmbedBuilder()

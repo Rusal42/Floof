@@ -2,6 +2,7 @@ const fs = require('fs');
 const path = require('path');
 const { PermissionsBitField, EmbedBuilder } = require('discord.js');
 const { sendAsFloofWebhook } = require('../../utils/webhook-util');
+const { requirePerms } = require('../../utils/permissions');
 
 const infractionsPath = path.join(__dirname, '..', '..', 'data', 'infractions.json');
 
@@ -34,7 +35,6 @@ module.exports = {
     usage: '%warn <@user|userID> [reason]',
     category: 'moderation',
     aliases: ['warning'],
-    permissions: [PermissionsBitField.Flags.ModerateMembers],
     cooldown: 2,
 
     async execute(message, args) {
@@ -45,12 +45,8 @@ module.exports = {
         
         globalThis._activeGuildId = guildId;
 
-        if (!message.member.permissions.has(PermissionsBitField.Flags.ModerateMembers)) {
-            const embed = new EmbedBuilder()
-                .setDescription('You do not have permission to warn members.')
-                .setColor(0x7289da);
-            return await sendAsFloofWebhook(message, { embeds: [embed] });
-        }
+        const ok = await requirePerms(message, PermissionsBitField.Flags.ModerateMembers, 'warn members');
+        if (!ok) return;
 
         if (args.length < 1) {
             const embed = new EmbedBuilder()

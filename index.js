@@ -624,6 +624,14 @@ client.on('messageCreate', async (message) => {
         }
     }
     
+    // Bump sticky message (if configured for this channel)
+    try {
+        const { bumpStickyIfNeeded } = require('./moderation/sticky-manager');
+        await bumpStickyIfNeeded(message);
+    } catch (e) {
+        console.error('Sticky bump err:', e);
+    }
+    
     // Check if message starts with command prefix (% or custom prefix)
     
     function getPrefixConfig() {

@@ -1,5 +1,6 @@
-const { EmbedBuilder, PermissionFlagsBits } = require('discord.js');
+const { EmbedBuilder, PermissionFlagsBits, PermissionsBitField } = require('discord.js');
 const { sendAsFloofWebhook } = require('../../utils/webhook-util');
+const { requirePerms } = require('../../utils/permissions');
 const fs = require('fs');
 const path = require('path');
 
@@ -40,13 +41,8 @@ module.exports = {
     cooldown: 3,
 
     async execute(message, args) {
-        // Check if user has permission to manage messages
-        if (!message.member.permissions.has(PermissionFlagsBits.ManageMessages)) {
-            const embed = new EmbedBuilder()
-                .setDescription('❌ You need the `Manage Messages` permission to use this command.')
-                .setColor(0xFF0000);
-            return sendAsFloofWebhook(message, { embeds: [embed] });
-        }
+        const ok = await requirePerms(message, PermissionsBitField.Flags.ManageMessages, 'configure anti-spam');
+        if (!ok) return;
 
         const guildId = message.guild.id;
         

@@ -2,6 +2,7 @@ const fs = require('fs');
 const path = require('path');
 const { PermissionsBitField, EmbedBuilder } = require('discord.js');
 const { sendAsFloofWebhook } = require('../../utils/webhook-util');
+const { requirePerms } = require('../../utils/permissions');
 
 const infractionsPath = path.join(__dirname, '..', '..', 'data', 'infractions.json');
 
@@ -32,13 +33,8 @@ module.exports = {
     cooldown: 3,
 
     async execute(message, args) {
-        // Check if user has permission to moderate members
-        if (!message.member.permissions.has(PermissionsBitField.Flags.ModerateMembers)) {
-            const embed = new EmbedBuilder()
-                .setDescription('❌ You need the `Moderate Members` permission to use this command.')
-                .setColor(0xFF0000);
-            return sendAsFloofWebhook(message, { embeds: [embed] });
-        }
+        const ok = await requirePerms(message, PermissionsBitField.Flags.ModerateMembers, 'view infractions');
+        if (!ok) return;
 
         const infractions = loadInfractions();
         const guildInfractions = infractions[message.guild.id] || {};

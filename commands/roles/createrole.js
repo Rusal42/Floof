@@ -1,5 +1,6 @@
 const { EmbedBuilder, PermissionFlagsBits } = require('discord.js');
 const { sendAsFloofWebhook } = require('../../utils/webhook-util');
+const { requirePerms } = require('../../utils/permissions');
 
 module.exports = {
     name: 'createrole',
@@ -11,13 +12,8 @@ module.exports = {
     cooldown: 5,
 
     async execute(message, args) {
-        // Check if user has permission to manage roles
-        if (!message.member.permissions.has(PermissionFlagsBits.ManageRoles)) {
-            const embed = new EmbedBuilder()
-                .setDescription('❌ You need the `Manage Roles` permission to use this command.')
-                .setColor(0xFF0000);
-            return sendAsFloofWebhook(message, { embeds: [embed] });
-        }
+        // Standardized permission check
+        if (!(await requirePerms(message, PermissionFlagsBits.ManageRoles, 'create roles'))) return;
 
         // Check if bot has permission to manage roles
         if (!message.guild.members.me.permissions.has(PermissionFlagsBits.ManageRoles)) {
