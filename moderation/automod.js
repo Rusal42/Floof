@@ -360,17 +360,38 @@ function checkLinkSpam(message, config) {
     }
 
     // Allow GIF links (commonly used for reactions). Filter out links ending with .gif
-    const nonGifLinks = links.filter(l => !/\.gif(\?|#|$)/i.test(l));
+    // Also allow popular GIF host domains like Tenor and Giphy (even when not direct .gif files)
+    const allowedGifDomains = [
+        'tenor.com', 'media.tenor.com',
+        'giphy.com', 'media.giphy.com', 'i.giphy.com'
+    ];
 
-    // If links module is enabled and any non-GIF links are present from non-whitelisted user -> violation
-    if (config.links.enabled && nonGifLinks.length > 0) {
+    const isAllowedDomain = (u) => {
+        try {
+            const { hostname } = new URL(u);
+            return allowedGifDomains.some(d => hostname === d || hostname.endsWith(`.${d}`));
+        } catch (_) {
+            return false;
+        }
+    };
+
+    const nonAllowedLinks = links.filter(l => {
+        // direct gif files are allowed
+        if (/\.gif(\?|#|$)/i.test(l)) return false;
+        // tenor/giphy domains are allowed
+        if (isAllowedDomain(l)) return false;
+        return true;
+    });
+
+    // If links module is enabled and any non-allowed links are present from non-whitelisted user -> violation
+    if (config.links.enabled && nonAllowedLinks.length > 0) {
         return {
             type: 'linkSpam',
             violation: true,
-            reason: `Posted ${nonGifLinks.length} link(s) (non-GIF links are disabled for non-whitelisted users)`,
+            reason: `Posted ${nonAllowedLinks.length} link(s) (links not in allowed GIF formats/domains are disabled for non-whitelisted users)`,
             action: config.links.action,
             duration: (config.links.action === 'mute') ? (config.links.muteTime || 600000) : undefined,
-            linkCount: nonGifLinks.length
+            linkCount: nonAllowedLinks.length
         };
     }
     
