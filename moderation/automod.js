@@ -155,6 +155,10 @@ async function handleAutoModeration(message) {
     if (message.author.bot) return;
     if (message.member?.permissions.has(PermissionsBitField.Flags.Administrator)) return;
     
+    // Automod is opt-in: if no automod section exists for this guild, do nothing
+    const baseCfg = getGuildConfig(message.guild.id);
+    if (!baseCfg || baseCfg.automod === undefined) return;
+
     const guildConfig = getGuildAutomodConfig(message.guild.id);
     const violations = [];
     
