@@ -2,8 +2,8 @@
 // Commands only the bot owner (by user ID) can run.
 
 const { sendAsFloofWebhook } = require('../utils/webhook-util');
-const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
-const { isOwner, getPrimaryOwnerId } = require('../utils/owner-util');
+const { EmbedBuilder } = require('discord.js');
+const { isOwner } = require('../utils/owner-util');
 
 module.exports = {
     meowlocked: async (message) => {
@@ -54,122 +54,6 @@ module.exports = {
         sendAsFloofWebhook(message, { embeds: [embed] });
     },
 
-    // List all servers the bot is in
-    servers: async (message) => {
-        const { client } = message;
-        const guilds = client.guilds.cache;
-        
-        // Sort servers by member count (descending)
-        const sortedGuilds = guilds.sort((a, b) => b.memberCount - a.memberCount);
-        
-        // Create a list of server info
-        const serverList = sortedGuilds.map(guild => {
-            return `**${guild.name}** (${guild.id})\n` +
-                   `👥 ${guild.memberCount.toLocaleString()} members | ` +
-                   `👑 ${guild.ownerId ? `<@${guild.ownerId}>` : 'Unknown Owner'}\n`;
-        });
-        
-        // Split into chunks of 10 servers per embed
-        const chunkSize = 10;
-        const chunks = [];
-        for (let i = 0; i < serverList.length; i += chunkSize) {
-            chunks.push(serverList.slice(i, i + chunkSize));
-        }
-        
-        // Create embeds for each chunk
-        const embeds = chunks.map((chunk, index) => {
-            return new EmbedBuilder()
-                .setTitle(`Servers (${guilds.size} total) - Part ${index + 1}/${chunks.length}`)
-                .setDescription(chunk.join('\n'))
-                .setColor(0x7289DA)
-                .setFooter({ text: `Showing ${chunk.length} servers` });
-        });
-        
-        // Send the first embed with pagination buttons
-        let currentPage = 0;
-        const getRow = () => new ActionRowBuilder().addComponents(
-            new ButtonBuilder().setCustomId('servers_prev').setEmoji('⬅️').setStyle(ButtonStyle.Secondary).setDisabled(currentPage === 0),
-            new ButtonBuilder().setCustomId('servers_next').setEmoji('➡️').setStyle(ButtonStyle.Secondary).setDisabled(currentPage >= embeds.length - 1)
-        );
-
-        const reply = await message.channel.send({ embeds: [embeds[currentPage]], components: embeds.length > 1 ? [getRow()] : [] });
-
-        if (embeds.length === 1) return;
-
-        const collector = reply.createMessageComponentCollector({
-            filter: (i) => ['servers_prev', 'servers_next'].includes(i.customId) && i.user.id === message.author.id,
-            time: 300000 // 5 minutes
-        });
-
-        collector.on('collect', async (interaction) => {
-            try {
-                if (interaction.customId === 'servers_next' && currentPage < embeds.length - 1) {
-                    currentPage++;
-                } else if (interaction.customId === 'servers_prev' && currentPage > 0) {
-                    currentPage--;
-                }
-                await interaction.update({ embeds: [embeds[currentPage]], components: [getRow()] });
-            } catch (error) {
-                console.error('Error handling pagination:', error);
-            }
-        });
-
-        collector.on('end', async () => {
-            try {
-                const disabledRow = new ActionRowBuilder().addComponents(
-                    new ButtonBuilder().setCustomId('servers_prev').setEmoji('⬅️').setStyle(ButtonStyle.Secondary).setDisabled(true),
-                    new ButtonBuilder().setCustomId('servers_next').setEmoji('➡️').setStyle(ButtonStyle.Secondary).setDisabled(true)
-                );
-                await reply.edit({ components: [disabledRow] }).catch(() => {});
-            } catch (e) {
-                // ignore
-            }
-        });
-    },
-
-    // Speak command
-    speak: async (message, args) => {
-        const text = Array.isArray(args) ? args.join(' ') : args;
-        if (!text || text === '') {
-            return message.reply('Please provide a message for me to speak!');
-        }
-        await sendAsFloofWebhook(message, { content: text });
-        await message.delete();
-    },
-    avatar: async (message, userArg) => {
-        let user = message.mentions.users.first();
-        if (!user && userArg) {
-            try {
-                user = await message.client.users.fetch(userArg);
-            } catch (e) {
-                return message.reply('Could not find that user by ID.');
-            }
-        }
-        if (!user) user = message.author;
-        const avatarURL = user.displayAvatarURL({ dynamic: true, size: 4096 });
-        // Find or create a webhook for this channel
-        let webhook;
-        const webhooks = await message.channel.fetchWebhooks();
-        webhook = webhooks.find(wh => wh.owner && wh.owner.id === message.client.user.id);
-        if (!webhook) {
-            webhook = await message.channel.createWebhook({
-                name: 'Floof Webhook',
-                avatar: message.client.user.displayAvatarURL()
-            });
-        }
-        await webhook.send({
-            username: 'Floof',
-            avatarURL: message.client.user.displayAvatarURL(),
-            embeds: [
-                {
-                    title: `${user.tag}'s Avatar`,
-                    image: { url: avatarURL },
-                    color: 0xffb6c1
-                }
-            ]
-        });
-        await message.delete();
-    },
     meowlock: async (message, args) => {
         if (!isOwner(message.author.id)) {
             const embed = new EmbedBuilder()
@@ -316,31 +200,6 @@ sendAsFloofWebhook(message, { embeds: [embed] });
 sendAsFloofWebhook(message, { embeds: [embed] });
         }
     },
-    revive: async (message) => {
-        const OWNER_ID = '1007799027716329484'; // Replace with your actual owner ID if different
-        if (message.author.id !== OWNER_ID) {
-            return message.reply('Only Floof\'s owner can use this command!');
-        }
-        // Revive role ID
-        const reviveRoleId = '1394483353310330880';
-        const questions = [
-            'If you could have any superpower, what would it be?',
-            'What\'s your favorite comfort food?',
-            'Share a random fun fact about yourself!',
-            'What song do you have on repeat lately?',
-            'If you could visit any place in the world, where would you go?',
-            'What\'s your favorite way to relax?',
-            'What\'s a hobby you\'ve always wanted to try?',
-            'What\'s the last show or movie you watched?',
-            'What\'s something that made you smile recently?',
-            'What\'s your go-to game to play with friends?'
-        ];
-        const randomQuestion = questions[Math.floor(Math.random() * questions.length)];
-        await message.channel.send({
-            content: `<@&${reviveRoleId}> Let's get active! Question: ${randomQuestion}`
-        });
-        await message.delete();
-    },
     meowlockclear: async (message) => {
         if (!isOwner(message.author.id)) {
             const embed = new EmbedBuilder()
@@ -373,138 +232,52 @@ sendAsFloofWebhook(message, { embeds: [embed] });
             .setColor(0xB57EDC);
         sendAsFloofWebhook(message, { embeds: [embed] });
     },
-    funMenu: async (message) => {
-        const embed = new EmbedBuilder()
-            .setTitle('🎮 Fun Commands')
-            .setDescription('Here are all the fun commands you can use! 🎉')
-            .addFields(
-                { name: '🎲 Games', value: '`%8ball <question>` - Ask the magic 8ball a question\n`%roll [sides]` - Roll a die (default 6 sides)\n`%joke` - Get a random joke' },
-                { name: '🎭 Actions', value: '`%hug [@user]` - Give someone a hug\n`%kiss [@user]` - Blow a kiss\n`%pat [@user]` - Pat someone\n`%slap [@user]` - Slap someone\n`%bite [@user]` - Playfully bite someone' },
-                { name: '💃 Social', value: '`%dance [@user]` - Show off your moves\n`%highfive [@user]` - High five someone\n`%wave [@user]` - Wave hello' },
-                { name: '🐾 Animals', value: '`%cat` - Get a random cat picture' },
-                { name: '😊 Reactions', value: '`%blush` - Show your embarrassment\n`%shoot [@user]` - Pew pew!' }
-            )
-            .setColor(0x9B59B6)
-            .setFooter({ text: 'Floof Bot Commands', iconURL: message.client.user.displayAvatarURL() })
-            .setTimestamp();
-        
-        await sendAsFloofWebhook(message, { embeds: [embed] });
-    },
     
-    gamblingMenu: async (message) => {
-        const embed = new EmbedBuilder()
-            .setTitle('🎰 Gambling Commands')
-            .setDescription('Try your luck with these gambling commands! 🎲')
-            .addFields(
-                { name: '💰 Balance', value: '`%balance` - Check your current balance\n`%work` - Earn some coins\n`%beg` - Try begging for coins\n`%donate <@user> <amount>` - Share your wealth' },
-                { name: '🎲 Games', value: '`%slots <bet>` - Play slots\n`%roulette <bet> <red/black/number>` - Play roulette\n`%blackjack <bet>` - Play blackjack\n`%coinflip <bet> <heads/tails>` - Flip a coin' },
-                { name: '📈 Leveling System', value: '`%levels rank [@user]` - Check level/XP\n`%levels leaderboard` - XP leaderboard\n`%levels config` - Configure leveling (admin)\n`%levels rewards` - Manage level rewards' },
-                { name: '🏆 Leaderboard', value: '`%leaderboard` - See who has the most coins\n`%richest` - Top 10 richest users' },
-                { name: '🎮 Game Help', value: '`%blackjack help` - Blackjack rules\n`%slots help` - Slots information\n`%roulette help` - Roulette rules' }
-            )
-            .setColor(0xE91E63)
-            .setFooter({ text: 'Gambling is for entertainment only!', iconURL: message.client.user.displayAvatarURL() })
-            .setTimestamp();
-            
-        await sendAsFloofWebhook(message, { embeds: [embed] });
-    },
-    
-    modMenu: async (message) => {
-        const embed = new EmbedBuilder()
-            .setTitle('🛡️ Moderation Commands')
-            .setDescription('Keep your server safe with these moderation tools! 🔒')
-            .addFields(
-                { name: '🔨 Punishments', value: '`%warn <@user> [reason]` - Warn a user\n`%kick <@user> [reason]` - Kick a user\n`%ban <@user> [reason]` - Ban a user\n`%timeout <@user> <time> [reason]` - Timeout a user' },
-                { name: '👥 User Management', value: '`%whois <@user>` - Get detailed user information\n`%av [@user]` - View user avatar\n`%infractions [@user]` - View user infractions\n`%clearinfractions <@user|all>` - Clear infractions' },
-                { name: '🧹 Cleanup', value: '`%purge <amount>` - Delete messages\n`%slowmode <time>` - Set slowmode' },
-                { name: '⚙️ Settings', value: '`%config modlog <#channel>` - Set mod log channel\n`%automod` - Configure auto-moderation\n`%antispam` - Toggle anti-spam protection' },
-                { name: '🎭 Role Management', value: '`%floofroles` - Role management menu\n`%createrole <name>` - Create a new role\n`%deleterole <role>` - Delete a role\n`%giverole <@user> <role>` - Give role to user\n`%takerole <@user> <role>` - Remove role from user' },
-                { name: '🎫 Ticket System', value: '`%ticket create [reason]` - Create support ticket\n`%ticket claim` - Claim ticket (staff)\n`%ticket close` - Close ticket\n`%ticket setup` - Configure tickets (admin)' },
-                { name: '📋 Advanced Logging', value: '`%advancedlog setup` - Configure logging\n`%advancedlog toggle <event>` - Toggle events\n`%advancedlog view` - View configuration\n`%advancedlog test` - Test logging' }
-            )
-            .setColor(0x3498DB)
-            .setFooter({ text: 'Requires moderation permissions', iconURL: message.client.user.displayAvatarURL() })
-            .setTimestamp();
-            
-        await sendAsFloofWebhook(message, { embeds: [embed] });
-    },
-    
-    funMenu: async (message) => {
-        const embed = new EmbedBuilder()
-            .setTitle('🎉 Fun Commands')
-            .setDescription('Entertainment and social commands to liven up your server! 🎊')
-            .addFields(
-                { name: '🎮 Games', value: '`%8ball <question>` - Ask the magic 8-ball\n`%coinflip` - Flip a coin\n`%dice [sides]` - Roll dice\n`%rps <choice>` - Rock Paper Scissors' },
-                { name: '😄 Reactions', value: '`%hug <@user>` - Hug someone\n`%kiss <@user>` - Kiss someone\n`%slap <@user>` - Slap someone\n`%bite <@user>` - Bite someone\n`%blush` - Blush\n`%cry` - Cry\n`%dance` - Dance\n`%facepalm` - Facepalm\n`%highfive <@user>` - High five someone\n`%laugh` - Laugh\n`%pat <@user>` - Pat someone\n`%poke <@user>` - Poke someone\n`%shrug` - Shrug\n`%smile` - Smile\n`%wave <@user>` - Wave at someone\n`%wink <@user>` - Wink at someone' },
-                { name: '🗳️ Polls & Voting', value: '`%poll create <question>` - Create poll\n`%poll quick <question>` - Quick yes/no poll\n`%poll results <id>` - View poll results\n`%poll end <id>` - End poll early' },
-                { name: '🎨 Utility', value: '`%avatar [@user]` - View user avatar\n`%serverinfo` - Server information\n`%userinfo [@user]` - User information' }
-            )
-            .setColor(0xFFD700)
-            .setFooter({ text: 'Have fun and spread joy!', iconURL: message.client.user.displayAvatarURL() })
-            .setTimestamp();
-            
-        await sendAsFloofWebhook(message, { embeds: [embed] });
-    },
-    
-    utilityMenu: async (message) => {
-        const embed = new EmbedBuilder()
-            .setTitle('🔧 Utility Commands')
-            .setDescription('Helpful server management and utility tools! ⚙️')
-            .addFields(
-                { name: '📊 Server Analytics', value: '`%analytics overview` - Server statistics\n`%analytics members` - Member analytics\n`%analytics messages` - Message statistics\n`%analytics channels` - Channel activity' },
-                { name: '⏰ Reminders', value: '`%remind me <time> <message>` - Personal reminder\n`%remind here <time> <message>` - Channel reminder\n`%remind list` - View your reminders\n`%remind clear` - Clear reminders' },
-                { name: '🎨 General', value: '`%avatar [@user]` - View user avatar\n`%serverinfo` - Server information\n`%userinfo [@user]` - User information' }
-            )
-            .setColor(0x17A2B8)
-            .setFooter({ text: 'Productivity and server management tools', iconURL: message.client.user.displayAvatarURL() })
-            .setTimestamp();
-            
-        await sendAsFloofWebhook(message, { embeds: [embed] });
-    },
-    
-    roleMenu: async (message) => {
-        const embed = new EmbedBuilder()
-            .setTitle('🏷️ Role Management Commands')
-            .setDescription('Manage server roles with these powerful tools! 🎭')
-            .addFields(
-                { name: '➕ Role Creation', value: '`%createrole <name> [color] [hoist] [mentionable]` - Create a new role\n`%deleterole <role>` - Delete an existing role' },
-                { name: '👥 Role Assignment', value: '`%giverole <@user> <role>` - Give a role to a user\n`%takerole <@user> <role>` - Remove a role from a user' },
-                { name: '📋 Role Information', value: '`%listroles` - List all server roles\n`%listroles <@user>` - Show a user\'s roles' }
-            )
-            .setColor(0x9B59B6)
-            .setFooter({ text: 'Requires Manage Roles permission', iconURL: message.client.user.displayAvatarURL() })
-            .setTimestamp();
-            
-        await sendAsFloofWebhook(message, { embeds: [embed] });
-    },
-    
-    ownerMenu: async (message) => {
-        const embed = new EmbedBuilder()
-            .setTitle('👑 Owner Commands')
-            .setDescription('Server owner exclusive commands! ⚙️')
-            .addFields(
-                { 
-                    name: '⚙️ Server Management', 
-                    value: '`%leaveservers` - Leave servers where owner is not a member\n`%meowlock <@user> <style>` - Meowlock a user\n`%meowunlock <@user>` - Remove meowlock\n`%meowlockclear` - Clear all meowlocks' 
-                },
-                { 
-                    name: '⚠️ Dangerous', 
-                    value: '`%nukeall` - Nuke the server (use with caution)'
-                },
-                { 
-                    name: '📊 Stats', 
-                    value: '`%meowlocked` - List meowlocked users\n`%servers` - List all servers' 
+    // DM-only: clear timeouts across mutual servers. Hidden from server help.
+    cleartimeoutsdm: async (message, args) => {
+        // Must be in DM and by owner
+        if (message.guild) return false; // ignore if used in a server
+        if (!isOwner(message.author.id)) return false;
+
+        const reason = Array.isArray(args) && args.length > 0 ? args.join(' ') : 'Owner DM amnesty: clearing active timeouts';
+        const { client } = message;
+
+        const perGuild = [];
+        let totalCleared = 0;
+
+        for (const guild of client.guilds.cache.values()) {
+            // Only process guilds where the owner is a member
+            const isMutual = await guild.members.fetch(message.author.id).then(() => true).catch(() => false);
+            if (!isMutual) continue;
+
+            let cleared = 0;
+            try {
+                const members = await guild.members.fetch();
+                const now = Date.now();
+                const timedOut = members.filter(m => m.communicationDisabledUntilTimestamp && m.communicationDisabledUntilTimestamp > now);
+                for (const m of timedOut.values()) {
+                    try {
+                        await m.timeout(null, reason);
+                        cleared++;
+                        totalCleared++;
+                    } catch {}
                 }
-            )
-            .setColor(0xF1C40F)
-            .setFooter({ 
-                text: `Requested by ${message.author.tag}`, 
-                iconURL: message.author.displayAvatarURL() 
-            })
-            .setTimestamp();
-            
-        await sendAsFloofWebhook(message, { 
-            embeds: [embed]
-        });
-    }
-};
+                perGuild.push(`• ${guild.name}: cleared ${cleared}`);
+            } catch {
+                perGuild.push(`• ${guild.name}: error fetching members`);
+            }
+        }
+
+        const summary = new EmbedBuilder()
+            .setTitle('🧹 Cleared Timeouts (DM)')
+            .setDescription(perGuild.length ? perGuild.join('\n') : 'No mutual servers found to process.')
+            .addFields({ name: 'Total cleared', value: String(totalCleared), inline: true })
+            .setColor(0xF1C40F);
+
+        // Respond only in DM
+        await message.channel.send({ embeds: [summary] });
+        return true;
+    },
+    
+}
+;

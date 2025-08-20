@@ -102,13 +102,13 @@ const commandHandler = new CommandHandler(client);
 
 // Load owner commands
 const ownerCommands = require('./owner-commands/owner-commands');
-const { ownerMenu, revive } = ownerCommands;
+const { ownerMenu } = ownerCommands;
 const nukeCommand = require('./owner-commands/nukeall');
 const floofyCommand = require('./owner-commands/floofy');
 const floofymCommand = require('./owner-commands/floofym');
 
 // Register owner commands with the command handler
-Object.entries({ ownerMenu, revive }).forEach(([name, execute]) => {
+Object.entries({ ownerMenu }).forEach(([name, execute]) => {
     commandHandler.commands.set(name.toLowerCase(), { 
         name, 
         execute, 

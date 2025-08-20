@@ -359,15 +359,18 @@ function checkLinkSpam(message, config) {
         return { violation: false };
     }
 
-    // If links module is enabled and any links are present from non-whitelisted user -> violation
-    if (config.links.enabled && links.length > 0) {
+    // Allow GIF links (commonly used for reactions). Filter out links ending with .gif
+    const nonGifLinks = links.filter(l => !/\.gif(\?|#|$)/i.test(l));
+
+    // If links module is enabled and any non-GIF links are present from non-whitelisted user -> violation
+    if (config.links.enabled && nonGifLinks.length > 0) {
         return {
             type: 'linkSpam',
             violation: true,
-            reason: `Posted ${links.length} link(s) (links are disabled for non-whitelisted users)`,
+            reason: `Posted ${nonGifLinks.length} link(s) (non-GIF links are disabled for non-whitelisted users)`,
             action: config.links.action,
             duration: (config.links.action === 'mute') ? (config.links.muteTime || 600000) : undefined,
-            linkCount: links.length
+            linkCount: nonGifLinks.length
         };
     }
     
