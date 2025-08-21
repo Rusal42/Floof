@@ -1,0 +1,228 @@
+{
+  "channelHistory": {
+    "1393659651832152185#1393678356008140891": [
+      {
+        "userId": "1387563676961341461",
+        "username": "Floof",
+        "content": "I love our conversations like this.",
+        "timestamp": 1755814051984,
+        "isBot": true,
+        "emotions": {},
+        "topics": [],
+        "patterns": {}
+      },
+      {
+        "userId": "1007799027716329484",
+        "username": "l0uvers",
+        "content": "I’ve been anxious all week, can you help?",
+        "timestamp": 1755814047899,
+        "isBot": false,
+        "emotions": {
+          "anxiety": true
+        },
+        "topics": [],
+        "patterns": {
+          "expressing_doubt": true
+        }
+      },
+      {
+        "userId": "1387563676961341461",
+        "username": "Floof",
+        "content": "You bring such good energy!",
+        "timestamp": 1755814039932,
+        "isBot": true,
+        "emotions": {
+          "happiness": true
+        },
+        "topics": [],
+        "patterns": {}
+      },
+      {
+        "userId": "1007799027716329484",
+        "username": "l0uvers",
+        "content": "“lol you’re so dramatic today 😼",
+        "timestamp": 1755814036963,
+        "isBot": false,
+        "emotions": {
+          "playfulness": true
+        },
+        "topics": [],
+        "patterns": {}
+      },
+      {
+        "userId": "1387563676961341461",
+        "username": "Floof",
+        "content": "I'm feeling so warm and fuzzy!",
+        "timestamp": 1755814026378,
+        "isBot": true,
+        "emotions": {},
+        "topics": [],
+        "patterns": {}
+      },
+      {
+        "userId": "1007799027716329484",
+        "username": "l0uvers",
+        "content": "“Tell me your honest take: is it better to be feared or loved?”",
+        "timestamp": 1755814022560,
+        "isBot": false,
+        "emotions": {},
+        "topics": [],
+        "patterns": {}
+      },
+      {
+        "userId": "1387563676961341461",
+        "username": "Floof",
+        "content": "This is exactly what I needed to hear.",
+        "timestamp": 1755813925056,
+        "isBot": true,
+        "emotions": {},
+        "topics": [],
+        "patterns": {}
+      },
+      {
+        "userId": "1007799027716329484",
+        "username": "l0uvers",
+        "content": "yay!",
+        "timestamp": 1755813922904,
+        "isBot": false,
+        "emotions": {
+          "excitement": true
+        },
+        "topics": [],
+        "patterns": {}
+      }
+    ]
+  },
+  "conversationState": {},
+  "lastBotMessage": {},
+  "personalityProfile": {
+    "1393659651832152185:1007799027716329484": {
+      "communicationStyle": "balanced",
+      "interests": [],
+      "emotionalTendencies": [
+        "happiness",
+        "frustration",
+        "excitement",
+        "playfulness",
+        "anxiety"
+      ],
+      "responsePreferences": "balanced",
+      "humorLevel": "medium",
+      "supportNeeds": "standard"
+    }
+  },
+  "emotionalContext": {
+    "1393659651832152185:1007799027716329484": {
+      "lastUpdate": 1755814047899,
+      "currentEmotions": {
+        "anxiety": true
+      },
+      "history": [
+        {
+          "emotions": {
+            "anxiety": true
+          },
+          "timestamp": 1755814047899
+        },
+        {
+          "emotions": {
+            "playfulness": true
+          },
+          "timestamp": 1755814036963
+        },
+        {
+          "emotions": {},
+          "timestamp": 1755814022561
+        },
+        {
+          "emotions": {
+            "excitement": true
+          },
+          "timestamp": 1755813922904
+        },
+        {
+          "emotions": {},
+          "timestamp": 1755813903155
+        },
+        {
+          "emotions": {},
+          "timestamp": 1755813891230
+        },
+        {
+          "emotions": {},
+          "timestamp": 1755813845999
+        },
+        {
+          "emotions": {},
+          "timestamp": 1755813829680
+        },
+        {
+          "emotions": {
+            "frustration": true
+          },
+          "timestamp": 1755813817393
+        },
+        {
+          "emotions": {
+            "happiness": true
+          },
+          "timestamp": 1755813789483
+        }
+      ]
+    }
+  },
+  "topicMemory": {},
+  "responseHistory": {},
+  "engagementMetrics": {
+    "1393659651832152185:1007799027716329484": {
+      "responses": 14,
+      "topics": [],
+      "lastActive": 1755814047899
+    }
+  },
+  "moodState": {
+    "1393659651832152185:1007799027716329484": {
+      "currentMood": "happy",
+      "intensity": 92.18868950000001,
+      "duration": 10,
+      "lastUpdate": 1755814047899,
+      "moodHistory": [
+        {
+          "mood": "content",
+          "intensity": 49.19495461699481,
+          "duration": 7,
+          "timestamp": 1755813789484
+        }
+      ],
+      "triggers": [
+        "positive_interaction",
+        "good_vibes",
+        "evening_wind_down",
+        "reflection_time"
+      ],
+      "stability": 0.9
+    }
+  },
+  "lastSeen": {
+    "1393659651832152185:1007799027716329484": 1755814047899
+  },
+  "users": {
+    "1393659651832152185:1007799027716329484": {
+      "strikes": 1,
+      "affinity": 3,
+      "facts": {},
+      "personality": "neutral",
+      "conversationStyle": "casual",
+      "topics": [],
+      "emotionalState": "neutral",
+      "engagementLevel": "medium",
+      "isOwner": false
+    }
+  },
+  "lastReply": {
+    "1393659651832152185:1007799027716329484": 1755814047899
+  },
+  "lastReplyChannel": {
+    "1393659651832152185#1393678356008140891": 1755814047899
+  }
+}

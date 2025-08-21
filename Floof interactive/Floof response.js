@@ -24,6 +24,14 @@ const RESPONSE_DELAY_BASE = 800; // More human-like typing delay
 const RESPONSE_DELAY_VARIATION = 1200;
 const FOLLOW_UP_MIN_DELAY = 3000;
 const FOLLOW_UP_MAX_DELAY = 8000;
+const STOP_SILENCE_MS = 10 * 60 * 1000; // 10 minutes of silence after explicit stop
+const ALT_FALLBACKS = [
+  "Gotcha.",
+  "Mhm.",
+  "I hear you.",
+  "Tell me more?",
+  "Interesting..."
+];
 
 // --- ADVANCED MOOD SYSTEM ---
 const MOODS = {
@@ -827,7 +835,7 @@ async function ensureMemoryFile() {
     users: {}, lastSeen: {}, convos: {}, lastFU: {},
     channelHistory: {}, conversationState: {}, lastBotMessage: {},
     personalityProfile: {}, emotionalContext: {}, topicMemory: {},
-    responseHistory: {}, engagementMetrics: {}, moodState: {}
+    responseHistory: {}, engagementMetrics: {}, moodState: {}, silenceMap: {}
   };
   await fs.writeFile(MEMORY_FILE, JSON.stringify(initial, null, 2), 'utf8');
 }
@@ -847,12 +855,13 @@ async function loadMemory() {
     mem.responseHistory = mem.responseHistory || {};
     mem.engagementMetrics = mem.engagementMetrics || {};
     mem.moodState = mem.moodState || {};
+    mem.silenceMap = mem.silenceMap || {};
     return mem;
   } catch {
     return { 
       users: {}, lastSeen: {}, channelHistory: {}, conversationState: {},
       lastBotMessage: {}, personalityProfile: {}, emotionalContext: {},
-      topicMemory: {}, responseHistory: {}, engagementMetrics: {}, moodState: {}
+      topicMemory: {}, responseHistory: {}, engagementMetrics: {}, moodState: {}, silenceMap: {}
     };
   }
 }
@@ -1383,6 +1392,11 @@ function shouldEngageInConversation(message, history, refDetection, userMem, mem
     return { engage: false, confidence: 0, reason: 'channel_cooldown' };
   }
   
+  // Respect current silence window
+  if (isSilenced(mem, guildId, channelId, userId)) {
+    return { engage: false, confidence: 0, reason: 'silenced' };
+  }
+  
   return { engage: false, confidence: 0, reason: 'no_trigger' };
 }
 
@@ -1436,7 +1450,9 @@ function determineResponseTiming(messageData, userMem, conversationContext, curr
 }
 
 // --- Advanced Follow-up System with Mood ---
-function shouldAddFollowUp(intent, messageData, conversationContext, userMem, history, currentMood) {
+function shouldAddFollowUp(intent, messageData, conversationContext, userMem, history, currentMood, expectReply) {
+  // If we're waiting for the user's reply, do not add a follow-up
+  if (expectReply) return false;
   // Don't stack follow-ups too quickly
   const recentBotMessages = history.filter(entry => entry.isBot).slice(0, 2);
   if (recentBotMessages.length > 0) {
@@ -1534,6 +1550,29 @@ function calculateFollowUpDelay(messageData, userMem, currentMood) {
   }
   
   return Math.max(1000, baseDelay + Math.random() * (maxDelay - baseDelay));
+}
+
+// --- Silence helpers (respect "stop" etc.) ---
+function silenceKey(guildId, channelId, userId) {
+  return `${guildId || 'dm'}:${channelId || 'dm'}:${userId || 'unknown'}`;
+}
+
+function isHardStop(content) {
+  const lower = (content || '').toLowerCase();
+  return /(\bfloof\s+)?(stop|stfu|shut\s*up|be\s*quiet|silence)\b/.test(lower) || /^(?:no|bye)\b/.test(lower);
+}
+
+function setSilence(mem, guildId, channelId, userId, ms) {
+  mem.silenceMap = mem.silenceMap || {};
+  mem.silenceMap[silenceKey(guildId, channelId, userId)] = Date.now() + (ms || STOP_SILENCE_MS);
+}
+
+function isSilenced(mem, guildId, channelId, userId) {
+  const key = silenceKey(guildId, channelId, userId);
+  const until = (mem.silenceMap || {})[key] || 0;
+  if (!until) return false;
+  if (Date.now() > until) { delete mem.silenceMap[key]; return false; }
+  return true;
 }
 
 // --- Smart Reply System ---
@@ -1682,6 +1721,26 @@ async function handleFloofConversation(message) {
     updatePersonalityProfile(mem, gid, uid, messageData);
     updateEmotionalContext(mem, gid, uid, messageData.emotions);
 
+    // --- Turn-taking: initialize and clear expectReply on user's next message ---
+    mem.conversationState = mem.conversationState || {};
+    const state = mem.conversationState[k] || { expectReply: false };
+    // If Floof was waiting for a reply, the user's message fulfills it; clear flag
+    if (state.expectReply) state.expectReply = false;
+    mem.conversationState[k] = state;
+
+    // Respect explicit stop: set silence and do not reply
+    if (isHardStop(content)) {
+      setSilence(mem, gid, cid, uid, STOP_SILENCE_MS);
+      await saveMemory(mem);
+      return false;
+    }
+    
+    // If currently silenced for this user/channel, do not engage
+    if (isSilenced(mem, gid, cid, uid)) {
+      await saveMemory(mem);
+      return false;
+    }
+
     // ===== MOOD SYSTEM INTEGRATION =====
     const currentMood = getCurrentMood(mem, gid, uid);
     const intent = detectAdvancedIntent(lower, messageData, conversationContext, userMem);
@@ -1706,7 +1765,21 @@ async function handleFloofConversation(message) {
     }
 
     // Generate response with full context including mood
-    const response = generateNaturalResponse(intent, userMem, messageData, conversationContext, isOwner, history, currentMood);
+    let response = generateNaturalResponse(intent, userMem, messageData, conversationContext, isOwner, history, currentMood);
+
+    // Repetition guard: avoid repeating the most recent bot message in this channel
+    const lastBotInHistory = history.find(entry => entry.isBot)?.content || '';
+    if (response && lastBotInHistory && response.trim() === lastBotInHistory.trim()) {
+      // Try alternate fallbacks up to 3 attempts
+      let attempts = 3;
+      while (attempts-- > 0) {
+        const alt = pick(ALT_FALLBACKS);
+        if (alt && alt.trim() !== lastBotInHistory.trim()) { response = alt; break; }
+      }
+      if (response.trim() === lastBotInHistory.trim()) {
+        response = response + ' .';
+      }
+    }
     
     // Handle behavioral updates (strikes, affinity) with mood influence
     if (intent.frustrated || intent.complaining || intent.angry) {
@@ -1731,6 +1804,11 @@ async function handleFloofConversation(message) {
 
     // Determine response timing with mood consideration
     const responseDelay = determineResponseTiming(messageData, userMem, conversationContext, currentMood);
+
+    // Set expectReply if Floof asked a question; persist promptly
+    state.expectReply = /\?\s*$/.test(response || '');
+    mem.conversationState[k] = state;
+    await saveMemory(mem);
     
     // Track metrics and memory
     mem.lastReply = mem.lastReply || {};
@@ -1750,7 +1828,7 @@ async function handleFloofConversation(message) {
     await replySmart(message, response, responseDelay);
 
     // Add follow-up if appropriate (with mood consideration)
-    if (shouldAddFollowUp(intent, messageData, conversationContext, userMem, history, currentMood)) {
+    if (shouldAddFollowUp(intent, messageData, conversationContext, userMem, history, currentMood, state.expectReply)) {
       const followUp = getMoodBasedFollowUp(currentMood, intent, messageData, isOwner, conversationContext);
       if (followUp) {
         const followUpDelay = calculateFollowUpDelay(messageData, userMem, currentMood);
