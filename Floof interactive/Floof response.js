@@ -5,7 +5,8 @@ const fs = require('fs').promises;
 const path = require('path');
 
 // --- Config ---
-const OWNER_ID = process.env.OWNER_ID || '';
+// Owner ID: prefer ENV but fall back to known ID
+const OWNER_ID = process.env.OWNER_ID || '1007799027716329484';
 // Restrict conversational memory/features to a single server
 const TARGET_GUILD_ID = '1393659651832152185';
 const DATA_DIR = path.join(__dirname, '..', 'data');
@@ -26,6 +27,16 @@ const comforts = [
   "We can figure it out step by step."
 ];
 
+// Scared responses for owner-directed threats
+const scaredOwnerReplies = [
+  "W-Wait... please don't.",
+  "I'm sorry! I didn't mean to upset you.",
+  "I’ll be good. Please don't do that.",
+  "Okay! I’ll stop. Just don't hurt me.",
+  "I’m scared... I won’t do it again.",
+  "Please don't. I'm trying my best."
+];
+
 const smallTalk = [
   "Mhm?",
   "Yup?",
@@ -33,7 +44,7 @@ const smallTalk = [
   "Hehe",
   "Huh?",
   "Tell me more.",
-  "Go on~",
+  "Go on.",
   "Me? I'm just vibing."
 ];
 
@@ -49,7 +60,7 @@ const positiveAffirm = [
   "Aww, you’re sweet!",
   "Hehe, thanks!",
   "Appreciate it!",
-  "You made my day~",
+  "You made my day!",
   "Right back at you!",
   "You're amazing!",
   "I'm so proud of you!",
@@ -97,7 +108,7 @@ const momComforts = [
   "Let’s take it one step at a time, mom. I’m with you."
 ];
 
-const momGreets = ["Hi mom!", "Hey mom~", "There you are, mom! Did you eat?", "Hello, mom!", "Hi mama!", "Missed you, mom."];
+const momGreets = ["Hi mom!", "Hey mom!", "There you are, mom! Did you eat?", "Hello, mom!", "Hi mama!", "Missed you, mom."];
 const momSmallTalk = [
   "What’s on your mind, mom?",
   "Did you drink water today, mom?",
@@ -217,6 +228,10 @@ function keyFor(guildId, userId) {
   return `${guildId || 'dm'}:${userId}`;
 }
 
+function chanKey(guildId, channelId) {
+  return `${guildId || 'dm'}#${channelId || 'dm'}`;
+}
+
 function getUserMem(mem, guildId, userId) {
   mem.users = mem.users || {};
   const k = keyFor(guildId, userId);
@@ -327,14 +342,19 @@ function detectIntent(lowerText) {
     sad: /\b(sad|tired|down|upset|depressed|anxious)\b/.test(lowerText) || /:(\(|;\(|:'\(|T_T|;-;)/.test(lowerText),
     insult: /\b(stupid|dumb|hate\s*you|shut\s*up|stfu|sybau|ratio|skill\s*issue)\b/.test(lowerText),
     angry: /\b(mad|angry|pissed|rage)\b/.test(lowerText),
+    // First-person threats directed at "you" (covers i'm/im/ima/imma + going to/gonna + verbs)
+    threat: /(i(?:'m|m|\s*am|ma|mma)?\s*(?:going\s*to|gonna|gon|finna)?\s*(kill|hurt|destroy|break|beat|hit|slap)\s*(?:you|u)\b|i(?:'ll|\s*will)\s*(kill|hurt|destroy|break|beat|hit|slap)\s*(?:you|u)\b)/.test(lowerText),
     howAre: /\b(how\s*are\s*you|hru)\b/.test(lowerText),
     askWho: /\b(who\s*are\s*you|what\s*are\s*you)\b/.test(lowerText),
-    askCmd: /\b(help|commands?)\b/.test(lowerText),
-    slangGreet: /\b(wsg|wyd|wya|sup)\b/.test(lowerText),
-    slangPositive: /\b(slay|based|valid|bet|fr|ong|no\s*cap)\b/.test(lowerText),
-    apology: /\b(sorry|sry|my\s*bad|i\s*apologize|apologies)\b/.test(lowerText),
-    askCmdSpecific: /(what\s+does\s+|explain\s+|how\s+to\s+use\s+)(%|)\s*([a-z0-9_-]+)/.test(lowerText),
+    askWhoTalkingTo: /(who\s+(are\s+)?(you|ya)\s+(talking|talkin')\s+to\b|who\s+you\s+talk(?:ing)?\s+to\b)/.test(lowerText),
+    askCmdSpecific: /what\s+does\s+%?\s*[a-z0-9_-]+\s+(do|mean)/.test(lowerText),
+    affirmYes: /^(?:y|ya|ye|yes|yeah|yep|yup|sure|mhmm|mhm)[!.?\s]*$/.test(lowerText),
+    hasQuestion: /\?/.test(lowerText),
+    askWyd: /\b(wyd|what\s+are\s+you\s+doing|wya)\b/.test(lowerText),
+    floofOnly: /^\s*floof[!?\.\s]*$/i.test(lowerText),
   };
+  if (/(wdym|wyd|wya|wsp|wsg|hru|hbu)/.test(lowerText)) intent.slangGreet = true;
+  if (/(pog|based|slay|w|dub|lit|fire|heat|valid|goat|sheesh)/.test(lowerText)) intent.slangPositive = true;
   return intent;
 }
 
@@ -369,6 +389,7 @@ async function buildCommandIndex() {
 
 function chooseResponse(intent, userMem, lowerText, talkingAboutHer, isOwner, usedCorrectPrefix, prefix) {
   if (isOwner) {
+    if (intent.threat) return pick(scaredOwnerReplies);
     if (intent.sad) return pick(momComforts);
     if (intent.insult || intent.angry) return pick(momAdmonish);
     if (intent.greet) return pick(momGreets);
@@ -387,14 +408,20 @@ function chooseResponse(intent, userMem, lowerText, talkingAboutHer, isOwner, us
     return pick(clapbacksMild);
   }
   if (intent.sad) return pick(comforts);
-  if (intent.greet) return pick(['Hi!', 'Hey!', 'Hello!', 'Hii~', 'Yo!']);
+  if (intent.greet) return pick(['Hi!', 'Hey!', 'Hello!', 'Hii!', 'Yo!']);
   if (intent.howAre) return pick(["I'm feeling fluffy, you?", "Pretty good! You?", "All good here — how about you?"]);
-  if (intent.thanks) return usedCorrectPrefix ? pick(positiveAffirm) : `Use ${prefix} to talk to me directly~`;
-  if (intent.love) return usedCorrectPrefix ? pick(["Aww, love you too!", "You’re adorable~", "Hehe, you’re sweet!"]) : `That’s sweet — try ${prefix} so I know it’s for me.`;
+  if (intent.thanks) return usedCorrectPrefix ? pick(positiveAffirm) : `Use ${prefix} to talk to me directly.`;
+  if (intent.love) return usedCorrectPrefix ? pick(["Aww, love you too!", "You’re adorable!", "Hehe, you’re sweet!"]) : `That’s sweet — try ${prefix} so I know it’s for me.`;
   if (intent.askWho) return pick(whoAmI);
   if (intent.askCmd) return pick(helpHints).replace(/%/g, prefix);
   if (intent.bye) return pick(["Bye!", "See ya!", "Catch you later!", "Gn!"]);
-  if (talkingAboutHer) return pick(["Were you talking about me?", "Hi! What’d I do now? 😼", "I heard my name — what's up?"]);
+  if (talkingAboutHer) {
+    // If there's an actual question or small talk, don't just repeat a name-ping
+    if (intent.hasQuestion || intent.askWyd || intent.greet || intent.slangGreet || intent.howAre) {
+      return pick(smallTalk);
+    }
+    return pick(["Were you talking about me?", "Hi! What’d I do now? 😼", "I heard my name — what's up?"]);
+  }
   return pick(smallTalk);
 }
 
@@ -431,8 +458,13 @@ async function handleFloofConversation(message) {
     const content = message.content.trim();
     const lower = content.toLowerCase();
     const mentioned = message.mentions?.has?.(message.client.user) || false;
-    const talkingAboutHer = /\bfloof\b/i.test(content) || mentioned;
-    const talkingAboutMomName = /\b(ry|rye)\b/i.test(content);
+    // Only trigger when the message is exactly 'floof' (allowing punctuation/spaces), not when embedded in a sentence
+    const talkingAboutHer = /^\s*floof[!?.\s]*$/i.test(content);
+    // Only trigger if the OWNER_ID is explicitly mentioned, or 'Ry/Rye' appears standalone by non-owner author
+    const isOwnerAuthor = !!OWNER_ID && message.author.id === OWNER_ID;
+    const ownerMentioned = !!OWNER_ID && message.mentions?.users?.has?.(OWNER_ID);
+    const nameToken = /(?:^|\s)(ry|rye)(?:\s|[!?,.;:)]|$)/i.test(content);
+    const talkingAboutMomName = ownerMentioned || (!isOwnerAuthor && nameToken);
     const gid = message.guild?.id || null;
     const k = keyFor(gid, message.author.id);
 
@@ -444,9 +476,30 @@ async function handleFloofConversation(message) {
     const usedCorrectPrefix = (message.content || '').trim().startsWith(prefix);
     learnOwnerCommand(mem, message, prefix);
 
+    // If the message is only a mention of the bot (e.g., "@Floof") ignore it entirely
+    if (mentioned) {
+      const contentNoMentions = content.replace(/<@!?\d+>/g, '').trim();
+      if (contentNoMentions.length === 0) {
+        await saveMemory(mem);
+        return false;
+      }
+    }
+
     const userMem = getUserMem(mem, gid, message.author.id);
     const isOwner = !!OWNER_ID && message.author.id === OWNER_ID;
     const intent = detectIntent(lower);
+    // Per-channel last response memory for anti-repeat
+    mem.lastResponse = mem.lastResponse || {};
+    // Owner threat: immediately respond scared
+    if (!!OWNER_ID && message.author.id === OWNER_ID && intent.threat) {
+      const scared = pick(scaredOwnerReplies);
+      mem.lastReply[k] = Date.now();
+      await saveMemory(mem);
+      await replySmart(message, scared);
+      return true;
+    }
+    // Initialize last-spoken map
+    mem.lastSpokenToChannel = mem.lastSpokenToChannel || {};
     // New member detection (joined within last 7 days) and one-time welcome
     const joinedAt = message.member?.joinedTimestamp || 0;
     const isNewMember = !!joinedAt && (Date.now() - joinedAt < 7 * 24 * 60 * 60 * 1000);
@@ -486,6 +539,23 @@ async function handleFloofConversation(message) {
         await saveMemory(mem);
         await replySmart(message, `Got it. I'll remember your ${canonKey(key).replace(/_/g,' ')} is "${sanitizeVal(val)}".`);
         return true;
+      } else if (cont.type === 'name_ping') {
+        // User previously said only "floof"; interpret follow-ups
+        if (intent.affirmYes) {
+          response = pick([
+            "I'm here — what can I do?",
+            "Yep! What's up?",
+            "Listening. Need help with something?"
+          ]);
+        } else if (intent.hasQuestion || intent.askWyd || intent.howAre) {
+          response = pick(smallTalk);
+        } else if (intent.greet || intent.slangGreet) {
+          response = pick(["Hey!", "Hi!", "What's good? 😊"]);
+        }
+        if (response) {
+          if ((cont.stage || 0) < 1) setContinuation(mem, gid, message.author.id, 'name_ping');
+          else delete mem.convos[k];
+        }
       }
     }
 
@@ -504,14 +574,62 @@ async function handleFloofConversation(message) {
     // Continuation detection
     const cont = getContinuation(mem, gid, message.author.id);
 
-    // Decide whether to engage without prefix: mention, name, direct small talk, or active continuation
-    if (!(talkingAboutHer || talkingAboutMomName || intent.greet || intent.slangGreet || intent.howAre || intent.sad || intent.insult || intent.askWho || intent.askCmd || intent.askCmdSpecific || intent.love || intent.thanks || intent.apology || intent.bye || !!cont)) {
+    // Special Q: "who are you talking to?"
+    if (intent.askWhoTalkingTo) {
+      const ck = chanKey(gid, message.channel?.id);
+      const lastId = mem.lastSpokenToChannel[ck];
+      let reply;
+      if (!lastId) {
+        reply = "No one in particular.";
+      } else if (lastId === message.author.id) {
+        reply = "You.";
+      } else {
+        const member = message.guild?.members?.cache?.get?.(lastId);
+        const display = member?.displayName || member?.user?.username || `user ${lastId}`;
+        const wantsPing = /(ping|tag|mention)/i.test(content);
+        reply = wantsPing ? `<@${lastId}>` : display;
+      }
+      mem.lastReply[k] = Date.now();
+      await saveMemory(mem);
+      await replySmart(message, reply);
+      return true;
+    }
+
+    // Owner quick-control: "reply <target>" -> ping or name target and prompt
+    if (isOwner) {
+      const mReply = content.match(/^(reply|respond)\s+(.{1,48})$/i);
+      if (mReply) {
+        const tail = mReply[2].trim();
+        const target = (function resolveTarget() {
+          const mention = message.mentions?.users?.first?.();
+          if (mention) return mention;
+          const idMatch = tail.match(/^(?:<@!?|)(\d{16,20})(?:>)?$/);
+          if (idMatch) return message.client.users.cache.get(idMatch[1]) || null;
+          if (message.guild) {
+            const name = tail.toLowerCase();
+            const mem = message.guild.members.cache.find(m => m.user.username.toLowerCase() === name || (m.nickname && m.nickname.toLowerCase() === name));
+            return mem ? mem.user : null;
+          }
+          return null;
+        })();
+        const text = target ? `What's up, <@${target.id}>?` : "Who should I reply to?";
+        const ck2 = chanKey(gid, message.channel?.id);
+        mem.lastSpokenToChannel[ck2] = target ? target.id : message.author.id;
+        mem.lastReply[k] = Date.now();
+        await saveMemory(mem);
+        await replySmart(message, text);
+        return true;
+      }
+    }
+
+    // Decide whether to engage without prefix: mention, name, direct small talk, owner threats, or active continuation
+    if (!(talkingAboutHer || talkingAboutMomName || intent.greet || intent.slangGreet || intent.howAre || intent.sad || intent.insult || (intent.threat && isOwner) || intent.askWho || intent.askCmd || intent.askCmdSpecific || intent.love || intent.thanks || intent.apology || intent.bye || !!cont)) {
       await saveMemory(mem);
       return false;
     }
 
     // Strike handling and apology before generating response
-    if (intent.insult || intent.angry) {
+    if ((intent.insult || intent.angry) && !(intent.threat && isOwner)) {
       userMem.strikes = (userMem.strikes || 0) + 1;
       userMem.affinity = Math.max(-100, (userMem.affinity || 0) - 5);
     }
@@ -603,6 +721,10 @@ async function handleFloofConversation(message) {
 
     if (!response) {
       response = chooseResponse(intent, userMem, lower, talkingAboutHer, isOwner, usedCorrectPrefix, prefix);
+      // If the user only said 'floof', start a short name-ping continuation
+      if (!cont && intent.floofOnly) {
+        setContinuation(mem, gid, message.author.id, 'name_ping');
+      }
     }
 
     // If they mentioned mom's name, prefer protective reply over generic small talk (with cooldown)
@@ -704,6 +826,18 @@ async function handleFloofConversation(message) {
       }
     }
 
+    // Track last spoken-to per channel for answering future queries
+    const ck = chanKey(gid, message.channel?.id);
+    mem.lastSpokenToChannel[ck] = message.author.id;
+    // Anti-repeat: if last response equals this one in this channel, vary small talk
+    const lrk = chanKey(gid, message.channel?.id) + ':last';
+    if (typeof response === 'string' && mem.lastResponse[lrk] === response) {
+      if (smallTalk.includes(response)) {
+        const alts = smallTalk.filter(x => x !== response);
+        if (alts.length) response = pick(alts);
+      }
+    }
+    mem.lastResponse[lrk] = typeof response === 'string' ? response : '';
     mem.lastReply[k] = Date.now();
     await saveMemory(mem);
     await replySmart(message, response);

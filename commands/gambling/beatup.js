@@ -15,6 +15,32 @@ const arrestedUsers = {};
 // Cooldown storage for beatup command
 const beatupCooldowns = {};
 
+// Resolve target from args or mention; supports @mention, ID, username, nickname, or keyword 'floof'
+function resolveTargetUser(message, args) {
+    // 1) Direct mention
+    let u = message.mentions.users.first();
+    if (u) return u;
+    const raw = (args && args[0]) ? String(args[0]).trim() : '';
+    if (!raw) return null;
+    // 2) ID like 123456789012345678 or <@123> / <@!123>
+    const idMatch = raw.match(/^(?:<@!?|)(\d{16,20})(?:>)?$/);
+    if (idMatch) {
+        const id = idMatch[1];
+        return message.client.users.cache.get(id) || null;
+    }
+    // 3) Keyword 'floof' or 'bot' resolves to the bot user
+    if (/^floof$|^bot$/i.test(raw)) return message.client.user;
+    // 4) Username/nickname search in guild
+    if (message.guild) {
+        const name = raw.toLowerCase();
+        const member = message.guild.members.cache.find(m =>
+            m.user.username.toLowerCase() === name || (m.nickname && m.nickname.toLowerCase() === name)
+        );
+        if (member) return member.user;
+    }
+    return null;
+}
+
 function beatup(message, targetUser) {
     const attacker = message.author;
     
@@ -322,9 +348,10 @@ function handleFloofBeatup(message, attacker, targetUser) {
     } else {
         // 5% chance: User actually succeeds against Floof
         const stolenAmount = Math.floor(Math.random() * 300) + 100; // 100-400 coins
-        userBalances[attacker.id] += stolenAmount;
+        const attackerBal = getBalance(attacker.id);
+        setBalance(attacker.id, attackerBal + stolenAmount);
         // Floof keeps infinite coins
-        userBalances[targetUser.id] = 999999999;
+        setBalance(targetUser.id, 999999999);
         saveBalances();
         
         return sendAsFloofWebhook(message, { embeds: [
@@ -334,7 +361,7 @@ function handleFloofBeatup(message, attacker, targetUser) {
                     `🤯 **INCREDIBLE!** <@${attacker.id}> actually managed to beat up Floof!\n\n` +
                     `😵 **Floof**: *SYSTEM ERROR* How did you... *sparks fly*\n` +
                     `💰 You stole **${stolenAmount}** coins from Floof's infinite stash!\n\n` +
-                    `**<@${attacker.id}>** now has: **${userBalances[attacker.id]}** coins\n` +
+                    `**<@${attacker.id}>** now has: **${getBalance(attacker.id)}** coins\n` +
                     `**Floof** still has infinite coins (she's a bot after all)! 🤖`
                 )
                 .setColor(0xffd700)
@@ -365,7 +392,7 @@ module.exports = {
     cooldown: 60,
     
     async execute(message, args) {
-        const targetUser = message.mentions.users.first();
+        const targetUser = resolveTargetUser(message, args);
         await beatup(message, targetUser);
     },
     
