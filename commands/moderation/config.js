@@ -153,6 +153,14 @@ module.exports = {
                         ].join(' | ')
                     },
                     {
+                        name: 'Spam-Allowed Channels',
+                        value: '`%config automod spam allow #ch1 [#ch2 ...]` | `spam unallow #ch1 [...]` | `spam list` | `spam clear`'
+                    },
+                    {
+                        name: 'Spam-Allowed Categories',
+                        value: '`%config automod spam allowcat <#category|ID> [more...]` | `spam unallowcat <#category|ID>` | `spam listcat` | `spam clearcat`'
+                    },
+                    {
                         name: 'Links / Invites / Mentions',
                         value: '`%config automod set links action <delete|warn|mute>` | `invites action <delete|warn|mute>` | `mentions max <n>` | `mentions action <delete|warn|mute>`'
                     },
@@ -200,7 +208,7 @@ module.exports = {
 
         // Defaults to align with automod.js
         const defaults = {
-            spam: { enabled: true, maxMessages: 5, timeWindow: 5000, muteTime: 300000, muteBase: 300000, muteStep: 120000, muteMax: 900000 },
+            spam: { enabled: true, maxMessages: 5, timeWindow: 5000, muteTime: 300000, muteBase: 300000, muteStep: 120000, muteMax: 900000, allowedChannels: [] },
             badWords: { enabled: false, words: [], action: 'delete' },
             caps: { enabled: false, threshold: 0.7, minLength: 10, action: 'warn' },
             invites: { enabled: true, action: 'mute', muteTime: 600000, allowedDomains: [] },
@@ -391,6 +399,97 @@ module.exports = {
 
             await save();
             return await sendOK(`Updated ${m} ${key}.`);
+        }
+
+        // Manage spam allowed channels/categories: allow/unallow/list/clear
+        if (sub === 'spam') {
+            const action = (args[1] || '').toLowerCase();
+            const getMentionedOrIds = () => {
+                const ids = new Set();
+                // Mentions
+                for (const [, ch] of (message.mentions.channels || [])) {
+                    ids.add(ch.id);
+                }
+                // IDs in args
+                for (const token of args.slice(2)) {
+                    const id = token.replace(/[^0-9]/g, '');
+                    if (id && /^[0-9]{5,}$/.test(id)) {
+                        const ch = message.guild.channels.cache.get(id);
+                        if (ch) ids.add(ch.id);
+                    }
+                }
+                return Array.from(ids);
+            };
+
+            ensure('spam', defaults.spam);
+            automod.spam.allowedChannels = Array.isArray(automod.spam.allowedChannels) ? automod.spam.allowedChannels : [];
+            automod.spam.allowedCategories = Array.isArray(automod.spam.allowedCategories) ? automod.spam.allowedCategories : [];
+
+            if (action === 'allow') {
+                const ids = getMentionedOrIds();
+                if (ids.length === 0) return await sendErr('Mention channels or provide channel IDs.');
+                for (const id of ids) {
+                    if (!automod.spam.allowedChannels.includes(id)) automod.spam.allowedChannels.push(id);
+                }
+                await save();
+                return await sendOK(`Allowed spam in: ${ids.map(id => `<#${id}>`).join(', ')}`);
+            }
+            if (action === 'unallow' || action === 'remove' || action === 'rm') {
+                const ids = getMentionedOrIds();
+                if (ids.length === 0) return await sendErr('Mention channels or provide channel IDs.');
+                automod.spam.allowedChannels = automod.spam.allowedChannels.filter(id => !ids.includes(id));
+                await save();
+                return await sendOK(`Removed allowlist for: ${ids.map(id => `<#${id}>`).join(', ')}`);
+            }
+            if (action === 'list') {
+                const list = automod.spam.allowedChannels || [];
+                const text = list.length ? list.map(id => `• <#${id}>`).join('\n') : '*none*';
+                const embed = new EmbedBuilder().setTitle('📣 Spam-Allowed Channels').setColor(0x00FF7F).setDescription(text);
+                return await sendAsFloofWebhook(message, { embeds: [embed] });
+            }
+            if (action === 'clear') {
+                automod.spam.allowedChannels = [];
+                await save();
+                return await sendOK('Cleared spam-allowed channels.');
+            }
+            // Category operations
+            if (action === 'allowcat' || action === 'allowcategory') {
+                const ids = getMentionedOrIds();
+                // Filter to category channels
+                const catIds = ids.filter(id => {
+                    const ch = message.guild.channels.cache.get(id);
+                    return ch && ch.type === ChannelType.GuildCategory;
+                });
+                if (catIds.length === 0) return await sendErr('Mention category channels or provide category IDs.');
+                for (const id of catIds) {
+                    if (!automod.spam.allowedCategories.includes(id)) automod.spam.allowedCategories.push(id);
+                }
+                await save();
+                return await sendOK(`Allowed spam in categories: ${catIds.map(id => `<#${id}>`).join(', ')}`);
+            }
+            if (action === 'unallowcat' || action === 'removecat' || action === 'rmcat') {
+                const ids = getMentionedOrIds();
+                const catIds = ids.filter(id => {
+                    const ch = message.guild.channels.cache.get(id);
+                    return ch && ch.type === ChannelType.GuildCategory;
+                });
+                if (catIds.length === 0) return await sendErr('Mention category channels or provide category IDs.');
+                automod.spam.allowedCategories = automod.spam.allowedCategories.filter(id => !catIds.includes(id));
+                await save();
+                return await sendOK(`Removed allowlist for categories: ${catIds.map(id => `<#${id}>`).join(', ')}`);
+            }
+            if (action === 'listcat') {
+                const list = automod.spam.allowedCategories || [];
+                const text = list.length ? list.map(id => `• <#${id}>`).join('\n') : '*none*';
+                const embed = new EmbedBuilder().setTitle('📁 Spam-Allowed Categories').setColor(0x00FF7F).setDescription(text);
+                return await sendAsFloofWebhook(message, { embeds: [embed] });
+            }
+            if (action === 'clearcat') {
+                automod.spam.allowedCategories = [];
+                await save();
+                return await sendOK('Cleared spam-allowed categories.');
+            }
+            return await sendErr('Usage: `spam allow #ch` | `spam unallow #ch` | `spam list` | `spam clear` | `spam allowcat <#cat>` | `spam unallowcat <#cat>` | `spam listcat` | `spam clearcat`');
         }
 
         if (sub === 'badwords') {

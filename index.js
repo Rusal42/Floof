@@ -2,6 +2,7 @@ require('dotenv').config();
 const { Client, GatewayIntentBits, PermissionsBitField, EmbedBuilder } = require('discord.js');
 const fs = require('fs').promises;
 const path = require('path');
+const { handleFloofConversation } = require('./Floof interactive/Floof response');
 
 // Initialize data directory
 async function initializeDataDirectory() {
@@ -638,6 +639,14 @@ client.on('messageCreate', async (message) => {
         await bumpStickyIfNeeded(message);
     } catch (e) {
         console.error('Sticky bump err:', e);
+    }
+    
+    // Floof conversational responder (runs without prefix)
+    try {
+        const handledFloof = await handleFloofConversation(message);
+        if (handledFloof) return;
+    } catch (e) {
+        console.error('Floof conversation handler error:', e);
     }
     
     // Check if message starts with command prefix (% or custom prefix)

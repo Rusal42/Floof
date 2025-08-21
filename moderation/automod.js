@@ -14,6 +14,8 @@ const DEFAULT_AUTOMOD_CONFIG = {
         muteBase: 300000,      // Base mute duration (ms) when threshold exceeded (default 5m)
         muteStep: 120000,      // Extra per message over the threshold (ms) (default +2m each)
         muteMax: 900000,       // Maximum mute duration cap (ms) (default 15m)
+        allowedChannels: [],   // Channels where spam checks are ignored
+        allowedCategories: []  // Category IDs where spam checks are ignored for all child channels
     },
     
     // Bad words filter (disabled)
@@ -162,10 +164,17 @@ async function handleAutoModeration(message) {
     const guildConfig = getGuildAutomodConfig(message.guild.id);
     const violations = [];
     
-    // Check for spam
+    // Check for spam (skip if channel or its category is allowlisted)
     if (guildConfig.spam.enabled) {
-        const spamResult = checkSpam(message, guildConfig);
-        if (spamResult.isSpam) violations.push(spamResult);
+        const chId = message.channel?.id;
+        const parentId = message.channel?.parentId;
+        const allowedCh = Array.isArray(guildConfig.spam.allowedChannels) ? guildConfig.spam.allowedChannels : [];
+        const allowedCats = Array.isArray(guildConfig.spam.allowedCategories) ? guildConfig.spam.allowedCategories : [];
+        const skip = (chId && allowedCh.includes(chId)) || (parentId && allowedCats.includes(parentId));
+        if (!skip) {
+            const spamResult = checkSpam(message, guildConfig);
+            if (spamResult.isSpam) violations.push(spamResult);
+        }
     }
 
     // Check for similar message spam (4 in a row)
@@ -360,38 +369,17 @@ function checkLinkSpam(message, config) {
     }
 
     // Allow GIF links (commonly used for reactions). Filter out links ending with .gif
-    // Also allow popular GIF host domains like Tenor and Giphy (even when not direct .gif files)
-    const allowedGifDomains = [
-        'tenor.com', 'media.tenor.com',
-        'giphy.com', 'media.giphy.com', 'i.giphy.com'
-    ];
+    const nonGifLinks = links.filter(l => !/\.gif(\?|#|$)/i.test(l));
 
-    const isAllowedDomain = (u) => {
-        try {
-            const { hostname } = new URL(u);
-            return allowedGifDomains.some(d => hostname === d || hostname.endsWith(`.${d}`));
-        } catch (_) {
-            return false;
-        }
-    };
-
-    const nonAllowedLinks = links.filter(l => {
-        // direct gif files are allowed
-        if (/\.gif(\?|#|$)/i.test(l)) return false;
-        // tenor/giphy domains are allowed
-        if (isAllowedDomain(l)) return false;
-        return true;
-    });
-
-    // If links module is enabled and any non-allowed links are present from non-whitelisted user -> violation
-    if (config.links.enabled && nonAllowedLinks.length > 0) {
+    // If links module is enabled and any non-GIF links are present from non-whitelisted user -> violation
+    if (config.links.enabled && nonGifLinks.length > 0) {
         return {
             type: 'linkSpam',
             violation: true,
-            reason: `Posted ${nonAllowedLinks.length} link(s) (links not in allowed GIF formats/domains are disabled for non-whitelisted users)`,
+            reason: `Posted ${nonGifLinks.length} link(s) (non-GIF links are disabled for non-whitelisted users)`,
             action: config.links.action,
             duration: (config.links.action === 'mute') ? (config.links.muteTime || 600000) : undefined,
-            linkCount: nonAllowedLinks.length
+            linkCount: nonGifLinks.length
         };
     }
     
