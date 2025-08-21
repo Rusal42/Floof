@@ -6,6 +6,8 @@ const path = require('path');
 
 // --- Config ---
 const OWNER_ID = process.env.OWNER_ID || '';
+// Restrict conversational memory/features to a single server
+const TARGET_GUILD_ID = '1393659651832152185';
 const DATA_DIR = path.join(__dirname, '..', 'data');
 const MEMORY_FILE = path.join(DATA_DIR, 'floof-memory.json');
 const PREFIX_FILE = path.join(DATA_DIR, 'prefix-config.json');
@@ -211,13 +213,19 @@ async function getGuildPrefix(guildId) {
   return '%';
 }
 
-function getUserMem(mem, userId) {
-  if (!mem.users[userId]) mem.users[userId] = {};
-  if (typeof mem.users[userId].strikes !== 'number') mem.users[userId].strikes = 0;
-  if (typeof mem.users[userId].affinity !== 'number') mem.users[userId].affinity = 0; // -100..100
-  if (!mem.users[userId].facts || typeof mem.users[userId].facts !== 'object') mem.users[userId].facts = {};
-  if (!mem.lastMentionedFact) mem.lastMentionedFact = {};
-  return mem.users[userId];
+function keyFor(guildId, userId) {
+  return `${guildId || 'dm'}:${userId}`;
+}
+
+function getUserMem(mem, guildId, userId) {
+  mem.users = mem.users || {};
+  const k = keyFor(guildId, userId);
+  if (!mem.users[k]) mem.users[k] = {};
+  if (typeof mem.users[k].strikes !== 'number') mem.users[k].strikes = 0;
+  if (typeof mem.users[k].affinity !== 'number') mem.users[k].affinity = 0; // -100..100
+  if (!mem.users[k].facts || typeof mem.users[k].facts !== 'object') mem.users[k].facts = {};
+  mem.lastMentionedFact = mem.lastMentionedFact || {};
+  return mem.users[k];
 }
 
 function sanitizeNoNuke(list) {
@@ -254,19 +262,19 @@ function sanitizeVal(v) {
   return v;
 }
 
-function setUserFact(mem, userId, key, value) {
+function setUserFact(mem, guildId, userId, key, value) {
   const k = canonKey(key);
   const v = sanitizeVal(value);
   if (!k || !v) return false;
-  const um = getUserMem(mem, userId);
+  const um = getUserMem(mem, guildId, userId);
   um.facts[k] = { value: v, updatedAt: Date.now() };
-  mem.lastMentionedFact[userId] = k;
+  mem.lastMentionedFact[keyFor(guildId, userId)] = k;
   return true;
 }
 
-function getUserFact(mem, userId, key) {
+function getUserFact(mem, guildId, userId, key) {
   const k = canonKey(key);
-  const um = getUserMem(mem, userId);
+  const um = getUserMem(mem, guildId, userId);
   return um.facts[k]?.value || null;
 }
 
@@ -276,18 +284,20 @@ function ensureConvos(mem) {
   return mem.convos;
 }
 
-function setContinuation(mem, userId, type) {
+function setContinuation(mem, guildId, userId, type) {
   ensureConvos(mem);
   const now = Date.now();
-  const c = mem.convos[userId] || { stage: 0 };
-  mem.convos[userId] = { type, stage: (c.stage || 0) + 1, expiresAt: now + 60000 };
+  const id = keyFor(guildId, userId);
+  const c = mem.convos[id] || { stage: 0 };
+  mem.convos[id] = { type, stage: (c.stage || 0) + 1, expiresAt: now + 60000 };
 }
 
-function getContinuation(mem, userId) {
+function getContinuation(mem, guildId, userId) {
   ensureConvos(mem);
-  const c = mem.convos[userId];
+  const id = keyFor(guildId, userId);
+  const c = mem.convos[id];
   if (!c) return null;
-  if (!c.expiresAt || Date.now() > c.expiresAt) { delete mem.convos[userId]; return null; }
+  if (!c.expiresAt || Date.now() > c.expiresAt) { delete mem.convos[id]; return null; }
   return c;
 }
 
@@ -301,7 +311,7 @@ function learnOwnerCommand(mem, message, prefix) {
   const cmd = (m[2] || '').toLowerCase();
   if (!cmd || cmd.includes('nuke')) return;
 
-  const um = getUserMem(mem, OWNER_ID);
+  const um = getUserMem(mem, message.guild?.id, OWNER_ID);
   if (!Array.isArray(um.commandsUsed)) um.commandsUsed = [];
   um.commandsUsed = [cmd, ...um.commandsUsed.filter(c => c !== cmd)];
   if (um.commandsUsed.length > 20) um.commandsUsed.length = 20;
@@ -388,14 +398,17 @@ function chooseResponse(intent, userMem, lowerText, talkingAboutHer, isOwner, us
   return pick(smallTalk);
 }
 
-// Smart reply (no mass pings)
+// Smart reply as independent message (no mass pings, not a direct reply)
 async function replySmart(message, text) {
   if (!text) return;
   // Final guard: never mention 'nuke'
   if (typeof text === 'string' && text.toLowerCase().includes('nuke')) {
     text = "Let’s not talk about that.";
   }
-  await message.reply({ content: text, allowedMentions: { repliedUser: false } });
+  try { await message.channel?.sendTyping(); } catch {}
+  const delay = 300 + Math.floor(Math.random() * 500);
+  await new Promise(r => setTimeout(r, delay));
+  await message.channel?.send({ content: text, allowedMentions: { repliedUser: false } });
 }
 
 // Timed follow-up without pinging
@@ -412,24 +425,54 @@ async function handleFloofConversation(message) {
   try {
     if (!message || !message.content) return false;
     if (message.author.bot) return false;
+    // Only run in the specified server; ignore DMs and other guilds
+    if (!message.guild || message.guild.id !== TARGET_GUILD_ID) return false;
 
     const content = message.content.trim();
     const lower = content.toLowerCase();
     const mentioned = message.mentions?.has?.(message.client.user) || false;
     const talkingAboutHer = /\bfloof\b/i.test(content) || mentioned;
     const talkingAboutMomName = /\b(ry|rye)\b/i.test(content);
+    const gid = message.guild?.id || null;
+    const k = keyFor(gid, message.author.id);
 
     // Memory load and learning
     const mem = await loadMemory();
     mem.lastSeen = mem.lastSeen || {};
-    mem.lastSeen[message.author.id] = Date.now();
+    mem.lastSeen[k] = Date.now();
     const prefix = await getGuildPrefix(message.guild?.id);
     const usedCorrectPrefix = (message.content || '').trim().startsWith(prefix);
     learnOwnerCommand(mem, message, prefix);
 
-    const userMem = getUserMem(mem, message.author.id);
+    const userMem = getUserMem(mem, gid, message.author.id);
     const isOwner = !!OWNER_ID && message.author.id === OWNER_ID;
     const intent = detectIntent(lower);
+    // New member detection (joined within last 7 days) and one-time welcome
+    const joinedAt = message.member?.joinedTimestamp || 0;
+    const isNewMember = !!joinedAt && (Date.now() - joinedAt < 7 * 24 * 60 * 60 * 1000);
+    mem.newMemberGreeted = mem.newMemberGreeted || {};
+
+    if (isNewMember && !mem.newMemberGreeted[k]) {
+      mem.newMemberGreeted[k] = Date.now();
+      await saveMemory(mem);
+      const welcome = `Welcome to the server! I’m Floof. If you need anything, try ${prefix}help or ask “what does ${prefix}afk do”.`;
+      await replySmart(message, welcome);
+      return true;
+    }
+    // Cooldown tracking for owner name pings
+    mem.momNamePing = mem.momNamePing || {};
+    const nowTs = Date.now();
+    const lastMomPing = mem.momNamePing[k] || 0;
+    const momOnCooldown = (nowTs - lastMomPing) < 20000; // 20s cooldown
+
+    // Global low-signal reply cooldown to reduce spammy echoes
+    mem.lastReply = mem.lastReply || {};
+    const lastReplyTs = mem.lastReply[k] || 0;
+    const lowSignal = content.length < 6 || /^(?:hi|hey|yo|sup|rye?|floof)[!.?\s]*$/i.test(content);
+    if ((Date.now() - lastReplyTs) < 6000 && lowSignal && !usedCorrectPrefix) {
+      await saveMemory(mem);
+      return false; // suppress repetitive low-signal responses
+    }
 
     // Teach/correct memory detection
     let taught = false;
@@ -439,7 +482,7 @@ async function handleFloofConversation(message) {
     if (mTeach) {
       const key = mTeach[1];
       const val = mTeach[2];
-      if (setUserFact(mem, message.author.id, key, val)) {
+      if (setUserFact(mem, gid, message.author.id, key, val)) {
         await saveMemory(mem);
         await replySmart(message, `Got it. I'll remember your ${canonKey(key).replace(/_/g,' ')} is "${sanitizeVal(val)}".`);
         return true;
@@ -447,11 +490,11 @@ async function handleFloofConversation(message) {
     }
 
     // Correction using last-mentioned fact: "no, it's ..." / "actually ..."
-    const lastKey = mem.lastMentionedFact?.[message.author.id];
+    const lastKey = mem.lastMentionedFact?.[k];
     const mCorr = lastKey ? lower.match(/^(?:no|actually|it'?s|its)\s*[,:-]?\s*(.+)$/i) : null;
     if (lastKey && mCorr) {
       const val = mCorr[1];
-      if (setUserFact(mem, message.author.id, lastKey, val)) {
+      if (setUserFact(mem, gid, message.author.id, lastKey, val)) {
         await saveMemory(mem);
         await replySmart(message, `Thanks for the correction. Updated your ${lastKey.replace(/_/g,' ')} to "${sanitizeVal(val)}".`);
         return true;
@@ -459,7 +502,7 @@ async function handleFloofConversation(message) {
     }
 
     // Continuation detection
-    const cont = getContinuation(mem, message.author.id);
+    const cont = getContinuation(mem, gid, message.author.id);
 
     // Decide whether to engage without prefix: mention, name, direct small talk, or active continuation
     if (!(talkingAboutHer || talkingAboutMomName || intent.greet || intent.slangGreet || intent.howAre || intent.sad || intent.insult || intent.askWho || intent.askCmd || intent.askCmdSpecific || intent.love || intent.thanks || intent.apology || intent.bye || !!cont)) {
@@ -508,15 +551,15 @@ async function handleFloofConversation(message) {
           const info = idx[cmdQuery];
           response = info ? `"${prefix}${info.name}" — ${info.description}` : `I don't have info on ${prefix}${cmdQuery}. Try ${prefix}help.`;
           // continue one more stage at most
-          if ((cont.stage || 0) < 2) setContinuation(mem, message.author.id, 'help');
-          else delete mem.convos[message.author.id];
+          if ((cont.stage || 0) < 2) setContinuation(mem, gid, message.author.id, 'help');
+          else delete mem.convos[k];
         } else if (/^(ok(ay)?|how|which|examples?|show|list|like|idk|what)$/i.test(message.content.trim())) {
           const idx = await buildCommandIndex();
           const names = Object.values(idx).map(x => x.name).slice(0, 8);
           const sample = names[0] || 'help';
           response = `Try ${prefix}${sample} or ask "what does ${prefix}${sample} do"`;
-          if ((cont.stage || 0) < 2) setContinuation(mem, message.author.id, 'help');
-          else delete mem.convos[message.author.id];
+          if ((cont.stage || 0) < 2) setContinuation(mem, gid, message.author.id, 'help');
+          else delete mem.convos[k];
         }
       } else if (cont.type === 'sad') {
         if (/(yeah|yea|ok(ay)?|idk|not\s*sure|kinda|sorta)/i.test(lower)) {
@@ -534,8 +577,8 @@ async function handleFloofConversation(message) {
         }
         if (response) {
           userMem.affinity = Math.min(100, (userMem.affinity || 0) + 2);
-          if ((cont.stage || 0) < 2) setContinuation(mem, message.author.id, 'sad');
-          else delete mem.convos[message.author.id];
+          if ((cont.stage || 0) < 2) setContinuation(mem, gid, message.author.id, 'sad');
+          else delete mem.convos[k];
         }
       } else if (cont.type === 'greet') {
         if (/(nm|nothing|chillin|vibin|work|school|gaming|eating|gym|study|studying)/i.test(lower)) {
@@ -552,8 +595,8 @@ async function handleFloofConversation(message) {
           ]);
         }
         if (response) {
-          if ((cont.stage || 0) < 2) setContinuation(mem, message.author.id, 'greet');
-          else delete mem.convos[message.author.id];
+          if ((cont.stage || 0) < 2) setContinuation(mem, gid, message.author.id, 'greet');
+          else delete mem.convos[k];
         }
       }
     }
@@ -562,12 +605,13 @@ async function handleFloofConversation(message) {
       response = chooseResponse(intent, userMem, lower, talkingAboutHer, isOwner, usedCorrectPrefix, prefix);
     }
 
-    // If they mentioned mom's name and nothing else strong matched, be protective
-    if (!response && talkingAboutMomName) {
-      response = pick(momNameReplies);
-    }
-    if (talkingAboutMomName && (intent.greet || intent.askWho) && !intent.insult) {
-      response = pick(momNameReplies);
+    // If they mentioned mom's name, prefer protective reply over generic small talk (with cooldown)
+    if (talkingAboutMomName && !intent.insult && !momOnCooldown) {
+      const isGeneric = typeof response === 'string' && (smallTalk.includes(response) || /heard my name|what's up\?/i.test(response) || /were you talking about me\?/i.test(response));
+      if (!response || isGeneric) {
+        response = pick(momNameReplies);
+        mem.momNamePing[k] = nowTs;
+      }
     }
 
     // Owner-specific command memory augmentation
@@ -629,7 +673,7 @@ async function handleFloofConversation(message) {
         const val = facts[pickKey]?.value;
         if (val) {
           response += ` (I remember your ${pickKey.replace(/_/g,' ')} is "${val}")`;
-          mem.lastMentionedFact[message.author.id] = pickKey;
+          mem.lastMentionedFact[k] = pickKey;
         }
       }
     }
@@ -637,29 +681,30 @@ async function handleFloofConversation(message) {
     // Two-part replies: schedule optional follow-ups with cooldown
     mem.lastFU = mem.lastFU || {};
     const now = Date.now();
-    const last = mem.lastFU[message.author.id] || 0;
+    const last = mem.lastFU[k] || 0;
     const canFollow = now - last > 15000; // 15s per-user follow-up cooldown
     if (canFollow) {
       if (intent.sad) {
         const f = pick(followUpComfort);
         replyFollowUp(message, f, 3500);
-        mem.lastFU[message.author.id] = now;
-        setContinuation(mem, message.author.id, 'sad');
+        mem.lastFU[k] = now;
+        setContinuation(mem, gid, message.author.id, 'sad');
       } else if (intent.askCmd) {
         const idx = await buildCommandIndex();
         const sample = pickSampleCommandFromIndex(idx);
         const f = pick(followUpHelp).replace(/%sample/g, `${prefix}${sample}`).replace(/%/g, prefix);
         replyFollowUp(message, f, 2200);
-        mem.lastFU[message.author.id] = now;
-        setContinuation(mem, message.author.id, 'help');
+        mem.lastFU[k] = now;
+        setContinuation(mem, gid, message.author.id, 'help');
       } else if (intent.slangGreet || intent.slangPositive || intent.greet) {
         const f = pick(followUpSlangGreet);
         replyFollowUp(message, f, 1800);
-        mem.lastFU[message.author.id] = now;
-        setContinuation(mem, message.author.id, 'greet');
+        mem.lastFU[k] = now;
+        setContinuation(mem, gid, message.author.id, 'greet');
       }
     }
 
+    mem.lastReply[k] = Date.now();
     await saveMemory(mem);
     await replySmart(message, response);
     return true;
