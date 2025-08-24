@@ -769,6 +769,24 @@ client.on('messageCreate', async (message) => {
         const isOwnerUser = isOwner(message.author.id);
         const inTargetGuild = !!message.guild && message.guild.id === TARGET_GUILD_ID;
 
+        // Respect per-guild AI toggle from data/server-configs.json
+        if (message.guild) {
+            try {
+                const cfgPath = path.join(__dirname, 'data', 'server-configs.json');
+                if (require('fs').existsSync(cfgPath)) {
+                    const raw = require('fs').readFileSync(cfgPath, 'utf8');
+                    const all = JSON.parse(raw || '{}');
+                    const gcfg = all[message.guild.id] || {};
+                    if (gcfg.aiEnabled === false) {
+                        return; // AI disabled for this guild
+                    }
+                }
+            } catch (e) {
+                // On parse or IO error, fail open (allow AI) but log once
+                console.warn('AI toggle read error:', e?.message || e);
+            }
+        }
+
         // Only allow AI in the target guild, or in DMs from the owner
         const aiAllowedHere = inTargetGuild || (isDM && isOwnerUser);
         if (!aiAllowedHere) {

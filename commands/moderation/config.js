@@ -68,6 +68,11 @@ module.exports = {
                 case 'changelogchannel':
                     return await this.setChangelogChannel(message, value);
                 
+                case 'ai':
+                case 'chat':
+                case 'conversation':
+                    return await this.configureAiToggle(message, args.slice(1));
+
                 case 'rulesmenu':
                 case 'rules-menu':
                     return await this.sendRulesMenu(message, args.slice(1));
@@ -567,6 +572,7 @@ module.exports = {
                         '`%config roles #channel` - Set role selection channel',
                         '`%config welcome #channel` - Set welcome channel',
                         '`%config gambling #channel` - Set gambling channel',
+                        '`%config ai on|off` - Enable/disable Floof conversational responses',
                         '`%config revive @role` - Set revive notification role',
                         '`%config automod` - Configure automod (spam, badwords, links, invites, caps, mentions)',
                         '`%config ruleschannel #channel` - Set default rules menu channel'
@@ -602,6 +608,22 @@ module.exports = {
             .setFooter({ text: 'Use %config <setting> <value> to configure' });
 
         return await sendAsFloofWebhook(message, { embeds: [embed] });
+    },
+
+    async configureAiToggle(message, args) {
+        const sub = (args[0] || '').toLowerCase();
+        const guildId = message.guild.id;
+        if (!sub || !['on','off','view','status','enable','disable'].includes(sub)) {
+            return await sendAsFloofWebhook(message, { content: 'Usage: `%config ai on|off|view`' });
+        }
+        if (['view','status'].includes(sub)) {
+            const cfg = await this.getConfig(guildId);
+            const enabled = cfg.aiEnabled !== false;
+            return await sendAsFloofWebhook(message, { content: `🤖 AI Responses are currently: ${enabled ? 'Enabled' : 'Disabled'}.` });
+        }
+        const enable = (sub === 'on' || sub === 'enable');
+        await this.updateConfig(guildId, 'aiEnabled', enable);
+        return await sendAsFloofWebhook(message, { content: `✅ AI Responses have been ${enable ? 'enabled' : 'disabled'} for this server.` });
     },
 
     async sendRulesMenu(message, args) {
