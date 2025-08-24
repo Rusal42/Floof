@@ -108,12 +108,21 @@ function isLocalUrl(url) {
 }
 
 async function resolvePythonExe() {
-    // Prefer local venv: ./py-floof-ai/.venv/Scripts/python.exe
-    const venvPy = path.join(__dirname, 'py-floof-ai', '.venv', 'Scripts', 'python.exe');
+    // Prefer local venvs first
+    // Windows venv
+    const venvWin = path.join(__dirname, 'py-floof-ai', '.venv', 'Scripts', 'python.exe');
     try {
-        await fs.access(venvPy);
-        return venvPy;
-    } catch { /* fall back */ }
+        await fs.access(venvWin);
+        return venvWin;
+    } catch { /* fall through */ }
+    // Linux/mac venv
+    const venvNix = path.join(__dirname, 'py-floof-ai', '.venv', 'bin', 'python');
+    try {
+        await fs.access(venvNix);
+        return venvNix;
+    } catch { /* fall through */ }
+    // System fallback: prefer python3 on non-Windows
+    if (process.platform !== 'win32') return 'python3';
     return 'python';
 }
 
@@ -150,13 +159,22 @@ async function startAiServiceIfNeeded() {
     const cwd = path.join(__dirname, 'py-floof-ai');
     const args = ['-m', 'uvicorn', 'server:app', '--host', '127.0.0.1', '--port', '8000'];
     console.log(`🧠 Starting Floof AI bridge: ${python} ${args.join(' ')} (cwd=${cwd})`);
-    aiProc = spawn(python, args, { cwd, stdio: 'pipe', windowsHide: true });
-    aiProc.stdout?.on('data', d => process.stdout.write(`[AI] ${d}`));
-    aiProc.stderr?.on('data', d => process.stderr.write(`[AI] ${d}`));
-    aiProc.on('exit', (code) => {
-        console.log(`🧠 AI bridge exited with code ${code}`);
+    try {
+        aiProc = spawn(python, args, { cwd, stdio: 'pipe', windowsHide: true });
+        aiProc.on('error', (err) => {
+            console.warn(`⚠️ AI bridge spawn failed (${err?.code || err?.message || err}) — falling back to JS handler.`);
+            aiProc = null;
+        });
+        aiProc.stdout?.on('data', d => process.stdout.write(`[AI] ${d}`));
+        aiProc.stderr?.on('data', d => process.stderr.write(`[AI] ${d}`));
+        aiProc.on('exit', (code) => {
+            console.log(`🧠 AI bridge exited with code ${code}`);
+            aiProc = null;
+        });
+    } catch (err) {
+        console.warn(`⚠️ Could not start AI bridge (${err?.message || err}). Bot will continue with JS fallback.`);
         aiProc = null;
-    });
+    }
 
     // Ensure cleanup on exit
     const shutdown = () => {
