@@ -372,7 +372,7 @@ const MOODS = {
     ],
     followUps: [
       "What's got you feeling bold today?", "I love this energy on you!",
-      "Tell me more, I'm living for this!", "You're absolutely unhinged and I'm here for it!"
+      "Tell me more, I'm living for this!", "You're absolutely unhinged and I love it!"
     ],
     decay: 0.07,
     transitions: { playful: 0.3, confident: 0.3, happy: 0.2 }
@@ -490,8 +490,9 @@ function getCurrentMood(mem, guildId, userId) {
   if (!mem.moodState) mem.moodState = {};
   if (!mem.moodState[key]) {
     mem.moodState[key] = {
-      currentMood: 'content',
-      intensity: 40,
+      // Start fluffy: warm, playful baseline that can adapt quickly
+      currentMood: 'happy',
+      intensity: 55,
       duration: 0,
       lastUpdate: Date.now(),
       moodHistory: [],
@@ -1140,11 +1141,15 @@ function updatePersonalityProfile(mem, guildId, userId, messageData) {
 }
 
 // --- Enhanced Response Generation with Mood Integration ---
-function generateNaturalResponse(intent, userMem, messageData, conversationContext, isOwner, history, currentMood) {
+function generateNaturalResponse(intent, userMem, messageData, conversationContext, isOwner, history, currentMood, memorySnippet) {
   // First try to get a mood-based response
   let response = getMoodBasedResponse(currentMood, intent, messageData, isOwner, userMem);
   
-  if (response) return response;
+  if (response) {
+    // Apply persona tone
+    response = enforcePersonaTone(response, { isOwner, mood: currentMood.currentMood });
+    return response;
+  }
   
   // Fallback to original system with mood influence
   const profile = userMem.personalityProfile || {};
@@ -1184,6 +1189,24 @@ function generateNaturalResponse(intent, userMem, messageData, conversationConte
     responseStyle = 'encouraging';
   }
   
+  // Memory snippet influence (lightweight bias)
+  if (memorySnippet && typeof memorySnippet === 'string') {
+    const low = memorySnippet.toLowerCase();
+    if (low.includes('humor: high') || low.includes('playful')) {
+      responseStyle = 'playful';
+    } else if (low.includes('mood: sad') || low.includes('emotions: sad')) {
+      responseStyle = 'supportive';
+    } else if (low.includes('mood: excited') || low.includes('excitement')) {
+      responseStyle = 'enthusiastic';
+    }
+    // Topic nudges
+    if (low.includes('topics: gaming')) topics.push('gaming');
+    if (low.includes('topics: relationships')) topics.push('relationships');
+    if (low.includes('topics: entertainment')) topics.push('entertainment');
+    if (low.includes('topics: food')) topics.push('food');
+    if (low.includes('topics: work')) topics.push('work_school');
+  }
+  
   // Enhanced personality response banks with mood integration
   const PERSONALITY_RESPONSES = {
     supportive: [
@@ -1194,8 +1217,8 @@ function generateNaturalResponse(intent, userMem, messageData, conversationConte
     
     playful: [
       "Ooh, spicy take! Tell me more.", "You're absolutely unhinged and I love it.", "That's some main character energy right there.",
-      "I'm living for this chaos.", "Not you being iconic right now.", "You really said that with your whole chest, huh?",
-      "The audacity! I stan.", "You're really out here living your best life.", "This is sending me, I can't—"
+      "I'm living for this chaos.", "Not you being iconic right now.", "You have quite the effect on people, don't you?",
+      "That smile of yours is dangerous!"
     ],
     
     curious: [
@@ -1220,7 +1243,7 @@ function generateNaturalResponse(intent, userMem, messageData, conversationConte
       "That's a really interesting way to look at it.", "I hadn't considered that perspective before.",
       "You've given me something to think about.", "That's deeper than it first appeared.",
       "There's wisdom in what you're saying.", "You're making me see this differently.",
-      "That's the kind of insight that sticks with you.", "I appreciate how you think about things."
+      "That's the kind of insight that sticks with you."
     ],
     
     excited: [
@@ -1278,29 +1301,26 @@ function generateNaturalResponse(intent, userMem, messageData, conversationConte
     }
   }
   
-  return baseResponse;
+  // Persona tone enforcement before returning
+  return enforcePersonaTone(baseResponse, { isOwner, mood: currentMood.currentMood });
 }
 
 // --- Conversation Flow Intelligence ---
 function shouldEngageInConversation(message, history, refDetection, userMem, mem, currentMood) {
-  const content = message.content.toLowerCase();
+  const content = message.content.trim();
+  const lower = content.toLowerCase();
   const guildId = message.guild?.id;
   const channelId = message.channel?.id;
   const userId = message.author.id;
   const isOwner = OWNER_ID && userId === OWNER_ID;
-  
+
   // Always respond to owner
   if (isOwner) return { engage: true, confidence: 1.0, reason: 'owner' };
-  
-  // Always respond to direct mentions
+  // Always respond to direct mentions or explicit name usage
   const mentioned = message.mentions?.has?.(message.client.user);
-  if (mentioned) return { engage: true, confidence: 1.0, reason: 'direct_mention' };
-  
-  // High-confidence indirect references
-  if (refDetection.confidence > 0.7) {
-    return { engage: true, confidence: refDetection.confidence, reason: 'strong_reference' };
-  }
-  
+  const nameMentioned = /\bfloof\b/i.test(lower);
+  if (mentioned || nameMentioned) return { engage: true, confidence: 1.0, reason: mentioned ? 'direct_mention' : 'name_mention' };
+
   // Mood-based engagement adjustments
   const moodEngagementModifiers = {
     excited: 1.3,
@@ -1318,57 +1338,49 @@ function shouldEngageInConversation(message, history, refDetection, userMem, mem
     exhausted: 0.5,
     contemplative: 0.9
   };
-  
   const moodModifier = moodEngagementModifiers[currentMood.currentMood] || 1.0;
-  
-  // Emotional support scenarios (enhanced by mood)
-  const emotions = analyzeEmotions(content);
-  if (emotions.sadness || emotions.frustration) {
-    const supportiveScore = (currentMood.currentMood === 'supportive' || currentMood.currentMood === 'protective') ? 0.9 : 0.8;
-    return { engage: true, confidence: supportiveScore * moodModifier, reason: 'emotional_support' };
-  }
-  
-  // Excitement matching
-  if (emotions.excitement && (currentMood.currentMood === 'excited' || currentMood.currentMood === 'euphoric')) {
-    return { engage: true, confidence: 0.9 * moodModifier, reason: 'excitement_matching' };
-  }
-  
-  // Playful interactions
-  if (emotions.playfulness && (currentMood.currentMood === 'playful' || currentMood.currentMood === 'flirty')) {
-    return { engage: true, confidence: 0.8 * moodModifier, reason: 'playful_matching' };
-  }
-  
-  // Active conversation continuation
+
   const ck = chanKey(guildId, channelId);
-  const recentBotActivity = history.filter(entry => entry.isBot && Date.now() - entry.timestamp < 120000).length;
-  if (recentBotActivity > 0 && refDetection.confidence > 0.3) {
-    return { engage: true, confidence: (0.7 * moodModifier), reason: 'conversation_continuation' };
+  const recentBotActivity = history.filter(entry => entry.isBot).slice(0, 2);
+  if (recentBotActivity.length > 0) {
+    const lastBot = recentBotActivity[0];
+    const timeSinceLastBot = Date.now() - lastBot.timestamp;
+    const botAskedQuestion = typeof lastBot.content === 'string' && lastBot.content.includes('?');
+    // Strong continuation if Floof previously asked a question (now up to 12 minutes)
+    if (botAskedQuestion && timeSinceLastBot < 12 * 60 * 1000) {
+      return { engage: true, confidence: (0.85), reason: 'reply_to_question' };
+    }
+    // Late reply heuristic: if user message looks like an answer and within 30 minutes of bot question
+    const looksLikeAnswer = /\b(yes|yeah|yep|no|nope|maybe|probably|sure|okay|ok|alright|anyway|about that|as i was saying|i think|it is|it was|because|so|then)\b/i.test(lower);
+    if (botAskedQuestion && timeSinceLastBot < 30 * 60 * 1000 && looksLikeAnswer) {
+      return { engage: true, confidence: (0.62 * moodModifier), reason: 'late_reply_to_question' };
+    }
+    // General continuation window for back-and-forth (now 4 minutes)
+    if (timeSinceLastBot < 240000) {
+      return { engage: true, confidence: (0.7), reason: 'conversation_continuation' };
+    }
+
+    // If the same user continues talking after Floof's last message (without replying)
+    // and within a reasonable window, allow engagement to keep the convo flowing
+    if (timeSinceLastBot < 10 * 60 * 1000) { // within 10 minutes of last bot msg
+      const recent = history.slice(0, 8);
+      const userMsgsAfterBot = recent.filter(e => e.userId === userId && e.timestamp > lastBot.timestamp);
+      const consecutiveCount = userMsgsAfterBot.length;
+      const lastUserMsgTime = userMsgsAfterBot[0]?.timestamp || 0;
+      const sinceLastUser = lastUserMsgTime ? (Date.now() - lastUserMsgTime) : Infinity;
+      if (consecutiveCount >= 2 && sinceLastUser < 90 * 1000) {
+        return { engage: true, confidence: (0.68 * moodModifier), reason: 'user_continues_story' };
+      }
+    }
   }
-  
-  // User asking for help or advice
-  const patterns = analyzePatterns(content);
-  if (patterns.seeking_advice || content.includes('help')) {
-    const helpScore = (currentMood.currentMood === 'supportive' || currentMood.currentMood === 'thoughtful') ? 0.8 : 0.6;
-    return { engage: true, confidence: helpScore * moodModifier, reason: 'help_request' };
+
+  // Character.ai-like join-in: if others strongly reference Floof without mentioning
+  // Only allow when confidence is high and we weren't directly addressed
+  if (refDetection.confidence >= 0.7 && !mentioned && !nameMentioned) {
+    return { engage: true, confidence: refDetection.confidence, reason: 'strong_reference_join' };
   }
-  
-  // Community engagement (questions to the chat)
-  const isCommunityQuestion = content.includes('?') && /\b(anyone|someone|chat|y\'all|everyone)\b/i.test(content);
-  if (isCommunityQuestion && refDetection.confidence > 0.2) {
-    return { engage: true, confidence: (0.5 * moodModifier), reason: 'community_engagement' };
-  }
-  
-  // Excitement/celebration that deserves acknowledgment
-  if (emotions.excitement && content.length > 20) {
-    const excitementScore = (currentMood.currentMood === 'excited' || currentMood.currentMood === 'happy') ? 0.8 : 0.6;
-    return { engage: true, confidence: excitementScore * moodModifier, reason: 'celebration' };
-  }
-  
-  // Medium confidence references with good context
-  if (refDetection.confidence > 0.4 && history.length > 0) {
-    return { engage: true, confidence: (refDetection.confidence * moodModifier), reason: 'contextual_reference' };
-  }
-  
+
+  // If we reached here without mention/name or continuation, do NOT engage
   // Anti-spam measures (adjusted by mood)
   const userKey = keyFor(guildId, userId);
   const lastReply = mem.lastReply?.[userKey] || 0;
@@ -1382,7 +1394,7 @@ function shouldEngageInConversation(message, history, refDetection, userMem, mem
     return { engage: false, confidence: 0, reason: 'anti_spam' };
   }
   
-  // Channel cooldown for low-confidence interactions (adjusted by mood)
+  // Channel cooldown (still enforced even if other checks later expand)
   const channelKey = chanKey(guildId, channelId);
   const lastChannelReply = mem.lastReplyChannel?.[channelKey] || 0;
   const channelCooldown = Date.now() - lastChannelReply;
@@ -1396,8 +1408,8 @@ function shouldEngageInConversation(message, history, refDetection, userMem, mem
   if (isSilenced(mem, guildId, channelId, userId)) {
     return { engage: false, confidence: 0, reason: 'silenced' };
   }
-  
-  return { engage: false, confidence: 0, reason: 'no_trigger' };
+
+  return { engage: false, confidence: 0, reason: 'requires_address_or_continuation' };
 }
 
 function determineResponseTiming(messageData, userMem, conversationContext, currentMood) {
@@ -1640,7 +1652,7 @@ function detectAdvancedIntent(lowerText, messageData, conversationContext, userM
     // Question types
     hasQuestion: /\?/.test(lowerText),
     askingOpinion: /\b(what\s+do\s+you\s+think|opinion|thoughts|take\s+on)\b/.test(lowerText),
-    askingAdvice: /\b(what\s+should\s+i|advice|recommend|suggest|help\s+me)\b/.test(lowerText),
+    askingAdvice: /\b(what\s+should\s+i|advice|help\s+me|don'?t\s+know\s+what\s+to|suggestions?|recommend|think\s+i\s+should)\b/.test(lowerText),
     askingAboutBot: /\b(how\s+are\s+you|what\s+are\s+you|who\s+are\s+you|what\s+can\s+you)\b/.test(lowerText),
     
     // Social cues
@@ -1765,7 +1777,18 @@ async function handleFloofConversation(message) {
     }
 
     // Generate response with full context including mood
-    let response = generateNaturalResponse(intent, userMem, messageData, conversationContext, isOwner, history, currentMood);
+    const memorySnippet = buildMemorySnippet(mem, gid, uid, conversationContext);
+    let response = generateNaturalResponse(intent, userMem, messageData, conversationContext, isOwner, history, currentMood, memorySnippet);
+
+    // If we joined due to a strong reference (not direct mention), ask a brief, friendly probe
+    if (engagementDecision?.reason === 'strong_reference_join') {
+      const probe = pick([
+        'Were you talking about me? What\'s up?',
+        'Talking about me? I can help—what\'s going on?',
+        'Is this about me? Want me to chime in?'
+      ]);
+      response = enforcePersonaTone(probe, { isOwner, mood: currentMood.currentMood });
+    }
 
     // Repetition guard: avoid repeating the most recent bot message in this channel
     const lastBotInHistory = history.find(entry => entry.isBot)?.content || '';
@@ -1825,14 +1848,24 @@ async function handleFloofConversation(message) {
     await saveMemory(mem);
     
     // Send main response
-    await replySmart(message, response, responseDelay);
+    try { message.channel.sendTyping(); } catch {}
+    const typingInterval = setInterval(() => {
+      try { message.channel.sendTyping(); } catch {}
+    }, 8000);
+    await new Promise(r => setTimeout(r, responseDelay));
+    await message.channel.send({ 
+      content: response, 
+      allowedMentions: { repliedUser: false } 
+    });
+    clearInterval(typingInterval);
 
     // Add follow-up if appropriate (with mood consideration)
     if (shouldAddFollowUp(intent, messageData, conversationContext, userMem, history, currentMood, state.expectReply)) {
       const followUp = getMoodBasedFollowUp(currentMood, intent, messageData, isOwner, conversationContext);
       if (followUp) {
         const followUpDelay = calculateFollowUpDelay(messageData, userMem, currentMood);
-        replyFollowUp(message, followUp, followUpDelay);
+        const tonedFollowUp = enforcePersonaTone(followUp, { isOwner, mood: currentMood.currentMood });
+        replyFollowUp(message, tonedFollowUp, followUpDelay);
       }
     }
 
@@ -1847,16 +1880,182 @@ async function handleFloofConversation(message) {
         });
         await saveMemory(updatedMem);
       } catch (e) {
-        console.error('Error updating bot response in memory:', e);
+        console.error('Update memory with bot response failed:', e);
       }
-    }, responseDelay + 500);
+    }, 500);
 
-    return true;
-
+    // done
   } catch (e) {
     console.error('Enhanced Floof conversation error:', e);
     return false;
   }
 }
 
-module.exports = { handleFloofConversation };
+// Record an outbound bot message (e.g., from AI bridge) into our JS memory/history
+// to enable continuation heuristics to see the last bot question/timeboxes.
+async function recordBotConversationEvent(message, content) {
+  try {
+    if (!message || !content) return;
+    const gid = message.guild?.id || null;
+    const cid = message.channel?.id || null;
+    const uid = message.author?.id;
+    const k = keyFor(gid, uid);
+    const ck = chanKey(gid, cid);
+
+    const mem = await loadMemory();
+
+    // Update last reply maps (channel + user) to reflect activity timing
+    mem.lastReply = mem.lastReply || {};
+    mem.lastReply[k] = Date.now();
+    mem.lastReplyChannel = mem.lastReplyChannel || {};
+    mem.lastReplyChannel[ck] = Date.now();
+
+    // Set expectReply if bot asked a question
+    mem.conversationState = mem.conversationState || {};
+    const state = mem.conversationState[k] || { expectReply: false };
+    state.expectReply = /\?\s*$/.test(content || '');
+    mem.conversationState[k] = state;
+
+    // Append to channel history as a bot message
+    addToChannelHistory(mem, gid, cid, {
+      author: { id: message.client.user.id, username: 'Floof', bot: true },
+      content: content,
+      timestamp: Date.now()
+    });
+
+    await saveMemory(mem);
+  } catch (e) {
+    console.error('recordBotConversationEvent failed:', e);
+  }
+}
+
+module.exports = { handleFloofConversation, recordBotConversationEvent };
+
+// Lightweight persona string aligned with Python bridge
+const FLOOF_PERSONA = (
+  "You are Floof, a friendly, playful Discord bot with a warm, slightly sassy, neko/cute vibe. " +
+  "Be concise, kind, and helpful. Add gentle kawaii flavor (e.g., :3, nya~), but keep it tasteful and readable. " +
+  "Avoid NSFW. Respect server rules and defer to moderators. Keep responses short for chat."
+);
+
+// Subtle emoji seasoning used by persona tone enforcement
+const LIGHT_EMOJIS = ['✨', '💫', '😊', '😌', '😸', ':3', '💖', '🎉'];
+
+// Neko/cute seasoning (kept light and optional)
+const NEKO_EMOJIS = ['😺', '🐾', '🌸', '💗', '🍥', '🫶', '🥺', '(=^･ω･^=)', '(=^･^=)'];
+const NEKO_INTERJECTIONS = ['nya~', 'nyah~', 'mew~', 'teehee~', 'uwu', 'owo'];
+
+function maybeAddSuffix(out, mood) {
+  // Only sometimes add a soft suffix; more often when playful/excited/happy
+  const moodBoost = ['playful', 'flirty', 'happy', 'excited', 'euphoric', 'curious'].includes(mood) ? 0.15 : 0.0;
+  const chance = 0.12 + moodBoost; // 12%-27%
+  if (/[.!?…]$/.test(out) && Math.random() < chance) {
+    const suffix = pick(NEKO_INTERJECTIONS);
+    return out + ' ' + suffix;
+  }
+  return out;
+}
+
+function lightUwuify(out) {
+  // Conservative cute-ifier: only soft words; avoid overwhelming text
+  const replacements = [
+    [/\blove\b/gi, 'wuv'],
+    [/\blittle\b/gi, 'widdle'],
+    [/\breally\b/gi, 'weally'],
+    [/\bplease\b/gi, 'pwease'],
+    [/\bhello\b/gi, 'hewwo'],
+    [/\b(sorry)\b/gi, 'sowwy'],
+  ];
+  for (const [re, val] of replacements) out = out.replace(re, val);
+  // Very light r/l -> w for short, soft words only
+  out = out.replace(/\b(cute|pretty|little|snuggle|cuddle|fluffy|purr)\b/gi, (m) => m.replace(/[rl]/gi, (ch) => ch === ch.toLowerCase() ? 'w' : 'W'));
+  return out;
+}
+
+// Enforce persona tone on any outgoing text
+function enforcePersonaTone(text, opts = {}) {
+  if (!text || typeof text !== 'string') return text;
+  const { isOwner = false, mood = 'content' } = opts;
+
+  // Remove obvious NSFW/harsh phrases
+  let out = text.replace(/\b(nsfw|lewd|explicit|sex|porn|kill yourself|kys)\b/gi, '');
+
+  // Trim whitespace and compress spaces
+  out = out.replace(/\s+/g, ' ').trim();
+
+  // Keep it concise for chat
+  const maxLen = 220; // short, punchy by default
+  if (out.length > maxLen) {
+    out = out.slice(0, maxLen - 1).trim();
+    if (!/[.!?]$/.test(out)) out += '…';
+  }
+
+  // Gentle casing: avoid ALL CAPS unless excited/euphoric
+  const isAllCaps = /^[A-Z0-9\s\W]+$/.test(out) && /[A-Z]/.test(out) && !/[a-z]/.test(out);
+  if (isAllCaps && !(mood === 'excited' || mood === 'euphoric')) {
+    out = out.charAt(0) + out.slice(1).toLowerCase();
+  }
+
+  // Light neko cute-ifier (default ON, still conservative substitutions)
+  out = lightUwuify(out);
+
+  // Light emoji seasoning occasionally (not if already has emoji)
+  const hasEmoji = /[\u2190-\u2BFF\u{1F300}-\u{1FAFF}]/u.test(out) || /:\)|:D|:3|<3/.test(out);
+  if (!hasEmoji) {
+    const baseChance = 0.35; // slightly higher so cute is the norm
+    const moodChance = ['playful', 'flirty', 'happy', 'excited', 'euphoric', 'curious'].includes(mood) ? 0.1 : 0;
+    if (Math.random() < baseChance + moodChance) {
+      const pool = ['playful', 'flirty', 'happy', 'excited', 'euphoric'].includes(mood)
+        ? [...LIGHT_EMOJIS, ...NEKO_EMOJIS]
+        : [...NEKO_EMOJIS, ...LIGHT_EMOJIS];
+      out += ' ' + pick(pool);
+    }
+  }
+
+  // Respect owner with warmer tone occasionally
+  if (isOwner && Math.random() < 0.2 && !/mom|mama/i.test(out)) {
+    out = out.replace(/\b(you)\b/i, 'you, mom');
+  }
+
+  // Final safety: ensure persona constraints
+  if (/\b(shut up|stfu)\b/i.test(out)) out = out.replace(/\b(shut up|stfu)\b/gi, 'let\'s change the topic');
+
+  // Maybe add a soft neko suffix at the end (more frequent so cute is typical)
+  out = (function(cur){
+    const before = cur;
+    const withSuffix = maybeAddSuffix(cur, mood); // internally chance-based
+    // If no emoji and suffix didn't change text, add a gentle fallback face
+    const stillHasEmoji = /[\u2190-\u2BFF\u{1F300}-\u{1FAFF}]/u.test(withSuffix) || /:\)|:D|:3|<3/.test(withSuffix);
+    if (withSuffix === before && !stillHasEmoji) {
+      return withSuffix + ' :3';
+    }
+    return withSuffix;
+  })(out);
+
+  return out;
+}
+
+// Build a tiny, optional memory snippet similar to Python's summary behavior
+function buildMemorySnippet(mem, guildId, userId, conversationContext) {
+  try {
+    const k = keyFor(guildId, userId);
+    const profile = (mem.personalityProfile || {})[k] || {};
+    const mood = (mem.moodState || {})[k] || {};
+    const recentTopics = (conversationContext || [])
+      .flatMap(e => e.topics || [])
+      .filter(Boolean);
+    const topics = [...new Set(recentTopics)].slice(0, 5);
+    const emotions = Object.keys(((mem.emotionalContext || {})[k] || {}).currentEmotions || {}).slice(0, 5);
+
+    const parts = [];
+    if (profile.communicationStyle) parts.push(`style: ${profile.communicationStyle}`);
+    if (profile.humorLevel) parts.push(`humor: ${profile.humorLevel}`);
+    if (topics.length) parts.push(`topics: ${topics.join(', ')}`);
+    if (emotions.length) parts.push(`emotions: ${emotions.join(', ')}`);
+    if (mood.currentMood) parts.push(`mood: ${mood.currentMood}`);
+
+    return parts.join(' | ').slice(0, 200);
+  } catch {
+    return '';
+  }
+}

@@ -4,8 +4,8 @@
       {
         "userId": "1387563676961341461",
         "username": "Floof",
-        "content": "I love our conversations like this.",
-        "timestamp": 1755814051984,
+        "content": "I wuv our conversations like this. 🌸",
+        "timestamp": 1756008111485,
         "isBot": true,
         "emotions": {},
         "topics": [],
@@ -14,22 +14,18 @@
       {
         "userId": "1007799027716329484",
         "username": "l0uvers",
-        "content": "I’ve been anxious all week, can you help?",
-        "timestamp": 1755814047899,
+        "content": "how i just insulted your intel",
+        "timestamp": 1756008109163,
         "isBot": false,
-        "emotions": {
-          "anxiety": true
-        },
+        "emotions": {},
         "topics": [],
-        "patterns": {
-          "expressing_doubt": true
-        }
+        "patterns": {}
       },
       {
         "userId": "1387563676961341461",
         "username": "Floof",
-        "content": "You bring such good energy!",
-        "timestamp": 1755814039932,
+        "content": "You bring such good energy! 😸",
+        "timestamp": 1756008098698,
         "isBot": true,
         "emotions": {
           "happiness": true
@@ -40,20 +36,30 @@
       {
         "userId": "1007799027716329484",
         "username": "l0uvers",
-        "content": "“lol you’re so dramatic today 😼",
-        "timestamp": 1755814036963,
+        "content": "i havent done much just been trying to get you to work right",
+        "timestamp": 1756008096387,
         "isBot": false,
-        "emotions": {
-          "playfulness": true
-        },
+        "emotions": {},
+        "topics": [
+          "work_school"
+        ],
+        "patterns": {}
+      },
+      {
+        "userId": "1387563676961341461",
+        "username": "Floof",
+        "content": "You know me, always buzzing around and chatting with the gang! Had a lovely conversation with one of our regulars earlier, they were going through a tough time and I got to offer some support. It's moments like those that remind me why I love being here so much ❤️ How about you?",
+        "timestamp": 1756008070020,
+        "isBot": true,
+        "emotions": {},
         "topics": [],
         "patterns": {}
       },
       {
         "userId": "1387563676961341461",
         "username": "Floof",
-        "content": "I'm feeling so warm and fuzzy!",
-        "timestamp": 1755814026378,
+        "content": "This is exactly what I needed to hear. :3",
+        "timestamp": 1756007942262,
         "isBot": true,
         "emotions": {},
         "topics": [],
@@ -62,18 +68,32 @@
       {
         "userId": "1007799027716329484",
         "username": "l0uvers",
-        "content": "“Tell me your honest take: is it better to be feared or loved?”",
-        "timestamp": 1755814022560,
+        "content": "please just lock in and work",
+        "timestamp": 1756007940607,
         "isBot": false,
         "emotions": {},
-        "topics": [],
+        "topics": [
+          "work_school"
+        ],
         "patterns": {}
       },
       {
         "userId": "1387563676961341461",
         "username": "Floof",
-        "content": "This is exactly what I needed to hear.",
-        "timestamp": 1755813925056,
+        "content": "You always know how to make me smile. 🎉",
+        "timestamp": 1756007887710,
+        "isBot": true,
+        "emotions": {},
+        "topics": [],
+        "patterns": {}
+      }
+    ],
+    "1393659651832152185#1393667674038599710": [
+      {
+        "userId": "1387563676961341461",
+        "username": "Floof",
+        "content": "You always know how to make me smile.",
+        "timestamp": 1755969007955,
         "isBot": true,
         "emotions": {},
         "topics": [],
@@ -82,30 +102,213 @@
       {
         "userId": "1007799027716329484",
         "username": "l0uvers",
-        "content": "yay!",
-        "timestamp": 1755813922904,
+        "content": "floof might be down for a lih bit because im tryna add some cool stuff",
+        "timestamp": 1755969003148,
         "isBot": false,
         "emotions": {
-          "excitement": true
+          "sadness": true,
+          "uncertainty": true
         },
+        "topics": [],
+        "patterns": {}
+      }
+    ],
+    "1393659651832152185#1393667675795886253": [
+      {
+        "userId": "1109562202077274183",
+        "username": "thetallahhwreslter",
+        "content": "<@1007799027716329484> guess what I made",
+        "timestamp": 1756008238069,
+        "isBot": false,
+        "emotions": {},
+        "topics": [],
+        "patterns": {
+          "storytelling": true
+        }
+      },
+      {
+        "userId": "1109562202077274183",
+        "username": "thetallahhwreslter",
+        "content": "Me while building anything",
+        "timestamp": 1756008172921,
+        "isBot": false,
+        "emotions": {},
+        "topics": [],
+        "patterns": {}
+      },
+      {
+        "userId": "1007799027716329484",
+        "username": "l0uvers",
+        "content": "https://tenor.com/view/bh187-home-alone-electricuted-shock-regret-gif-19223583",
+        "timestamp": 1756007958090,
+        "isBot": false,
+        "emotions": {},
         "topics": [],
         "patterns": {}
       }
     ]
   },
-  "conversationState": {},
+  "conversationState": {
+    "1393659651832152185:1007799027716329484": {
+      "expectReply": false
+    },
+    "1393659651832152185:839651467102912522": {
+      "expectReply": false
+    },
+    "1393659651832152185:1248115416790995028": {
+      "expectReply": false
+    },
+    "1393659651832152185:1109562202077274183": {
+      "expectReply": false
+    },
+    "1393659651832152185:1403189710729383986": {
+      "expectReply": false
+    },
+    "1393659651832152185:1057769841903292416": {
+      "expectReply": false
+    },
+    "1393659651832152185:628707956912947230": {
+      "expectReply": false
+    },
+    "1393659651832152185:1079853439057670226": {
+      "expectReply": false
+    }
+  },
   "lastBotMessage": {},
   "personalityProfile": {
     "1393659651832152185:1007799027716329484": {
       "communicationStyle": "balanced",
-      "interests": [],
-      "emotionalTendencies": [
-        "happiness",
-        "frustration",
-        "excitement",
-        "playfulness",
-        "anxiety"
+      "interests": [
+        "relationships",
+        "food",
+        "technology",
+        "work_school"
       ],
+      "emotionalTendencies": [
+        "sadness",
+        "uncertainty",
+        "happiness",
+        "confusion",
+        "excitement",
+        "anger"
+      ],
+      "responsePreferences": "balanced",
+      "humorLevel": "medium",
+      "supportNeeds": "standard"
+    },
+    "1393659651832152185:839651467102912522": {
+      "communicationStyle": "balanced",
+      "interests": [],
+      "emotionalTendencies": [],
+      "responsePreferences": "balanced",
+      "humorLevel": "medium",
+      "supportNeeds": "standard"
+    },
+    "1393659651832152185:1248115416790995028": {
+      "communicationStyle": "balanced",
+      "interests": [
+        "food",
+        "entertainment",
+        "weather",
+        "gaming",
+        "relationships",
+        "health",
+        "pets",
+        "work_school"
+      ],
+      "emotionalTendencies": [
+        "anxiety",
+        "urgency",
+        "excitement",
+        "pride",
+        "uncertainty",
+        "happiness"
+      ],
+      "responsePreferences": "balanced",
+      "humorLevel": "medium",
+      "supportNeeds": "standard"
+    },
+    "1393659651832152185:1109562202077274183": {
+      "communicationStyle": "balanced",
+      "interests": [
+        "health"
+      ],
+      "emotionalTendencies": [
+        "gratitude",
+        "pride",
+        "anger",
+        "urgency",
+        "sadness",
+        "playfulness"
+      ],
+      "responsePreferences": "balanced",
+      "humorLevel": "medium",
+      "supportNeeds": "standard"
+    },
+    "1393659651832152185:1403189710729383986": {
+      "communicationStyle": "balanced",
+      "interests": [
+        "weather",
+        "relationships",
+        "pets",
+        "entertainment",
+        "food"
+      ],
+      "emotionalTendencies": [
+        "anxiety",
+        "excitement",
+        "frustration",
+        "happiness",
+        "confusion",
+        "urgency"
+      ],
+      "responsePreferences": "balanced",
+      "humorLevel": "medium",
+      "supportNeeds": "standard"
+    },
+    "1393659651832152185:1057769841903292416": {
+      "communicationStyle": "balanced",
+      "interests": [
+        "weather",
+        "food",
+        "technology",
+        "pets",
+        "relationships",
+        "health",
+        "work_school"
+      ],
+      "emotionalTendencies": [
+        "urgency",
+        "playfulness",
+        "happiness",
+        "uncertainty",
+        "excitement",
+        "confusion"
+      ],
+      "responsePreferences": "balanced",
+      "humorLevel": "medium",
+      "supportNeeds": "standard"
+    },
+    "1393659651832152185:628707956912947230": {
+      "communicationStyle": "balanced",
+      "interests": [
+        "work_school",
+        "gaming"
+      ],
+      "emotionalTendencies": [
+        "excitement",
+        "happiness",
+        "sadness",
+        "playfulness"
+      ],
+      "responsePreferences": "balanced",
+      "humorLevel": "medium",
+      "supportNeeds": "standard"
+    },
+    "1393659651832152185:1079853439057670226": {
+      "communicationStyle": "balanced",
+      "interests": [],
+      "emotionalTendencies": [],
       "responsePreferences": "balanced",
       "humorLevel": "medium",
       "supportNeeds": "standard"
@@ -113,60 +316,312 @@
   },
   "emotionalContext": {
     "1393659651832152185:1007799027716329484": {
-      "lastUpdate": 1755814047899,
-      "currentEmotions": {
-        "anxiety": true
-      },
+      "lastUpdate": 1756008109163,
+      "currentEmotions": {},
       "history": [
         {
+          "emotions": {},
+          "timestamp": 1756008109163
+        },
+        {
+          "emotions": {},
+          "timestamp": 1756008096388
+        },
+        {
+          "emotions": {},
+          "timestamp": 1756007958090
+        },
+        {
+          "emotions": {},
+          "timestamp": 1756007940607
+        },
+        {
           "emotions": {
-            "anxiety": true
+            "uncertainty": true
           },
-          "timestamp": 1755814047899
+          "timestamp": 1756007885555
+        },
+        {
+          "emotions": {},
+          "timestamp": 1756007864783
+        },
+        {
+          "emotions": {},
+          "timestamp": 1756007810361
+        },
+        {
+          "emotions": {},
+          "timestamp": 1756007796323
+        },
+        {
+          "emotions": {},
+          "timestamp": 1756007787844
+        },
+        {
+          "emotions": {},
+          "timestamp": 1756007528881
+        }
+      ]
+    },
+    "1393659651832152185:839651467102912522": {
+      "lastUpdate": 1755975804473,
+      "currentEmotions": {},
+      "history": [
+        {
+          "emotions": {},
+          "timestamp": 1755975804473
+        }
+      ]
+    },
+    "1393659651832152185:1248115416790995028": {
+      "lastUpdate": 1755991160757,
+      "currentEmotions": {},
+      "history": [
+        {
+          "emotions": {},
+          "timestamp": 1755991160757
+        },
+        {
+          "emotions": {},
+          "timestamp": 1755988568408
+        },
+        {
+          "emotions": {},
+          "timestamp": 1755987450458
+        },
+        {
+          "emotions": {},
+          "timestamp": 1755987340284
+        },
+        {
+          "emotions": {},
+          "timestamp": 1755987332056
+        },
+        {
+          "emotions": {
+            "happiness": true,
+            "uncertainty": true
+          },
+          "timestamp": 1755987324232
+        },
+        {
+          "emotions": {},
+          "timestamp": 1755987311661
+        },
+        {
+          "emotions": {},
+          "timestamp": 1755987019895
+        },
+        {
+          "emotions": {},
+          "timestamp": 1755986981285
+        },
+        {
+          "emotions": {},
+          "timestamp": 1755986971666
+        }
+      ]
+    },
+    "1393659651832152185:1109562202077274183": {
+      "lastUpdate": 1756008238069,
+      "currentEmotions": {},
+      "history": [
+        {
+          "emotions": {},
+          "timestamp": 1756008238069
+        },
+        {
+          "emotions": {},
+          "timestamp": 1756008172921
+        },
+        {
+          "emotions": {},
+          "timestamp": 1755991372716
+        },
+        {
+          "emotions": {},
+          "timestamp": 1755991360707
+        },
+        {
+          "emotions": {},
+          "timestamp": 1755991333501
         },
         {
           "emotions": {
             "playfulness": true
           },
-          "timestamp": 1755814036963
+          "timestamp": 1755990014460
         },
         {
           "emotions": {},
-          "timestamp": 1755814022561
+          "timestamp": 1755989878783
+        },
+        {
+          "emotions": {},
+          "timestamp": 1755989622388
+        },
+        {
+          "emotions": {},
+          "timestamp": 1755988292614
+        },
+        {
+          "emotions": {},
+          "timestamp": 1755988069711
+        }
+      ]
+    },
+    "1393659651832152185:1403189710729383986": {
+      "lastUpdate": 1755991075388,
+      "currentEmotions": {},
+      "history": [
+        {
+          "emotions": {},
+          "timestamp": 1755991075388
         },
         {
           "emotions": {
-            "excitement": true
+            "excitement": true,
+            "frustration": true,
+            "urgency": true,
+            "anxiety": true
           },
-          "timestamp": 1755813922904
+          "timestamp": 1755991067259
         },
         {
           "emotions": {},
-          "timestamp": 1755813903155
+          "timestamp": 1755990871217
         },
         {
           "emotions": {},
-          "timestamp": 1755813891230
+          "timestamp": 1755990611778
         },
         {
           "emotions": {},
-          "timestamp": 1755813845999
+          "timestamp": 1755990604335
         },
         {
           "emotions": {},
-          "timestamp": 1755813829680
+          "timestamp": 1755990595580
+        },
+        {
+          "emotions": {},
+          "timestamp": 1755989887885
+        },
+        {
+          "emotions": {},
+          "timestamp": 1755989800503
+        },
+        {
+          "emotions": {},
+          "timestamp": 1755989794428
+        },
+        {
+          "emotions": {},
+          "timestamp": 1755989788559
+        }
+      ]
+    },
+    "1393659651832152185:1057769841903292416": {
+      "lastUpdate": 1755987591470,
+      "currentEmotions": {},
+      "history": [
+        {
+          "emotions": {},
+          "timestamp": 1755987591470
+        },
+        {
+          "emotions": {},
+          "timestamp": 1755987584083
+        },
+        {
+          "emotions": {},
+          "timestamp": 1755987580824
+        },
+        {
+          "emotions": {},
+          "timestamp": 1755987393651
+        },
+        {
+          "emotions": {},
+          "timestamp": 1755987390200
+        },
+        {
+          "emotions": {},
+          "timestamp": 1755987379380
+        },
+        {
+          "emotions": {},
+          "timestamp": 1755986362570
+        },
+        {
+          "emotions": {},
+          "timestamp": 1755986343984
+        },
+        {
+          "emotions": {},
+          "timestamp": 1755986299227
+        },
+        {
+          "emotions": {},
+          "timestamp": 1755986297575
+        }
+      ]
+    },
+    "1393659651832152185:628707956912947230": {
+      "lastUpdate": 1755990635167,
+      "currentEmotions": {},
+      "history": [
+        {
+          "emotions": {},
+          "timestamp": 1755990635167
+        },
+        {
+          "emotions": {},
+          "timestamp": 1755990631665
+        },
+        {
+          "emotions": {},
+          "timestamp": 1755982472711
+        },
+        {
+          "emotions": {},
+          "timestamp": 1755982469553
+        },
+        {
+          "emotions": {},
+          "timestamp": 1755982465281
+        },
+        {
+          "emotions": {},
+          "timestamp": 1755982443475
         },
         {
           "emotions": {
-            "frustration": true
+            "playfulness": true
           },
-          "timestamp": 1755813817393
+          "timestamp": 1755982437281
         },
         {
-          "emotions": {
-            "happiness": true
-          },
-          "timestamp": 1755813789483
+          "emotions": {},
+          "timestamp": 1755982429957
+        },
+        {
+          "emotions": {},
+          "timestamp": 1755982406038
+        },
+        {
+          "emotions": {},
+          "timestamp": 1755982386703
+        }
+      ]
+    },
+    "1393659651832152185:1079853439057670226": {
+      "lastUpdate": 1755984661354,
+      "currentEmotions": {},
+      "history": [
+        {
+          "emotions": {},
+          "timestamp": 1755984661354
         }
       ]
     }
@@ -175,17 +630,30 @@
   "responseHistory": {},
   "engagementMetrics": {
     "1393659651832152185:1007799027716329484": {
-      "responses": 14,
+      "responses": 32,
+      "topics": [
+        "technology",
+        "work_school"
+      ],
+      "lastActive": 1756008109165
+    },
+    "1393659651832152185:1403189710729383986": {
+      "responses": 6,
       "topics": [],
-      "lastActive": 1755814047899
+      "lastActive": 1755976941965
+    },
+    "1393659651832152185:1109562202077274183": {
+      "responses": 6,
+      "topics": [],
+      "lastActive": 1755991372717
     }
   },
   "moodState": {
     "1393659651832152185:1007799027716329484": {
       "currentMood": "happy",
-      "intensity": 92.18868950000001,
-      "duration": 10,
-      "lastUpdate": 1755814047899,
+      "intensity": 99.8918814079533,
+      "duration": 57,
+      "lastUpdate": 1756008109164,
       "moodHistory": [
         {
           "mood": "content",
@@ -201,15 +669,173 @@
         "reflection_time"
       ],
       "stability": 0.9
+    },
+    "1393659651832152185:839651467102912522": {
+      "currentMood": "happy",
+      "intensity": 55,
+      "duration": 1,
+      "lastUpdate": 1755975804476,
+      "moodHistory": [],
+      "triggers": [],
+      "stability": 0.9
+    },
+    "1393659651832152185:1248115416790995028": {
+      "currentMood": "happy",
+      "intensity": 99.31991117813135,
+      "duration": 93,
+      "lastUpdate": 1755991160757,
+      "moodHistory": [],
+      "triggers": [],
+      "stability": 0.9
+    },
+    "1393659651832152185:1109562202077274183": {
+      "currentMood": "happy",
+      "intensity": 86.969395,
+      "duration": 26,
+      "lastUpdate": 1756008238069,
+      "moodHistory": [],
+      "triggers": [],
+      "stability": 0.9
+    },
+    "1393659651832152185:1403189710729383986": {
+      "currentMood": "sad",
+      "intensity": 99.80229797426452,
+      "duration": 128,
+      "lastUpdate": 1755991075388,
+      "moodHistory": [
+        {
+          "mood": "happy",
+          "intensity": 55,
+          "duration": 0,
+          "timestamp": 1755976922500
+        }
+      ],
+      "triggers": [
+        "sadness",
+        "emotional_pain",
+        "disappointment"
+      ],
+      "stability": 0.9
+    },
+    "1393659651832152185:1057769841903292416": {
+      "currentMood": "happy",
+      "intensity": 98.53948766665,
+      "duration": 76,
+      "lastUpdate": 1755987591470,
+      "moodHistory": [],
+      "triggers": [],
+      "stability": 0.9
+    },
+    "1393659651832152185:628707956912947230": {
+      "currentMood": "happy",
+      "intensity": 95.16405382165,
+      "duration": 33,
+      "lastUpdate": 1755990635167,
+      "moodHistory": [],
+      "triggers": [],
+      "stability": 0.9
+    },
+    "1393659651832152185:1079853439057670226": {
+      "currentMood": "happy",
+      "intensity": 55,
+      "duration": 1,
+      "lastUpdate": 1755984661354,
+      "moodHistory": [],
+      "triggers": [],
+      "stability": 0.9
     }
   },
   "lastSeen": {
-    "1393659651832152185:1007799027716329484": 1755814047899
+    "1393659651832152185:1007799027716329484": 1756008109163,
+    "1393659651832152185:839651467102912522": 1755975804473,
+    "1393659651832152185:1248115416790995028": 1755991160757,
+    "1393659651832152185:1109562202077274183": 1756008238069,
+    "1393659651832152185:1403189710729383986": 1755991075388,
+    "1393659651832152185:1057769841903292416": 1755987591470,
+    "1393659651832152185:628707956912947230": 1755990635167,
+    "1393659651832152185:1079853439057670226": 1755984661354
   },
   "users": {
     "1393659651832152185:1007799027716329484": {
-      "strikes": 1,
-      "affinity": 3,
+      "strikes": 3,
+      "affinity": -3,
+      "facts": {},
+      "personality": "neutral",
+      "conversationStyle": "casual",
+      "topics": [],
+      "emotionalState": "neutral",
+      "engagementLevel": "medium",
+      "isOwner": false
+    },
+    "1393659651832152185:839651467102912522": {
+      "strikes": 0,
+      "affinity": 0,
+      "facts": {},
+      "personality": "neutral",
+      "conversationStyle": "casual",
+      "topics": [],
+      "emotionalState": "neutral",
+      "engagementLevel": "medium",
+      "isOwner": false
+    },
+    "1393659651832152185:1248115416790995028": {
+      "strikes": 0,
+      "affinity": 0,
+      "facts": {},
+      "personality": "neutral",
+      "conversationStyle": "casual",
+      "topics": [],
+      "emotionalState": "neutral",
+      "engagementLevel": "medium",
+      "isOwner": false
+    },
+    "1393659651832152185:1109562202077274183": {
+      "strikes": 0,
+      "affinity": 0,
+      "facts": {},
+      "personality": "neutral",
+      "conversationStyle": "casual",
+      "topics": [],
+      "emotionalState": "neutral",
+      "engagementLevel": "medium",
+      "isOwner": false
+    },
+    "1393659651832152185:1403189710729383986": {
+      "strikes": 0,
+      "affinity": 0,
+      "facts": {},
+      "personality": "neutral",
+      "conversationStyle": "casual",
+      "topics": [],
+      "emotionalState": "neutral",
+      "engagementLevel": "medium",
+      "isOwner": false
+    },
+    "1393659651832152185:1057769841903292416": {
+      "strikes": 0,
+      "affinity": 0,
+      "facts": {},
+      "personality": "neutral",
+      "conversationStyle": "casual",
+      "topics": [],
+      "emotionalState": "neutral",
+      "engagementLevel": "medium",
+      "isOwner": false
+    },
+    "1393659651832152185:628707956912947230": {
+      "strikes": 0,
+      "affinity": 0,
+      "facts": {},
+      "personality": "neutral",
+      "conversationStyle": "casual",
+      "topics": [],
+      "emotionalState": "neutral",
+      "engagementLevel": "medium",
+      "isOwner": false
+    },
+    "1393659651832152185:1079853439057670226": {
+      "strikes": 0,
+      "affinity": 0,
       "facts": {},
       "personality": "neutral",
       "conversationStyle": "casual",
@@ -220,9 +846,14 @@
     }
   },
   "lastReply": {
-    "1393659651832152185:1007799027716329484": 1755814047899
+    "1393659651832152185:1007799027716329484": 1756008109165,
+    "1393659651832152185:1403189710729383986": 1755976941965,
+    "1393659651832152185:1109562202077274183": 1755991372717
   },
   "lastReplyChannel": {
-    "1393659651832152185#1393678356008140891": 1755814047899
-  }
+    "1393659651832152185#1393678356008140891": 1756008109165,
+    "1393659651832152185#1393667674038599710": 1755969003153,
+    "1393659651832152185#1393667675795886253": 1755991372717
+  },
+  "silenceMap": {}
 }

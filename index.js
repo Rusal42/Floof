@@ -1,8 +1,11 @@
 require('dotenv').config();
+// Allow using DISCORD_BOT_TOKEN in .env without renaming
+process.env.DISCORD_TOKEN = process.env.DISCORD_TOKEN || process.env.DISCORD_BOT_TOKEN;
 const { Client, GatewayIntentBits, PermissionsBitField, EmbedBuilder } = require('discord.js');
 const fs = require('fs').promises;
 const path = require('path');
-const { handleFloofConversation } = require('./Floof interactive/Floof response');
+const { handleFloofConversation, recordBotConversationEvent } = require('./Floof interactive/Floof response');
+const { spawn } = require('child_process');
 
 // Initialize data directory
 async function initializeDataDirectory() {
@@ -73,6 +76,7 @@ async function initializeDataDirectory() {
 
 // Run initialization
 initializeDataDirectory().catch(console.error);
+
 const { sendAsFloofWebhook } = require('./utils/webhook-util');
 const CommandHandler = require('./handlers/CommandHandler');
 const { isOwner, getPrimaryOwnerId } = require('./utils/owner-util');
@@ -85,6 +89,106 @@ const {
 
 // Set your Discord user ID here (now supports multiple owners)
 const OWNER_ID = getPrimaryOwnerId();
+// Single-server scope for AI features
+const TARGET_GUILD_ID = '1393659651832152185';
+// Optional Python AI microservice endpoint (defaults to local so `node index.js` Just Works)
+// Set FLOOF_AI_URL to an external URL to disable local auto-start
+const FLOOF_AI_URL = process.env.FLOOF_AI_URL || 'http://127.0.0.1:8000';
+const AI_HEALTH_URL = FLOOF_AI_URL ? (FLOOF_AI_URL.endsWith('/') ? `${FLOOF_AI_URL}health` : `${FLOOF_AI_URL}/health`) : null;
+
+// --- Python AI bridge auto-start and health check ---
+let aiProc = null;
+
+function isLocalUrl(url) {
+    if (!url) return false;
+    try {
+        const u = new URL(url);
+        return ['127.0.0.1', 'localhost'].includes(u.hostname);
+    } catch { return false; }
+}
+
+async function resolvePythonExe() {
+    // Prefer local venv: ./py-floof-ai/.venv/Scripts/python.exe
+    const venvPy = path.join(__dirname, 'py-floof-ai', '.venv', 'Scripts', 'python.exe');
+    try {
+        await fs.access(venvPy);
+        return venvPy;
+    } catch { /* fall back */ }
+    return 'python';
+}
+
+async function httpGetJson(url, timeoutMs = 2000) {
+    const ctrl = new AbortController();
+    const t = setTimeout(() => ctrl.abort(), timeoutMs);
+    try {
+        const r = await fetch(url, { signal: ctrl.signal });
+        if (!r.ok) return null;
+        return await r.json().catch(() => null);
+    } catch { return null; }
+    finally { clearTimeout(t); }
+}
+
+async function waitForHealth(maxMs = 20000) {
+    if (!AI_HEALTH_URL) return false;
+    const start = Date.now();
+    while (Date.now() - start < maxMs) {
+        const data = await httpGetJson(AI_HEALTH_URL, 1500);
+        if (data && (data.ok === true || data.model)) return true;
+        await new Promise(r => setTimeout(r, 750));
+    }
+    return false;
+}
+
+async function startAiServiceIfNeeded() {
+    if (!FLOOF_AI_URL || !isLocalUrl(FLOOF_AI_URL)) {
+        return; // external or disabled
+    }
+    // If already healthy, do nothing
+    if (await waitForHealth(2000)) return;
+
+    const python = await resolvePythonExe();
+    const cwd = path.join(__dirname, 'py-floof-ai');
+    const args = ['-m', 'uvicorn', 'server:app', '--host', '127.0.0.1', '--port', '8000'];
+    console.log(`🧠 Starting Floof AI bridge: ${python} ${args.join(' ')} (cwd=${cwd})`);
+    aiProc = spawn(python, args, { cwd, stdio: 'pipe', windowsHide: true });
+    aiProc.stdout?.on('data', d => process.stdout.write(`[AI] ${d}`));
+    aiProc.stderr?.on('data', d => process.stderr.write(`[AI] ${d}`));
+    aiProc.on('exit', (code) => {
+        console.log(`🧠 AI bridge exited with code ${code}`);
+        aiProc = null;
+    });
+
+    // Ensure cleanup on exit
+    const shutdown = () => {
+        if (aiProc && !aiProc.killed) {
+            try { aiProc.kill(); } catch { /* ignore */ }
+        }
+    };
+    process.on('exit', shutdown);
+    process.on('SIGINT', () => { shutdown(); process.exit(0); });
+    process.on('SIGTERM', () => { shutdown(); process.exit(0); });
+
+    // Wait until health is ready
+    const healthy = await waitForHealth(25000);
+    if (healthy) {
+        console.log('✅ AI bridge is healthy and ready.');
+    } else {
+        console.warn('⚠️ AI bridge did not become healthy in time; bot will continue and fallback to JS handler.');
+    }
+}
+
+async function ensureAiReady() {
+    try {
+        await startAiServiceIfNeeded();
+    } catch (e) {
+        console.error('Failed to ensure AI bridge readiness:', e);
+    }
+}
+// --- end AI bridge bootstrap ---
+
+// Smart engagement gating state (per-channel cooldown for AI bridge)
+const lastBridgeReplyAt = new Map(); // channelId -> timestamp
+const BRIDGE_SOFT_COOLDOWN_MS = 25000; // allow again after 25s unless directly addressed
 
 const client = new Client({
     intents: [
@@ -295,7 +399,6 @@ client.on('guildCreate', async (guild) => {
         console.error('Error processing guildCreate:', error);
     }
 });
-
 
 const { handleRoleMenuInteraction } = require('./creation/role-menu');
 const { handleRulesMenuInteraction } = require('./creation/rules-menu');
@@ -642,7 +745,131 @@ client.on('messageCreate', async (message) => {
     }
     
     // Floof conversational responder (runs without prefix)
+    // Try Python AI bridge first (with smart gating), then fallback to JS handler
     try {
+        const isDM = !message.guild;
+        const isOwnerUser = isOwner(message.author.id);
+        const inTargetGuild = !!message.guild && message.guild.id === TARGET_GUILD_ID;
+
+        // Only allow AI in the target guild, or in DMs from the owner
+        const aiAllowedHere = inTargetGuild || (isDM && isOwnerUser);
+        if (!aiAllowedHere) {
+            return; // Skip AI for other guilds and non-owner DMs
+        }
+
+        let handledByBridge = false;
+        if (FLOOF_AI_URL && typeof fetch === 'function') {
+            try {
+                const url = FLOOF_AI_URL.endsWith('/') ? `${FLOOF_AI_URL}handle` : `${FLOOF_AI_URL}/handle`;
+                // Detect engagement hints
+                const nameMentioned = /\bfloof\b/i.test(message.content || "");
+                const botMentioned = message.mentions?.users?.has(client.user.id) || false;
+                let isReplyToBot = false;
+                if (message.reference && message.reference.messageId) {
+                    try {
+                        const repliedMsg = await message.channel.messages.fetch(message.reference.messageId);
+                        isReplyToBot = repliedMsg?.author?.id === client.user.id;
+                    } catch {/* ignore fetch errors */}
+                }
+                // Smart gating: decide if we should engage the AI bridge at all
+                const channelId = message.channel?.id || 'dm';
+                const now = Date.now();
+                const lastAt = lastBridgeReplyAt.get(channelId) || 0;
+                const cooledDown = (now - lastAt) > BRIDGE_SOFT_COOLDOWN_MS;
+                // Consider a message a question if it contains a question mark anywhere
+                // or includes common WH/can-should modal patterns. This avoids requiring
+                // a trailing '?' which users often omit.
+                const hasQuestion = (() => {
+                    const txt = (message.content || '').trim();
+                    if (/\?/u.test(txt)) return true;
+                    return /(\bhow\b|\bwhat\b|\bwhy\b|\bwhen\b|\bwho\b|\bwhere\b|\bcan\b|\bshould\b|\bcould\b|\bwould\b)/i.test(txt);
+                })();
+                const hardAddress = botMentioned || isReplyToBot; // always allowed
+                // If message starts with the bot name, treat as an address even without cooldown
+                const startsWithName = /^\s*floof\b/i.test(message.content || "");
+                const softAddress = nameMentioned && (hasQuestion || cooledDown || startsWithName);
+                const shouldEngageBridge = hardAddress || softAddress;
+
+                if (!shouldEngageBridge) {
+                    // Skip bridge; fall through to JS handler below
+                } else {
+                const mentionedIds = Array.from((message.mentions?.users && typeof message.mentions.users.keys === 'function') ? message.mentions.users.keys() : []);
+                const payload = {
+                    guild_id: message.guild?.id || null,
+                    channel_id: message.channel?.id || null,
+                    author_id: message.author?.id || null,
+                    is_owner: isOwner(message.author?.id),
+                    is_bot: !!message.author?.bot,
+                    content: message.content || '',
+                    is_mentioned: !!(nameMentioned || botMentioned),
+                    is_reply_to_bot: !!isReplyToBot,
+                    mentioned_user_ids: mentionedIds
+                };
+                const resp = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'content-type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                if (resp.ok) {
+                    const data = await resp.json().catch(() => null);
+                    if (data && data.engage && data.response) {
+                        const respDelay = Number(data.response_delay_ms || 0);
+                        const followDelay = Number(data.follow_up_delay_ms || 0);
+                        // Prepare typing to show while "thinking" and stop shortly before send
+                        const scheduleMain = Math.max(0, respDelay);
+                        const PRE_STOP_MS = 3500; // aim to stop ~3.5s before send to reduce linger but keep natural feel
+                        const startTyping = async () => { try { await message.channel?.sendTyping(); } catch {} };
+                        let typingInterval = null;
+                        // Use pulses when there's enough time; otherwise show a brief single hint
+                        if (scheduleMain >= PRE_STOP_MS + 1000) { // at least ~4.5s total
+                            startTyping();
+                            typingInterval = setInterval(startTyping, 5000);
+                            setTimeout(() => {
+                                if (typingInterval) { clearInterval(typingInterval); typingInterval = null; }
+                            }, Math.max(0, scheduleMain - PRE_STOP_MS));
+                        } else if (scheduleMain >= 1500) {
+                            // Short delay: single typing hint at start
+                            startTyping();
+                        } // otherwise, skip typing for ultra-short sends
+                        // Main response
+                        setTimeout(async () => {
+                            try {
+                                if (typingInterval) { clearInterval(typingInterval); typingInterval = null; }
+                                await sendAsFloofWebhook(message, { content: data.response });
+                                try { await recordBotConversationEvent(message, data.response); } catch {}
+                            } catch { /* ignore */ }
+                        }, scheduleMain);
+                        // Optional follow-up
+                        if (data.follow_up) {
+                            const schedule = Math.max(0, respDelay + followDelay);
+                            const PRE_STOP_FOLLOW_MS = PRE_STOP_MS;
+                            let followInterval = null;
+                            if (schedule >= PRE_STOP_FOLLOW_MS + 1000) {
+                                setTimeout(() => { startTyping(); }, Math.max(0, schedule - (PRE_STOP_FOLLOW_MS + 10000))); // start earlier if room
+                                setTimeout(() => { followInterval = setInterval(startTyping, 5000); }, Math.max(0, schedule - (PRE_STOP_FOLLOW_MS + 8000)));
+                                setTimeout(() => { if (followInterval) { clearInterval(followInterval); followInterval = null; } }, Math.max(0, schedule - PRE_STOP_FOLLOW_MS));
+                            } else if (schedule >= 1500) {
+                                setTimeout(() => { startTyping(); }, Math.max(0, schedule - 1500));
+                            }
+                            setTimeout(async () => {
+                                try {
+                                    if (followInterval) { clearInterval(followInterval); followInterval = null; }
+                                    await sendAsFloofWebhook(message, { content: data.follow_up });
+                                    try { await recordBotConversationEvent(message, data.follow_up); } catch {}
+                                } catch { /* ignore */ }
+                            }, schedule);
+                        }
+                        lastBridgeReplyAt.set(channelId, now + Math.max(respDelay, 0));
+                        handledByBridge = true;
+                    }
+                }
+                }
+            } catch (bridgeErr) {
+                console.error('Python AI bridge error:', bridgeErr?.message || bridgeErr);
+            }
+        }
+        if (handledByBridge) return;
+
         const handledFloof = await handleFloofConversation(message);
         if (handledFloof) return;
     } catch (e) {
@@ -957,15 +1184,16 @@ async function handleVoiceInteraction(interaction) {
                         }
                     ]
                 });
-                
+
                 // Move channel to top of category
                 if (newChannel.parent) {
-                    const categoryChannels = newChannel.parent.children.cache
-                        .filter(ch => ch.type === ChannelType.GuildVoice)
-                        .sort((a, b) => a.position - b.position);
-                    
-                    const firstChannelPosition = categoryChannels.first()?.position || 0;
-                    await newChannel.setPosition(firstChannelPosition);
+                    try {
+                        const categoryChannels = newChannel.parent.children.cache
+                            .filter(ch => ch.type === ChannelType.GuildVoice)
+                            .sort((a, b) => a.position - b.position);
+                        const firstPos = categoryChannels.first()?.position || 0;
+                        await newChannel.setPosition(firstPos);
+                    } catch {/* ignore position errors */}
                 }
                 
                 // Store channel owner
@@ -1315,4 +1543,19 @@ async function handleSnipeInteraction(interaction) {
 module.exports.getDeletedMessages = getDeletedMessages;
 module.exports.clearDeletedMessages = clearDeletedMessages;
 
-client.login(process.env.DISCORD_BOT_TOKEN);
+// Backward-compatible token resolution
+const BOT_TOKEN = process.env.DISCORD_TOKEN || process.env.DISCORD_BOT_TOKEN || '';
+
+(async () => {
+    await ensureAiReady();
+    if (!BOT_TOKEN) {
+        console.error('❌ No Discord token found. Set DISCORD_TOKEN (preferred) or DISCORD_BOT_TOKEN in your environment or .env file.');
+        process.exit(1);
+    }
+    try {
+        await client.login(BOT_TOKEN);
+    } catch (err) {
+        console.error('❌ Failed to login. Check your DISCORD_TOKEN / DISCORD_BOT_TOKEN value.', err);
+        process.exit(1);
+    }
+})();
