@@ -1316,7 +1316,6 @@ module.exports.clearDeletedMessages = clearDeletedMessages;
 const BOT_TOKEN = process.env.DISCORD_TOKEN || process.env.DISCORD_BOT_TOKEN || '';
 
 (async () => {
-    await ensureAiReady();
     if (!BOT_TOKEN) {
         console.error('❌ No Discord token found. Set DISCORD_TOKEN (preferred) or DISCORD_BOT_TOKEN in your environment or .env file.');
         process.exit(1);
