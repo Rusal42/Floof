@@ -30,6 +30,11 @@ module.exports = {
                 case 'links':
                     return await this.showInviteLinks(message, value);
                 
+                case 'dm':
+                case 'invitedm':
+                case 'massdm':
+                    return await this.forwardInviteDM(message, args.slice(1));
+                
                 case 'servers':
                 case 'guilds':
                     return await this.showServerList(message);
@@ -88,7 +93,8 @@ module.exports = {
                         '`%floofy invites <server>` - Get specific server invite',
                         '`%floofy grab <server>` - Manually grab invite for server',
                         '`%floofy refresh` - Refresh all invite links',
-                        '`%floofy remove <server>` - Remove stored invite'
+                        '`%floofy remove <server>` - Remove stored invite',
+                        '`%floofy dm <preview|run> [link] [limit] [--source <id>]` - Owner-only DM tool (hardcoded target, skips staff, paces slow, once per user)'
                     ].join('\n'),
                     inline: false
                 },
@@ -112,6 +118,24 @@ module.exports = {
             .setFooter({ text: 'Owner only commands • Use %floofy <subcommand>' });
 
         return await sendAsFloofWebhook(message, { embeds: [embed] });
+    },
+
+    // Forwarder to invitedm owner command so %floofy dm ... works
+    async forwardInviteDM(message, args) {
+        try {
+            const dmCmd = require('./invite-dm');
+            if (!dmCmd || typeof dmCmd.execute !== 'function') {
+                return await sendAsFloofWebhook(message, { content: '❌ DM module not available.' });
+            }
+            // Expect args like: [ 'preview' | 'run', ...]
+            if (!args.length) {
+                return await sendAsFloofWebhook(message, { content: 'Usage: %floofy dm <preview|run> [link] [limit] [--guild <id>]' });
+            }
+            await dmCmd.execute(message, args);
+        } catch (e) {
+            console.error('Error forwarding to invitedm:', e);
+            return await sendAsFloofWebhook(message, { content: '❌ Failed to run DM tool.' });
+        }
     },
 
     async showInviteLinks(message, serverQuery) {
