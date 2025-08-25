@@ -1,4 +1,4 @@
-// Bot Startup Script - Manages both Python server and Discord bot
+// Bot Startup Script - Starts the Discord bot only (Python/AI removed)
 const { spawn } = require('child_process');
 const path = require('path');
 const fs = require('fs');
@@ -13,69 +13,13 @@ try {
 
 class BotManager {
   constructor() {
-    this.pythonProcess = null;
     this.discordProcess = null;
     this.shutdownInProgress = false;
-  }
-
-  async startPythonServer() {
-    console.log('🐍 Starting Python AI server...');
-
-    const pythonScript = path.join(__dirname, '..', 'py-floof-ai', 'server.py');
-    // Prefer project venv if available
-    const venvPython = process.platform === 'win32'
-      ? path.join(__dirname, '..', 'py-floof-ai', '.venv', 'Scripts', 'python.exe')
-      : path.join(__dirname, '..', 'py-floof-ai', '.venv', 'bin', 'python');
-    const pythonCmd = fs.existsSync(venvPython) ? venvPython : 'python';
-
-    this.pythonProcess = spawn(pythonCmd, [pythonScript], {
-      stdio: ['pipe', 'pipe', 'pipe'],
-      env: { ...process.env },
-    });
-
-    this.pythonProcess.stdout.on('data', (data) => {
-      process.stdout.write(`🐍 ${data.toString()}`);
-    });
-
-    this.pythonProcess.stderr.on('data', (data) => {
-      process.stderr.write(`🐍 ERROR: ${data.toString()}`);
-    });
-
-    this.pythonProcess.on('close', (code) => {
-      console.log(`🐍 Python server exited with code ${code}`);
-      if (!this.shutdownInProgress) {
-        console.log('🔄 Attempting to restart Python server...');
-        setTimeout(() => this.startPythonServer(), 5000);
-      }
-    });
-
-    // Wait for server to be ready
-    await this.waitForPythonServer();
-  }
-
-  async waitForPythonServer(maxAttempts = 30) {
-    for (let i = 0; i < maxAttempts; i++) {
-      try {
-        const res = await fetch('http://127.0.0.1:8000/health', { method: 'GET' });
-        if (res.ok) {
-          const data = await res.json().catch(() => ({}));
-          console.log('✅ Python AI server is ready!');
-          if (data && data.model) console.log(`🤖 Using model: ${data.model}`);
-          return true;
-        }
-      } catch (error) {
-        console.log(`⏳ Waiting for Python server... (${i + 1}/${maxAttempts})`);
-        await new Promise((resolve) => setTimeout(resolve, 2000));
-      }
-    }
-    console.warn('⚠️  Python server not responding, Discord bot will use JavaScript fallback');
-    return false;
   }
 
   startDiscordBot() {
     console.log('🤖 Starting Discord bot...');
 
-    // We integrated the AI bridge into index.js, so start that
     const botScript = path.join(__dirname, '..', 'index.js');
     this.discordProcess = spawn('node', [botScript], {
       stdio: ['pipe', 'pipe', 'pipe'],
@@ -100,7 +44,7 @@ class BotManager {
   }
 
   async start() {
-    console.log('🚀 Starting Floof AI Bot System...');
+    console.log('🚀 Starting Floof Bot...');
     console.log('================================');
 
     // Validate environment
@@ -114,14 +58,7 @@ class BotManager {
     }
 
     if (!process.env.OWNER_ID) {
-      console.warn('⚠️  OWNER_ID not set - bot may not work properly in DMs');
-    }
-
-    // Start Python server first (best-effort)
-    try {
-      await this.startPythonServer();
-    } catch (error) {
-      console.warn('⚠️  Could not start Python server, continuing with JavaScript fallback');
+      console.warn('⚠️  OWNER_ID not set - some owner features may be limited');
     }
 
     // Start Discord bot
@@ -130,8 +67,8 @@ class BotManager {
     // Setup graceful shutdown
     this.setupShutdownHandlers();
 
-    console.log('✅ Bot system startup complete!');
-    console.log('💬 Floof is now online and ready to chat!');
+    console.log('✅ Bot startup complete!');
+    console.log('💬 Floof is now online!');
   }
 
   setupShutdownHandlers() {
@@ -144,11 +81,6 @@ class BotManager {
       if (this.discordProcess) {
         console.log('🤖 Stopping Discord bot...');
         this.discordProcess.kill('SIGTERM');
-      }
-
-      if (this.pythonProcess) {
-        console.log('🐍 Stopping Python server...');
-        this.pythonProcess.kill('SIGTERM');
       }
 
       setTimeout(() => {
@@ -172,18 +104,9 @@ class BotManager {
 
   async healthCheck() {
     const results = {
-      python: false,
       discord: false,
       timestamp: new Date().toISOString(),
     };
-
-    // Check Python server
-    try {
-      const res = await fetch('http://127.0.0.1:8000/health', { method: 'GET' });
-      results.python = res.ok;
-    } catch (error) {
-      results.python = false;
-    }
 
     // Check Discord bot (simplified - just check if process is running)
     results.discord = !!(this.discordProcess && !this.discordProcess.killed);
@@ -201,10 +124,9 @@ if (require.main === module) {
     case 'health':
       manager.healthCheck().then((results) => {
         console.log('🏥 Health Check Results:');
-        console.log(`Python Server: ${results.python ? '✅ Online' : '❌ Offline'}`);
         console.log(`Discord Bot: ${results.discord ? '✅ Running' : '❌ Not Running'}`);
         console.log(`Timestamp: ${results.timestamp}`);
-        process.exit(results.python && results.discord ? 0 : 1);
+        process.exit(results.discord ? 0 : 1);
       });
       break;
     case 'start':
