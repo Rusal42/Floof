@@ -70,6 +70,9 @@ module.exports = {
             case 'delete':
                 await this.handleDeleteChangelog(message, args.slice(1), changelogData);
                 break;
+            case 'debug':
+                await this.handleDebug(message);
+                break;
             default:
                 await this.showChangelogMenu(message);
         }
@@ -163,22 +166,23 @@ module.exports = {
         const fixes = quotedArgs[5] ? quotedArgs[5].split('|').map(f => f.trim()).filter(f => f) : [];
 
         // Load server config to get changelog channel
-        let configPath = path.join(__dirname, '..', '..', 'data', 'server-configs.json');
+        let configPath = path.join(__dirname, '..', 'data', 'server-configs.json');
         let serverConfigs = {};
         try {
-            if (fs.existsSync(configPath)) {
-                serverConfigs = JSON.parse(fs.readFileSync(configPath, 'utf8'));
-            }
+            const fs_promises = require('fs').promises;
+            const data = await fs_promises.readFile(configPath, 'utf8');
+            serverConfigs = JSON.parse(data);
         } catch (error) {
             console.error('Error loading server configs:', error);
         }
 
         const guildConfig = serverConfigs[message.guild.id] || {};
-        const changelogChannelId = guildConfig.changelogChannel;
+        // Read primary key, with legacy fallback just in case
+        const changelogChannelId = guildConfig.changelogChannel || guildConfig.changelog;
 
         if (!changelogChannelId) {
             return await sendAsFloofWebhook(message, {
-                content: '❌ No changelog channel configured. Use `%config changelog #channel` to set one first.'
+                content: `❌ No changelog channel configured for this server (ID: ${message.guild.id}). Use \`%config changelog #channel\` in this server.`
             });
         }
 

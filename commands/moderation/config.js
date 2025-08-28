@@ -9,8 +9,8 @@ const fs = require('fs').promises;
 const path = require('path');
 const { requirePerms } = require('../../utils/permissions');
 
-// Configuration file path - using absolute path to data directory
-const CONFIG_FILE = path.join(process.cwd(), 'data', 'server-configs.json');
+// Configuration file path - use a stable path relative to this file to avoid CWD mismatches
+const CONFIG_FILE = path.join(__dirname, '..', '..', 'data', 'server-configs.json');
 
 module.exports = {
     name: 'config',

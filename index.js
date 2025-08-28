@@ -78,12 +78,11 @@ initializeDataDirectory().catch(console.error);
 const { sendAsFloofWebhook } = require('./utils/webhook-util');
 const CommandHandler = require('./handlers/CommandHandler');
 const { isOwner, getPrimaryOwnerId } = require('./utils/owner-util');
-const { 
-    startStatsUpdater, 
-    incrementCommandUsage, 
-    recordDisconnection,
-    initializeStats 
-} = require('./utils/website-integration');
+// Website integration disabled: define no-op stubs to prevent outbound requests
+const startStatsUpdater = () => {};
+const incrementCommandUsage = () => {};
+const recordDisconnection = () => {};
+const initializeStats = () => {};
 
 // Set your Discord user ID here (now supports multiple owners)
 const OWNER_ID = getPrimaryOwnerId();
@@ -230,11 +229,9 @@ client.once('ready', () => {
     console.log(`🟢 Floof is online as ${client.user.tag}!`);
     console.log(`📋 Loaded ${commandHandler.commands.size} commands`);
     
-    // Initialize website stats tracking
-    initializeStats();
-    
-    // Start automatic website stats updates (every 5 minutes)
-    startStatsUpdater(client, 5);
+    // Website stats tracking disabled
+    // initializeStats();
+    // startStatsUpdater(client, 5);
     
     // Set bot activity to show server invite
     client.user.setActivity('discord.gg/Acpx662Eyg', { 
