@@ -438,7 +438,7 @@ client.on('voiceStateUpdate', async (oldState, newState) => {
 });
 
 // Import auto moderation
-const { handleAutoModeration } = require('./moderation/automod');
+const { handleAutoModeration } = require('./commands/moderation/automod');
 
 client.on('messageCreate', async (message) => {
     if (message.author.bot) return;
@@ -639,12 +639,12 @@ client.on('messageCreate', async (message) => {
     }
     
     // Bump sticky message (if configured for this channel)
-    try {
-        const { bumpStickyIfNeeded } = require('./moderation/sticky-manager');
-        await bumpStickyIfNeeded(message);
-    } catch (e) {
-        console.error('Sticky bump err:', e);
-    }
+    // try {
+    //     const { bumpStickyIfNeeded } = require('./moderation/sticky-manager');
+    //     await bumpStickyIfNeeded(message);
+    // } catch (e) {
+    //     console.error('Sticky bump err:', e);
+    // }
     // (AI conversational handler removed)
     
     // Check if message starts with command prefix (% or custom prefix)

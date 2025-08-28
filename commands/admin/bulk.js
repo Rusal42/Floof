@@ -254,8 +254,8 @@ module.exports = {
     getRolesByPattern(guild, pattern) {
         return guild.roles.cache.filter(role => 
             role.name.toLowerCase().includes(pattern.toLowerCase()) &&
-            role.position < guild.members.me.roles.highest.position &&
-            !role.managed
+            !role.managed &&
+            role.id !== guild.id // Don't delete @everyone
         ).map(role => role);
     },
 
@@ -264,7 +264,7 @@ module.exports = {
             const match = role.name.match(/(\d+)/);
             if (match) {
                 const level = parseInt(match[1]);
-                return level >= start && level <= end && role.position < guild.members.me.roles.highest.position;
+                return level >= start && level <= end && !role.managed && role.id !== guild.id;
             }
             return false;
         }).map(role => role);
@@ -324,7 +324,11 @@ module.exports = {
                     ButtonBuilder.from(row.components[0]).setDisabled(true),
                     ButtonBuilder.from(row.components[1]).setDisabled(true)
                 );
-                await confirmMessage.edit({ components: [disabledRow] });
+                try {
+                    await confirmMessage.edit({ components: [disabledRow] });
+                } catch (error) {
+                    // Ignore webhook message edit errors
+                }
 
                 if (interaction.customId === 'cancel_bulk') {
                     return await sendAsFloofWebhook(message, {
@@ -343,7 +347,11 @@ module.exports = {
                         ButtonBuilder.from(row.components[0]).setDisabled(true),
                         ButtonBuilder.from(row.components[1]).setDisabled(true)
                     );
-                    await confirmMessage.edit({ components: [disabledRow] });
+                    try {
+                        await confirmMessage.edit({ components: [disabledRow] });
+                    } catch (error) {
+                        // Ignore webhook message edit errors
+                    }
                     await sendAsFloofWebhook(message, {
                         content: `⏰ Confirmation timed out. ${type.charAt(0).toUpperCase() + type.slice(1)} deletion cancelled.`
                     });
@@ -377,7 +385,11 @@ module.exports = {
                         .setTitle('🗑️ Deleting Roles...')
                         .setDescription(`Progress: ${deletedCount}/${roles.length} roles deleted`)
                         .setColor('#FF6B6B');
-                    await progressMessage.edit({ embeds: [updateEmbed] });
+                    try {
+                        await progressMessage.edit({ embeds: [updateEmbed] });
+                    } catch (error) {
+                        // Ignore webhook message edit errors
+                    }
                 }
 
                 await new Promise(resolve => setTimeout(resolve, 500)); // Rate limit protection
@@ -406,7 +418,7 @@ module.exports = {
             });
         }
 
-        await progressMessage.edit({ embeds: [successEmbed] });
+        await sendAsFloofWebhook(message, { embeds: [successEmbed] });
     },
 
     async executeChannelDeletion(message, channels, type) {

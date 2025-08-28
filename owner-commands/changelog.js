@@ -1,6 +1,6 @@
 const { EmbedBuilder, ChannelType } = require('discord.js');
-const { sendAsFloofWebhook } = require('../../utils/webhook-util');
-const { isOwner } = require('../../utils/owner-util');
+const { sendAsFloofWebhook } = require('../utils/webhook-util');
+const { isOwner } = require('../utils/owner-util');
 const fs = require('fs');
 const path = require('path');
 

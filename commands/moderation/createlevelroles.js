@@ -1,5 +1,5 @@
 const { EmbedBuilder, PermissionFlagsBits, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
-const { sendAsFloofWebhook } = require('../utils/webhook-util');
+const { sendAsFloofWebhook } = require('../../utils/webhook-util');
 const fs = require('fs');
 const path = require('path');
 
@@ -43,13 +43,8 @@ function getLevelColor(level) {
 }
 
 function getLevelName(level) {
-    const tierLevels = Object.keys(LEVEL_TIERS).map(Number).sort((a, b) => b - a);
-    for (const tierLevel of tierLevels) {
-        if (level >= tierLevel) {
-            return `${LEVEL_TIERS[tierLevel]} ${level}`;
-        }
-    }
-    return `Level ${level}`;
+    // Use numeric-only role names (e.g., '5')
+    return String(level);
 }
 
 // Only create milestone levels: 1,3,5,7,10,15, then every 5 to 100
@@ -117,8 +112,7 @@ module.exports = {
                         `**Range:** Level ${startLevel} to ${endLevel}`,
                         `**Milestones:** ${milestoneLevels.join(', ')}`,
                         `**Total Roles:** ${totalRoles}`,
-                        `**Color System:** 10 different colors with progression`,
-                        `**Naming:** Tier-based names (Newcomer, Elite, Legend, etc.)`
+                        `**Color System:** 10 different colors with progression`
                     ].join('\n'),
                     inline: false
                 },

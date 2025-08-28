@@ -194,6 +194,7 @@ module.exports = {
       done.addFields({ name: 'Errors', value: errors.slice(0, 5).join('\n') + (errors.length > 5 ? `\n...and ${errors.length - 5} more` : ''), inline: false });
     }
 
-    await progressMessage.edit({ embeds: [done] });
+    // Send completion message via webhook instead of editing
+    await sendAsFloofWebhook(message, { embeds: [done] });
   }
 };

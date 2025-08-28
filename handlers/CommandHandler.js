@@ -32,9 +32,11 @@ class CommandHandler {
         const creationPath = path.join(__dirname, '..', 'creation');
         this.loadCommandsFromDirectory(creationPath, { ownerOnly: true });
         
-        // Load moderation commands
+        // Load moderation commands (legacy path). Only if directory still exists.
         const moderationPath = path.join(__dirname, '..', 'moderation');
-        this.loadCommandsFromDirectory(moderationPath);
+        if (fs.existsSync(moderationPath)) {
+            this.loadCommandsFromDirectory(moderationPath);
+        }
         
         // Load owner commands
         const ownerCommandsPath = path.join(__dirname, '..', 'owner-commands');

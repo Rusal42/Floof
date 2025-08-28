@@ -1,6 +1,6 @@
 const { EmbedBuilder, PermissionFlagsBits } = require('discord.js');
-const { sendAsFloofWebhook } = require('../utils/webhook-util');
-const { requirePerms, requireBotPermsInChannel } = require('../utils/permissions');
+const { sendAsFloofWebhook } = require('../../utils/webhook-util');
+const { requirePerms, requireBotPermsInChannel } = require('../../utils/permissions');
 
 module.exports = {
     name: 'purge',

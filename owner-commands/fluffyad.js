@@ -1,5 +1,6 @@
 const { EmbedBuilder } = require('discord.js');
-const { isOwner } = require('../../utils/owner-util');
+const { sendAsFloofWebhook } = require('../utils/webhook-util');
+const { isOwner } = require('../utils/owner-util');
 
 module.exports = {
     name: 'fluffyad',
@@ -12,7 +13,9 @@ module.exports = {
     async execute(message, args) {
         // Check if user is bot owner
         if (!isOwner(message.author.id)) {
-            return await message.reply('❌ Only the bot owner can use this command.');
+            return await sendAsFloofWebhook(message, {
+                content: '❌ Only the bot owner can use this command.'
+            });
         }
 
         // Array of cat images for variety
@@ -78,18 +81,18 @@ module.exports = {
             .setTimestamp();
 
         try {
-            await message.channel.send({ embeds: [embed] });
+            await sendAsFloofWebhook(message, { embeds: [embed] });
             
             // Send a follow-up message with the direct invite link
             setTimeout(async () => {
-                await message.channel.send({
+                await sendAsFloofWebhook(message, {
                     content: '🔗 **Direct invite link:** https://discord.gg/Acpx662Eyg'
                 });
             }, 1000);
 
         } catch (error) {
             console.error('Error sending fluffy advertisement:', error);
-            await message.channel.send({
+            await sendAsFloofWebhook(message, {
                 content: '❌ Failed to send advertisement. Please try again.'
             });
         }
