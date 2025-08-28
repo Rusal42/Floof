@@ -1,5 +1,5 @@
 const { EmbedBuilder, PermissionFlagsBits, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
-const { sendAsFloofWebhook } = require('../utils/webhook-util');
+const { sendAsFloofWebhook } = require('../../utils/webhook-util');
 const fs = require('fs');
 const path = require('path');
 
@@ -63,9 +63,9 @@ function getMilestoneLevels(start, end) {
 module.exports = {
     name: 'createlevelroles',
     aliases: ['clr', 'makelevelroles', 'autolevelroles'],
-    description: 'Automatically create level roles 1-100 with color progression',
+    description: 'Automatically create milestone level roles',
     usage: '%createlevelroles [start] [end]',
-    category: 'moderation',
+    category: 'admin',
     permissions: [PermissionFlagsBits.Administrator],
     cooldown: 30,
 
@@ -156,7 +156,7 @@ module.exports = {
                     ButtonBuilder.from(row.components[0]).setDisabled(true),
                     ButtonBuilder.from(row.components[1]).setDisabled(true)
                 );
-                // For component interactions on webhook-authored messages, edit via the interaction
+                // For webhook-authored messages, edit via the interaction
                 await interaction.editReply({ components: [disabledRow] });
 
                 if (interaction.customId === 'cancel_clr') {
@@ -174,13 +174,8 @@ module.exports = {
                         ButtonBuilder.from(row.components[0]).setDisabled(true),
                         ButtonBuilder.from(row.components[1]).setDisabled(true)
                     );
-                    // Avoid editing webhook-authored messages directly (will 50005). Only edit if not a webhook message.
                     if (!confirmMessage.webhookId) {
-                        try {
-                            await confirmMessage.edit({ components: [disabledRow] });
-                        } catch (_) {
-                            // ignore edit failures; we'll still send timeout notice below
-                        }
+                        try { await confirmMessage.edit({ components: [disabledRow] }); } catch (_) {}
                     }
                     await sendAsFloofWebhook(message, { content: '⏰ Confirmation timed out. Level role creation cancelled.' });
                 }
@@ -236,7 +231,7 @@ module.exports = {
                 if (processed % 5 === 0) {
                     await new Promise(resolve => setTimeout(resolve, 1000));
 
-                    // Update progress every 10 roles
+                    // Update progress every 5 roles
                     const updateEmbed = new EmbedBuilder()
                         .setTitle('🔄 Creating Level Roles...')
                         .setDescription(`Progress: ${processed}/${levelsToCreate.length} roles processed\nCreated: ${createdCount} | Skipped: ${skippedCount}`)
@@ -295,8 +290,8 @@ module.exports = {
 
     async autoConfigureLevelRoles(message, startLevel, endLevel) {
         try {
-            // Load leveling system config (project root level-config.json for compatibility with existing logic)
-            const levelConfigPath = path.join(__dirname, '..', 'level-config.json');
+            // Load leveling system config (project root level-config.json)
+            const levelConfigPath = path.join(__dirname, '..', '..', 'level-config.json');
             let config = {};
 
             if (fs.existsSync(levelConfigPath)) {
@@ -317,7 +312,8 @@ module.exports = {
             }
 
             // Auto-assign roles to levels
-            for (let level = startLevel; level <= endLevel; level++) {
+            const levels = getMilestoneLevels(startLevel, endLevel);
+            for (const level of levels) {
                 const roleName = getLevelName(level);
                 const role = message.guild.roles.cache.find(r => r.name === roleName);
 
