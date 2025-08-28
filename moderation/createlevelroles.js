@@ -146,7 +146,8 @@ module.exports = {
                     ButtonBuilder.from(row.components[0]).setDisabled(true),
                     ButtonBuilder.from(row.components[1]).setDisabled(true)
                 );
-                await confirmMessage.edit({ components: [disabledRow] });
+                // For component interactions on webhook-authored messages, edit via the interaction
+                await interaction.editReply({ components: [disabledRow] });
 
                 if (interaction.customId === 'cancel_clr') {
                     return await sendAsFloofWebhook(message, { content: '❌ Level role creation cancelled.' });
@@ -163,7 +164,14 @@ module.exports = {
                         ButtonBuilder.from(row.components[0]).setDisabled(true),
                         ButtonBuilder.from(row.components[1]).setDisabled(true)
                     );
-                    await confirmMessage.edit({ components: [disabledRow] });
+                    // Avoid editing webhook-authored messages directly (will 50005). Only edit if not a webhook message.
+                    if (!confirmMessage.webhookId) {
+                        try {
+                            await confirmMessage.edit({ components: [disabledRow] });
+                        } catch (_) {
+                            // ignore edit failures; we'll still send timeout notice below
+                        }
+                    }
                     await sendAsFloofWebhook(message, { content: '⏰ Confirmation timed out. Level role creation cancelled.' });
                 }
             });

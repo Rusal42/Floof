@@ -1,45 +1,49 @@
 const { ActionRowBuilder, StringSelectMenuBuilder, StringSelectMenuOptionBuilder, EmbedBuilder, PermissionsBitField } = require('discord.js');
 
-/**
- * Usage: %makerolemenu label role1 role2 ...
- * Example: %makerolemenu pronouns he/him she/her they/them any!
- * Sends a multi-select role menu to a specific channel.
- */
-async function makeRoleMenu(message, args) {
-    const OWNER_ID = '1007799027716329484';
-    const TARGET_CHANNEL_ID = '1393670713042534480';
-    if (message.author.id !== OWNER_ID) return;
-    if (!message.guild.members.me.permissions.has(PermissionsBitField.Flags.ManageRoles)) {
-        return message.reply('Floof needs Manage Roles permission to create and assign roles!');
+// Post a role menu to a channel. Creates missing roles by name if needed.
+async function postRoleMenu(channel, label, rolesOrNames = []) {
+    if (!channel || !channel.isTextBased()) {
+        throw new Error('Invalid target channel for role menu');
     }
-    if (!args[1]) {
-        return message.reply('Usage: %makerolemenu label role1 role2 ...');
+    const guild = channel.guild;
+    if (!guild.members.me.permissions.has(PermissionsBitField.Flags.ManageRoles)) {
+        throw new Error('Manage Roles permission required to create/assign roles');
     }
-    const label = args[1];
-    const roleNames = args.slice(2);
-    if (!roleNames.length) {
-        return message.reply('Please specify at least one role!');
+    if (!label) throw new Error('Missing label');
+    if (!Array.isArray(rolesOrNames) || rolesOrNames.length === 0) {
+        throw new Error('Specify at least one role');
     }
 
-    // Create roles if missing
     const roles = [];
-    for (const name of roleNames) {
-        let role = message.guild.roles.cache.find(r => r.name === name);
+    for (const token of rolesOrNames) {
+        let role = null;
+        // Try ID
+        if (/^\d{5,}$/.test(token)) {
+            role = guild.roles.cache.get(token) || null;
+        }
+        // Try name
+        if (!role) {
+            role = guild.roles.cache.find(r => r.name === token) || null;
+        }
+        // Create if missing
         if (!role) {
             try {
-                role = await message.guild.roles.create({ name, permissions: 0, reason: 'Floof role menu setup' });
-            } catch (e) { continue; }
+                role = await guild.roles.create({ name: token, permissions: 0, reason: 'Floof role menu setup' });
+            } catch {
+                continue;
+            }
         }
-        roles.push(role);
+        if (role) roles.push(role);
     }
 
-    // Build select menu
+    if (roles.length === 0) throw new Error('No valid roles were provided or created');
+
     const menu = new StringSelectMenuBuilder()
         .setCustomId('floof_role_menu_' + Date.now())
         .setPlaceholder('Choose your ' + label + '!')
         .setMinValues(0)
-        .setMaxValues(roles.length)
-        .addOptions(roles.map(role => new StringSelectMenuOptionBuilder()
+        .setMaxValues(Math.min(roles.length, 25))
+        .addOptions(roles.slice(0, 25).map(role => new StringSelectMenuOptionBuilder()
             .setLabel(role.name)
             .setValue(role.id)
             .setEmoji('🐾')
@@ -51,13 +55,7 @@ async function makeRoleMenu(message, args) {
         .setDescription('Select one or more ' + label + ' below!')
         .setColor(0xffb6c1);
 
-    // Send to the specified channel
-    const channel = message.guild.channels.cache.get(TARGET_CHANNEL_ID);
-    if (!channel || !channel.isTextBased()) {
-        return message.reply('Could not find the target channel for the role menu!');
-    }
     await channel.send({ embeds: [embed], components: [row] });
-    await message.reply('Role menu sent to <#' + TARGET_CHANNEL_ID + '>!');
 }
 
 // Interaction handler (to be called from your main event handler)
@@ -82,4 +80,4 @@ async function handleRoleMenuInteraction(interaction) {
     await interaction.reply({ content: 'Roles updated! (ฅ^•ﻌ•^ฅ)♡', flags: 64 });
 }
 
-module.exports = { makeRoleMenu, handleRoleMenuInteraction };
+module.exports = { postRoleMenu, handleRoleMenuInteraction };

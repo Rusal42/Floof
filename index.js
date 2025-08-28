@@ -104,6 +104,8 @@ const client = new Client({
 
 // Initialize command handler
 const commandHandler = new CommandHandler(client);
+// Expose the command handler on the client for commands that reference it
+client.commandHandler = commandHandler;
 
 // Load owner commands
 const ownerCommands = require('./owner-commands/owner-commands');

@@ -46,7 +46,16 @@ const DEFAULT_AUTOMOD_CONFIG = {
         enabled: true,
         action: 'mute',        // default: 10m timeout
         muteTime: 600000,      // 10 minutes (ms)
-        whitelist: []          // Array of user IDs allowed to send links
+        whitelist: [],          // Array of user IDs allowed to send links
+        // Domains considered safe for GIF reactions (won't be treated as link spam)
+        allowedGifDomains: [
+            'tenor.com',
+            'media.tenor.com',
+            'giphy.com',
+            'media.giphy.com',
+            'i.imgur.com',
+            'imgur.com'
+        ]
     },
     
     // Mention spam protection
@@ -368,11 +377,44 @@ function checkLinkSpam(message, config) {
         return { violation: false };
     }
 
-    // Allow GIF links (commonly used for reactions). Filter out links ending with .gif
-    const nonGifLinks = links.filter(l => !/\.gif(\?|#|$)/i.test(l));
+    // Helper to safely parse hostname
+    const getHostname = (u) => {
+        try { return new URL(u).hostname.toLowerCase(); } catch { return ''; }
+    };
+
+    // Determine if a link is a GIF reaction link
+    const allowedGifDomains = Array.isArray(config.links.allowedGifDomains)
+        ? config.links.allowedGifDomains.map(d => d.toLowerCase())
+        : [];
+    const isGifLink = (u) => {
+        const host = getHostname(u);
+        if (/\.gif(\?|#|$)/i.test(u)) return true;
+        // Common GIF providers
+        if (allowedGifDomains.some(d => host === d || host.endsWith(`.${d}`))) return true;
+        return false;
+    };
+
+    // If the message contains only GIF links from approved providers or .gif files, don't flag
+    const nonGifLinks = links.filter(l => !isGifLink(l));
+
+    // If the message has GIF attachments or embeds that are GIFs, also treat as allowed content
+    const hasGifAttachment = message.attachments?.some(att =>
+        (att.contentType && att.contentType.toLowerCase() === 'image/gif') ||
+        (att.name && /\.gif$/i.test(att.name))
+    );
+
+    const hasGifEmbed = message.embeds?.some(e => {
+        try {
+            // Some GIFs appear as video-type embeds or provide a URL to a GIF provider
+            const url = e.url || e.video?.url || e.thumbnail?.url || '';
+            return url && isGifLink(url);
+        } catch { return false; }
+    });
+
+    const onlyGifContent = (links.length > 0 && nonGifLinks.length === 0) || hasGifAttachment || hasGifEmbed;
 
     // If links module is enabled and any non-GIF links are present from non-whitelisted user -> violation
-    if (config.links.enabled && nonGifLinks.length > 0) {
+    if (config.links.enabled && !onlyGifContent && nonGifLinks.length > 0) {
         return {
             type: 'linkSpam',
             violation: true,

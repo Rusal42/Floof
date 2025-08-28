@@ -3,6 +3,8 @@ const { sendAsFloofWebhook } = require('../../utils/webhook-util');
 const { postRulesMenu } = require('../../creation/rules-menu');
 const { sendRulesConfigUpdate } = require('../../utils/website-integration');
 const { postColorMenu, setupColorRoles } = require('../../creation/setup-color-roles');
+const { postRoleMenu } = require('../../creation/role-menu');
+const { postFunRolesMenus } = require('../../creation/setup-fun-roles');
 const fs = require('fs').promises;
 const path = require('path');
 const { requirePerms } = require('../../utils/permissions');
@@ -81,6 +83,15 @@ module.exports = {
                 case 'color-menu':
                     return await this.sendColorMenu(message, args.slice(1));
 
+                case 'rolemenu':
+                case 'role-menu':
+                    return await this.sendRoleMenu(message, args.slice(1));
+
+                case 'funroles':
+                case 'fun-roles':
+                case 'interestroles':
+                    return await this.sendFunRolesMenus(message, args.slice(1));
+
                 case 'ruleschannel':
                 case 'rules-channel':
                     return await this.setRulesChannel(message, value);
@@ -126,6 +137,76 @@ module.exports = {
             return await sendAsFloofWebhook(message, {
                 content: '❌ Something went wrong with the configuration command. Please try again.'
             });
+        }
+    },
+
+    // %config rolemenu <label> [#channel] <role1> <role2> ...
+    async sendRoleMenu(message, args) {
+        try {
+            if (!args.length) {
+                return await sendAsFloofWebhook(message, { content: 'Usage: `%config rolemenu <label> [#channel] <role1> <role2> ...`' });
+            }
+            const label = args.shift();
+            // Optional channel mention next
+            let channel = null;
+            if (args[0] && /^<#\d+>$/.test(args[0])) {
+                channel = this.parseChannel(message, args.shift());
+            }
+            const cfg = await this.getConfig(message.guild.id);
+            if (!channel) {
+                channel = cfg.rolesChannel ? message.guild.channels.cache.get(cfg.rolesChannel) : message.channel;
+            }
+            if (!channel || channel.type !== ChannelType.GuildText) {
+                return await sendAsFloofWebhook(message, { content: '❌ Please specify a valid text channel.' });
+            }
+            const botPerms = channel.permissionsFor(message.guild.members.me);
+            if (!botPerms?.has([PermissionFlagsBits.SendMessages, PermissionFlagsBits.EmbedLinks])) {
+                return await sendAsFloofWebhook(message, { content: `❌ I cannot send messages in ${channel}.` });
+            }
+            if (!message.guild.members.me.permissions.has(PermissionFlagsBits.ManageRoles)) {
+                return await sendAsFloofWebhook(message, { content: '❌ I need Manage Roles to create/assign roles.' });
+            }
+            const roles = args; // tokens (names/ids/mentions handled by postRoleMenu creating names)
+            if (!roles.length) {
+                return await sendAsFloofWebhook(message, { content: '❌ Provide at least one role (mention, ID, or exact name).'});
+            }
+            // Normalize mentions to IDs or names
+            const tokens = roles.map(t => t.replace(/<@&([0-9]+)>/, '$1'));
+            await postRoleMenu(channel, label, tokens);
+            return await sendAsFloofWebhook(message, { content: `✅ Role menu posted in ${channel}` });
+        } catch (e) {
+            return await sendAsFloofWebhook(message, { content: '❌ Failed to send role menu: ' + (e.message || e) });
+        }
+    },
+
+    // %config funroles [#channel] [role1 role2 ...]
+    async sendFunRolesMenus(message, args) {
+        try {
+            // Optional channel mention first
+            let channel = null;
+            if (args[0] && /^<#\d+>$/.test(args[0])) {
+                channel = this.parseChannel(message, args.shift());
+            }
+            const cfg = await this.getConfig(message.guild.id);
+            if (!channel) {
+                channel = cfg.rolesChannel ? message.guild.channels.cache.get(cfg.rolesChannel) : message.channel;
+            }
+            if (!channel || channel.type !== ChannelType.GuildText) {
+                return await sendAsFloofWebhook(message, { content: '❌ Please specify a valid text channel.' });
+            }
+            const botPerms = channel.permissionsFor(message.guild.members.me);
+            if (!botPerms?.has([PermissionFlagsBits.SendMessages, PermissionFlagsBits.EmbedLinks])) {
+                return await sendAsFloofWebhook(message, { content: `❌ I cannot send messages in ${channel}.` });
+            }
+            if (!message.guild.members.me.permissions.has(PermissionFlagsBits.ManageRoles)) {
+                return await sendAsFloofWebhook(message, { content: '❌ I need Manage Roles to create/assign roles.' });
+            }
+            // Remaining args are optional custom role names to seed
+            const customNames = args.length ? args : undefined;
+            await postFunRolesMenus(channel, customNames);
+            return await sendAsFloofWebhook(message, { content: `✅ Fun roles menus posted in ${channel}` });
+        } catch (e) {
+            return await sendAsFloofWebhook(message, { content: '❌ Failed to send fun roles menus: ' + (e.message || e) });
         }
     },
 
@@ -572,7 +653,6 @@ module.exports = {
                         '`%config roles #channel` - Set role selection channel',
                         '`%config welcome #channel` - Set welcome channel',
                         '`%config gambling #channel` - Set gambling channel',
-                        '`%config ai on|off` - Enable/disable Floof conversational responses',
                         '`%config revive @role` - Set revive notification role',
                         '`%config automod` - Configure automod (spam, badwords, links, invites, caps, mentions)',
                         '`%config ruleschannel #channel` - Set default rules menu channel'
