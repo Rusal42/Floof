@@ -1044,9 +1044,10 @@ module.exports = {
             });
         }
 
-        if (channel.type !== ChannelType.GuildText) {
+        // Allow both standard text and announcement (news) channels
+        if (![ChannelType.GuildText, ChannelType.GuildAnnouncement].includes(channel.type)) {
             return await sendAsFloofWebhook(message, {
-                content: '❌ Changelog channel must be a text channel.'
+                content: '❌ Changelog channel must be a text or announcement channel.'
             });
         }
 
