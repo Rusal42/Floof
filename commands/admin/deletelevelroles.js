@@ -22,13 +22,8 @@ const LEVEL_TIERS = {
 };
 
 function getLevelName(level) {
-  const tierLevels = Object.keys(LEVEL_TIERS).map(Number).sort((a, b) => b - a);
-  for (const tierLevel of tierLevels) {
-    if (level >= tierLevel) {
-      return `${LEVEL_TIERS[tierLevel]} ${level}`;
-    }
-  }
-  return `Level ${level}`;
+  // Use numeric-only role names (e.g., '5') to match creation
+  return String(level);
 }
 
 // Milestone set must match createlevelroles.js behavior
