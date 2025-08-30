@@ -34,6 +34,9 @@ async function handleMemberJoin(member) {
     const rulesChannelId = cfg.rulesChannel;
     const welcomeChannelId = cfg.welcomeChannel;
 
+    // If no welcome channel configured, do nothing (prevent unwanted messages)
+    if (!welcomeChannelId) return;
+
     // Compose welcome text
     const welcomeText = RANDOM_WELCOMES[Math.floor(Math.random() * RANDOM_WELCOMES.length)].replace('{member}', `<@${member.user.id}>`);
     const descParts = [
@@ -51,9 +54,8 @@ async function handleMemberJoin(member) {
         .setThumbnail(member.user.displayAvatarURL({ dynamic: true }));
 
     const targetChannel = welcomeChannelId ? member.guild.channels.cache.get(welcomeChannelId) : null;
-    const channel = (targetChannel && targetChannel.isTextBased()) ? targetChannel : member.guild.systemChannel;
-    if (channel && channel.isTextBased()) {
-        await channel.send({ content: welcomeText, embeds: [embed] });
+    if (targetChannel && targetChannel.isTextBased()) {
+        await targetChannel.send({ content: welcomeText, embeds: [embed] });
     }
 }
 
@@ -93,7 +95,9 @@ async function handleMemberLeave(member) {
         .setFooter({ text: 'Floof waves a fluffy paw goodbye!' });
     
     const cfg = getGuildConfig(member.guild.id);
-    const embedChannel = cfg.welcomeChannel ? member.guild.channels.cache.get(cfg.welcomeChannel) : member.guild.systemChannel;
+    // If no welcome channel configured, do nothing
+    if (!cfg.welcomeChannel) return;
+    const embedChannel = member.guild.channels.cache.get(cfg.welcomeChannel);
     if (embedChannel && embedChannel.isTextBased()) {
         await embedChannel.send({ embeds: [embed] });
     }
@@ -109,7 +113,9 @@ async function handleMemberKickBan(user, guild, action = 'banned') {
         .setFooter({ text: 'Floof keeps the den safe and cozy!' });
     
     const cfg = getGuildConfig(guild.id);
-    const welcomeChannel = cfg.welcomeChannel ? guild.channels.cache.get(cfg.welcomeChannel) : guild.systemChannel;
+    // If no welcome channel configured, do nothing
+    if (!cfg.welcomeChannel) return;
+    const welcomeChannel = guild.channels.cache.get(cfg.welcomeChannel);
     if (welcomeChannel && welcomeChannel.isTextBased()) {
         await welcomeChannel.send({ embeds: [embed] });
     }
