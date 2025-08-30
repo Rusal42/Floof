@@ -1,23 +1,17 @@
 const { EmbedBuilder, PermissionFlagsBits, ChannelType, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const { sendAsFloofWebhook } = require('../../utils/webhook-util');
-const { isOwner } = require('../../utils/owner-util');
 
 module.exports = {
     name: 'bulk',
     aliases: ['bulkdelete', 'bulkremove', 'mass'],
     description: 'Bulk management operations for roles, channels, and server elements',
     usage: '%bulk <type> <action> [options]',
-    category: 'owner',
-    ownerOnly: true,
+    category: 'admin',
+    ownerOnly: false,
+    permissions: ['Administrator'],
     cooldown: 30,
 
     async execute(message, args) {
-        if (!isOwner(message.author.id)) {
-            return await sendAsFloofWebhook(message, {
-                content: '❌ Only the bot owner can use this command.'
-            });
-        }
-
         if (!args.length) {
             return await this.showMainMenu(message);
         }
@@ -54,6 +48,7 @@ module.exports = {
                 {
                     name: '🎭 **Role Management**',
                     value: [
+                        '`%bulk roles assign <@role|id|name> [--include-bots]` - Assign a role to all members',
                         '`%bulk roles delete <pattern>` - Delete roles by name pattern',
                         '`%bulk roles delete range <start> <end>` - Delete level roles in range',
                         '`%bulk roles delete all` - Delete all non-essential roles',
@@ -94,6 +89,9 @@ module.exports = {
         }
 
         switch (action) {
+            case 'assign':
+            case 'assignall':
+                return await this.assignRoleToAll(message, args);
             case 'delete':
                 return await this.deleteRoles(message, args);
             case 'list':
@@ -268,6 +266,142 @@ module.exports = {
             }
             return false;
         }).map(role => role);
+    },
+
+    async assignRoleToAll(message, args) {
+        if (!args.length) {
+            return await sendAsFloofWebhook(message, {
+                content: '❌ Usage: `%bulk roles assign <@role|roleId|name> [--include-bots]`'
+            });
+        }
+        // Parse options
+        const includeBots = args.some(a => a.toLowerCase() === '--include-bots');
+        const roleArg = args.filter(a => !a.startsWith('--')).join(' ');
+
+        // Resolve role
+        let role = null;
+        const mentionMatch = roleArg.match(/\d{5,}/);
+        if (message.mentions.roles.size > 0) {
+            role = message.mentions.roles.first();
+        } else if (mentionMatch) {
+            role = message.guild.roles.cache.get(mentionMatch[0]);
+        } else {
+            role = message.guild.roles.cache.find(r => r.name.toLowerCase() === roleArg.toLowerCase());
+        }
+        if (!role) {
+            return await sendAsFloofWebhook(message, { content: '❌ Role not found. Mention it, use its ID, or exact name.' });
+        }
+        if (role.managed || role.id === message.guild.id) {
+            return await sendAsFloofWebhook(message, { content: '❌ Cannot assign managed roles or @everyone.' });
+        }
+        // Check hierarchy
+        const me = message.guild.members.me;
+        if (role.position >= me.roles.highest.position) {
+            return await sendAsFloofWebhook(message, { content: '❌ That role is higher or equal to my highest role.' });
+        }
+
+        // Fetch members (ensure full list)
+        const allMembers = await message.guild.members.fetch();
+        // Build target set
+        const targets = Array.from(allMembers.values()).filter(m => {
+            if (!includeBots && m.user.bot) return false;
+            if (m.roles.cache.has(role.id)) return false;
+            // Skip if the member's highest role is above the role we can edit? Not necessary for assignment; bot hierarchy suffices.
+            return true;
+        });
+
+        if (targets.length === 0) {
+            return await sendAsFloofWebhook(message, { content: 'ℹ️ Everyone already has that role (or no eligible members found).' });
+        }
+
+        // Confirmation UI
+        const confirmEmbed = new EmbedBuilder()
+            .setTitle('✅ Confirm Bulk Role Assignment')
+            .setColor('#00AAFF')
+            .setDescription([
+                `Role: <@&${role.id}> (\`${role.id}\`)`,
+                `Include bots: ${includeBots ? 'Yes' : 'No'}`,
+                `Eligible members: **${targets.length}**`
+            ].join('\n'));
+
+        const row = new ActionRowBuilder().addComponents(
+            new ButtonBuilder().setCustomId('confirm_assign').setLabel('Confirm').setStyle(ButtonStyle.Success),
+            new ButtonBuilder().setCustomId('cancel_assign').setLabel('Cancel').setStyle(ButtonStyle.Secondary)
+        );
+
+        const prompt = await sendAsFloofWebhook(message, { embeds: [confirmEmbed], components: [row] });
+
+        const collector = prompt.channel.createMessageComponentCollector({
+            filter: i => ['confirm_assign', 'cancel_assign'].includes(i.customId) && i.user.id === message.author.id && i.message.id === prompt.id,
+            time: 30000,
+            max: 1
+        });
+
+        collector.on('collect', async (interaction) => {
+            await interaction.deferUpdate();
+            const disabledRow = new ActionRowBuilder().addComponents(
+                ButtonBuilder.from(row.components[0]).setDisabled(true),
+                ButtonBuilder.from(row.components[1]).setDisabled(true)
+            );
+            try { await prompt.edit({ components: [disabledRow] }); } catch {}
+
+            if (interaction.customId === 'cancel_assign') {
+                return await sendAsFloofWebhook(message, { content: '❌ Bulk assignment cancelled.' });
+            }
+
+            // Proceed with assignment
+            let success = 0, failed = 0;
+            const errors = [];
+            const progress = new EmbedBuilder()
+                .setTitle('🚧 Assigning Role...')
+                .setColor('#00AAFF')
+                .setDescription(`Processing 0/${targets.length}`);
+            const progressMsg = await sendAsFloofWebhook(message, { embeds: [progress] });
+
+            for (let i = 0; i < targets.length; i++) {
+                const m = targets[i];
+                try {
+                    await m.roles.add(role, `Bulk assign by ${message.author.tag}`);
+                    success++;
+                } catch (e) {
+                    failed++;
+                    if (errors.length < 5) errors.push(`${m.user.tag}: ${e.message}`);
+                }
+                if (i % 25 === 0 || i === targets.length - 1) {
+                    const pct = Math.round(((i + 1) / targets.length) * 100);
+                    const upd = new EmbedBuilder()
+                        .setTitle('🚧 Assigning Role...')
+                        .setColor('#00AAFF')
+                        .setDescription(`Progress: ${i + 1}/${targets.length} (${pct}%)`);
+                    try { await progressMsg.edit({ embeds: [upd] }); } catch {}
+                }
+                // soft rate-limit guard
+                await new Promise(r => setTimeout(r, 200));
+            }
+
+            const done = new EmbedBuilder()
+                .setTitle('✅ Bulk Role Assignment Complete')
+                .setColor('#00FF00')
+                .addFields({
+                    name: '📊 Results',
+                    value: [`Assigned: **${success}**`, `Failed: **${failed}**`, `Total: **${targets.length}**`].join('\n')
+                });
+            if (errors.length) {
+                done.addFields({ name: '⚠️ Sample Errors', value: errors.join('\n') });
+            }
+            await sendAsFloofWebhook(message, { embeds: [done] });
+        });
+
+        collector.on('end', async (collected) => {
+            if (collected.size === 0) {
+                const disabledRow = new ActionRowBuilder().addComponents(
+                    new ButtonBuilder().setCustomId('confirm_assign').setLabel('Confirm').setStyle(ButtonStyle.Success).setDisabled(true),
+                    new ButtonBuilder().setCustomId('cancel_assign').setLabel('Cancel').setStyle(ButtonStyle.Secondary).setDisabled(true)
+                );
+                try { await prompt.edit({ components: [disabledRow] }); } catch {}
+                await sendAsFloofWebhook(message, { content: '⏰ Confirmation timed out. Assignment cancelled.' });
+            }
+        });
     },
 
     async confirmBulkDeletion(message, type, items, description, executeFunction) {
