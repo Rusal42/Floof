@@ -450,13 +450,23 @@ client.on('voiceStateUpdate', async (oldState, newState) => {
 });
 
 // Import auto moderation
-const { handleAutoModeration } = require('./commands/moderation/automod');
+const { handleAutoModeration } = require('./commands/admin/automod');
 
 client.on('messageCreate', async (message) => {
     if (message.author.bot) return;
     
     // Run auto moderation first
     await handleAutoModeration(message);
+    
+    // Handle leveling system
+    try {
+        const levelsCommand = require('./commands/gambling/levels');
+        if (levelsCommand.handleMessage) {
+            levelsCommand.handleMessage(message);
+        }
+    } catch (error) {
+        console.error('Error in level system:', error);
+    }
     // --- Meowlock Intercept ---
     const fs = require('fs');
     const path = require('path');

@@ -22,8 +22,7 @@ const LEVEL_TIERS = {
 };
 
 function getLevelName(level) {
-  // Use numeric-only role names (e.g., '5') to match creation
-  return String(level);
+  return `${level}`;
 }
 
 // Milestone set must match createlevelroles.js behavior

@@ -43,29 +43,91 @@ function getLevelColor(level) {
 }
 
 function getLevelName(level) {
-    // Find the highest tier name that applies to this level
-    const tierLevels = Object.keys(LEVEL_TIERS).map(Number).sort((a, b) => b - a);
-    for (const tierLevel of tierLevels) {
-        if (level >= tierLevel) {
-            return `${LEVEL_TIERS[tierLevel]} ${level}`;
-        }
-    }
-    return `Level ${level}`;
+    return `${level}`;
 }
 
 module.exports = {
-    name: 'createlevelroles_deprecated',
-    aliases: [],
-    description: 'Deprecated: use %createlevelroles (moderation) instead',
-    usage: '%createlevelroles',
-    category: 'owner',
-    ownerOnly: true,
-    cooldown: 3,
+    name: 'createlevelroles',
+    aliases: ['clr'],
+    description: 'Create level roles for the server (Administrator only)',
+    usage: '%createlevelroles [start] [end]',
+    category: 'admin',
+    ownerOnly: false,
+    cooldown: 10,
 
-    async execute(message) {
-        return await sendAsFloofWebhook(message, {
-            content: 'ℹ️ This command has moved. Please use **%createlevelroles** (now under Moderation, requires Administrator).'
-        });
+    async execute(message, args) {
+        // Check for Administrator permission
+        if (!message.member.permissions.has(PermissionFlagsBits.Administrator)) {
+            return await sendAsFloofWebhook(message, {
+                content: '❌ You need **Administrator** permission to use this command.'
+            });
+        }
+
+        // Check bot permissions
+        if (!message.guild.members.me.permissions.has(PermissionFlagsBits.ManageRoles)) {
+            return await sendAsFloofWebhook(message, {
+                content: '❌ I need **Manage Roles** permission to create level roles.'
+            });
+        }
+
+        // Parse arguments
+        let startLevel = 1;
+        let endLevel = 100;
+
+        if (args.length >= 1) {
+            const start = parseInt(args[0]);
+            if (isNaN(start) || start < 1 || start > 100) {
+                return await sendAsFloofWebhook(message, {
+                    content: '❌ Start level must be a number between 1 and 100.'
+                });
+            }
+            startLevel = start;
+        }
+
+        if (args.length >= 2) {
+            const end = parseInt(args[1]);
+            if (isNaN(end) || end < startLevel || end > 100) {
+                return await sendAsFloofWebhook(message, {
+                    content: `❌ End level must be a number between ${startLevel} and 100.`
+                });
+            }
+            endLevel = end;
+        }
+
+        // Confirmation for large ranges
+        const roleCount = endLevel - startLevel + 1;
+        if (roleCount > 50) {
+            const confirmEmbed = new EmbedBuilder()
+                .setTitle('⚠️ Large Role Creation')
+                .setDescription(`You're about to create **${roleCount}** roles (Level ${startLevel}-${endLevel}).\n\nThis may take several minutes and could hit Discord rate limits.\n\nReply with \`yes\` to continue or \`no\` to cancel.`)
+                .setColor('#FFA500');
+
+            await sendAsFloofWebhook(message, { embeds: [confirmEmbed] });
+
+            const filter = (m) => m.author.id === message.author.id && ['yes', 'no'].includes(m.content.toLowerCase());
+            
+            try {
+                const collected = await message.channel.awaitMessages({ 
+                    filter, 
+                    max: 1, 
+                    time: 30000, 
+                    errors: ['time'] 
+                });
+                
+                if (collected.first().content.toLowerCase() === 'no') {
+                    return await sendAsFloofWebhook(message, {
+                        content: '❌ Level role creation cancelled.'
+                    });
+                }
+            } catch (error) {
+                return await sendAsFloofWebhook(message, {
+                    content: '❌ Confirmation timed out. Level role creation cancelled.'
+                });
+            }
+        }
+
+        // Start creating roles
+        await this.createLevelRoles(message, startLevel, endLevel);
     },
 
     async createLevelRoles(message, startLevel, endLevel) {
@@ -74,7 +136,7 @@ module.exports = {
             .setDescription('Please wait while I create the level roles. This may take a moment.')
             .setColor('#FFA500');
 
-        const progressMessage = await sendAsFloofWebhook(message, { embeds: [progressEmbed] });
+        const progressMessage = await message.channel.send({ embeds: [progressEmbed] });
 
         let createdCount = 0;
         let skippedCount = 0;
