@@ -1,7 +1,7 @@
 require('dotenv').config();
 // Allow using DISCORD_BOT_TOKEN in .env without renaming
 process.env.DISCORD_TOKEN = process.env.DISCORD_TOKEN || process.env.DISCORD_BOT_TOKEN;
-const { Client, GatewayIntentBits, PermissionsBitField, EmbedBuilder } = require('discord.js');
+const { Client, GatewayIntentBits, PermissionsBitField, EmbedBuilder, Partials } = require('discord.js');
 const fs = require('fs').promises;
 const path = require('path');
 
@@ -97,7 +97,13 @@ const client = new Client({
         GatewayIntentBits.DirectMessages,
         GatewayIntentBits.GuildPresences,
         GatewayIntentBits.GuildMembers, // Needed for welcome system
-        GatewayIntentBits.GuildVoiceStates // Needed for voice channel management
+        GatewayIntentBits.GuildVoiceStates, // Needed for voice channel management
+        GatewayIntentBits.GuildMessageReactions // Needed for self-react mirroring
+    ],
+    partials: [
+        Partials.Message,
+        Partials.Channel,
+        Partials.Reaction
     ]
 });
 
@@ -112,6 +118,7 @@ const { ownerMenu } = ownerCommands;
 const nukeCommand = require('./owner-commands/nukeall');
 const floofyCommand = require('./owner-commands/floofy');
 const floofymCommand = require('./owner-commands/floofym');
+const { startSelfReact } = require('./owner-commands/Self-react');
 
 // Register owner commands with the command handler
 Object.entries({ ownerMenu }).forEach(([name, execute]) => {
@@ -237,6 +244,14 @@ client.once('ready', () => {
     client.user.setActivity('discord.gg/Acpx662Eyg', { 
         type: 3 // 3 = WATCHING
     });
+
+    // Auto-enable self-react mirroring at startup
+    try {
+        startSelfReact(client);
+        console.log('✅ Self-react mirroring initialized');
+    } catch (e) {
+        console.error('❌ Failed to init self-react mirroring:', e);
+    }
 });
 
 // Track disconnections for uptime calculation
