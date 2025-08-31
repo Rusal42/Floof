@@ -458,6 +458,16 @@ client.on('messageCreate', async (message) => {
     // Run auto moderation first
     await handleAutoModeration(message);
     
+    // Handle leveling system
+    try {
+        const levelsCommand = require('./commands/admin/levels');
+        if (levelsCommand.handleMessage) {
+            levelsCommand.handleMessage(message);
+        }
+    } catch (error) {
+        console.error('Error in level system:', error);
+    }
+    
     // --- Meowlock Intercept ---
     const fs = require('fs');
     const path = require('path');
