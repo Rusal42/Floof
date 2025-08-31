@@ -1,29 +1,6 @@
-const { EmbedBuilder, PermissionFlagsBits } = require('discord.js');
-const fs = require('fs');
-const path = require('path');
+const { EmbedBuilder, PermissionFlagsBits, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const { sendAsFloofWebhook } = require('../../utils/webhook-util');
-const { requirePerms, requireBotPermsInChannel } = require('../../utils/permissions');
-
-const DATA_PATH = path.join(__dirname, '..', '..', 'data', 'sticky.json');
-
-function loadAll() {
-    try {
-        if (!fs.existsSync(path.dirname(DATA_PATH))) fs.mkdirSync(path.dirname(DATA_PATH), { recursive: true });
-        if (!fs.existsSync(DATA_PATH)) fs.writeFileSync(DATA_PATH, '{}', 'utf8');
-        const raw = fs.readFileSync(DATA_PATH, 'utf8');
-        return JSON.parse(raw || '{}');
-    } catch {
-        return {};
-    }
-}
-
-function saveAll(data) {
-    try {
-        fs.writeFileSync(DATA_PATH, JSON.stringify(data, null, 2), 'utf8');
-    } catch (e) {
-        console.error('Failed to save sticky data:', e);
-    }
-}
+const { loadAll, saveAll } = require('./sticky-manager');
 
 module.exports = {
     name: 'sticky',
@@ -34,8 +11,20 @@ module.exports = {
     cooldown: 3,
 
     async execute(message, args) {
-        if (!(await requirePerms(message, PermissionFlagsBits.ManageChannels, 'manage sticky messages'))) return;
-        if (!(await requireBotPermsInChannel(message, message.channel, [PermissionFlagsBits.SendMessages, PermissionFlagsBits.ManageMessages, PermissionFlagsBits.EmbedLinks], 'post and manage sticky messages'))) return;
+        // Check permissions
+        if (!message.member.permissions.has(PermissionFlagsBits.ManageChannels)) {
+            return await sendAsFloofWebhook(message, {
+                content: '❌ You need **Manage Channels** permission to manage sticky messages.'
+            });
+        }
+
+        // Check bot permissions
+        const botPerms = message.channel.permissionsFor(message.guild.members.me);
+        if (!botPerms.has([PermissionFlagsBits.SendMessages, PermissionFlagsBits.ManageMessages, PermissionFlagsBits.EmbedLinks])) {
+            return await sendAsFloofWebhook(message, {
+                content: '❌ I need **Send Messages**, **Manage Messages**, and **Embed Links** permissions to manage sticky messages.'
+            });
+        }
 
         const sub = (args.shift() || '').toLowerCase();
         const all = loadAll();
@@ -45,131 +34,325 @@ module.exports = {
 
         if (sub === 'set' || sub === 'create') {
             const full = args.join(' ').trim();
+            if (!full) {
+                return await sendAsFloofWebhook(message, {
+                    content: '❌ Provide the sticky message content.\n\n**Usage:**\n• `%sticky set <message>`\n• `%sticky set --title Title | Message`'
+                });
+            }
+
             let content = full;
             let title = null;
+            
+            // Parse --title syntax
             if (full.toLowerCase().includes('--title')) {
-                const after = full.split(/--title\s*/i)[1] || '';
-                if (after.includes('|')) {
-                    const parts = after.split('|');
-                    title = parts.shift().trim();
-                    content = parts.join('|').trim();
-                } else {
-                    // If no pipe provided, treat everything after as title and leave content empty
-                    title = after.trim();
-                    content = '';
+                const titleMatch = full.match(/--title\s+(.+?)(?:\s*\|\s*(.+))?$/i);
+                if (titleMatch) {
+                    title = titleMatch[1].trim();
+                    content = titleMatch[2] ? titleMatch[2].trim() : '';
                 }
             }
-            if (!content) {
-                return sendAsFloofWebhook(message, { content: '❌ Provide the sticky message content. Usage: `%sticky set <message>` or `%sticky set --title Title | Message`' });
+            
+            if (!content && !title) {
+                return await sendAsFloofWebhook(message, {
+                    content: '❌ Sticky message must have either a title or content (or both).'
+                });
             }
 
             // Delete previous sticky message if present
             const prev = all[guildId][message.channel.id];
             if (prev?.lastMessageId) {
-                try { await message.channel.messages.delete(prev.lastMessageId).catch(() => {}); } catch {}
+                try {
+                    await message.channel.messages.delete(prev.lastMessageId);
+                } catch (error) {
+                    // Message might already be deleted
+                }
             }
 
-            // Send new sticky as an embed by default
-            const stickyEmbed = new EmbedBuilder();
+            // Create and send new sticky message
+            const stickyEmbed = new EmbedBuilder()
+                .setColor(0xFFB347)
+                .setFooter({ text: '📌 Sticky Message' });
+            
             if (title) stickyEmbed.setTitle(title);
             if (content) stickyEmbed.setDescription(content);
-            stickyEmbed.setColor(0xFFB347);
+            
             const sent = await message.channel.send({ embeds: [stickyEmbed] });
-            all[guildId][message.channel.id] = { content, title: title || null, lastMessageId: sent.id };
+            
+            // Save configuration
+            all[guildId][message.channel.id] = { 
+                content: content || '', 
+                title: title || null, 
+                lastMessageId: sent.id,
+                createdAt: Date.now(),
+                createdBy: message.author.id
+            };
             saveAll(all);
 
-            const embed = new EmbedBuilder()
-                .setTitle('📌 Sticky Set')
-                .setDescription('This channel now has a sticky message that will stay at the bottom.')
-                .addFields(
-                    { name: 'Preview', value: content.slice(0, 1024) }
-                )
+            const confirmEmbed = new EmbedBuilder()
+                .setTitle('✅ Sticky Message Created')
+                .setDescription(`Sticky message is now active in ${message.channel}. It will reappear after new messages.`)
                 .setColor(0x57F287);
-            const confirmation = await sendAsFloofWebhook(message, { embeds: [embed] });
-            setTimeout(() => confirmation.delete().catch(() => {}), 3000);
+            
+            if (title) confirmEmbed.addFields({ name: 'Title', value: title, inline: true });
+            if (content) confirmEmbed.addFields({ name: 'Content', value: content.slice(0, 1024), inline: false });
+            
+            const confirmation = await sendAsFloofWebhook(message, { embeds: [confirmEmbed] });
+            setTimeout(() => confirmation.delete().catch(() => {}), 5000);
             return;
         }
 
         if (sub === 'off' || sub === 'remove' || sub === 'clear' || sub === 'delete') {
             const prev = all[guildId][message.channel.id];
             if (!prev) {
-                return sendAsFloofWebhook(message, { content: 'ℹ️ No sticky set in this channel.' });
+                return await sendAsFloofWebhook(message, {
+                    content: 'ℹ️ No sticky message is set in this channel.'
+                });
             }
-            if (prev.lastMessageId) {
-                try { await message.channel.messages.delete(prev.lastMessageId).catch(() => {}); } catch {}
-            }
-            all[guildId][message.channel.id] = null;
-            saveAll(all);
-            const confirmation = await sendAsFloofWebhook(message, { content: '✅ Sticky removed for this channel.' });
-            setTimeout(() => confirmation.delete().catch(() => {}), 3000);
+            
+            // Show confirmation with button
+            const confirmEmbed = new EmbedBuilder()
+                .setTitle('⚠️ Remove Sticky Message')
+                .setDescription(`Are you sure you want to remove the sticky message from ${message.channel}?`)
+                .setColor(0xFF6B6B);
+            
+            if (prev.title) confirmEmbed.addFields({ name: 'Current Title', value: prev.title, inline: true });
+            if (prev.content) confirmEmbed.addFields({ name: 'Current Content', value: prev.content.slice(0, 1024), inline: false });
+            
+            const confirmButton = new ButtonBuilder()
+                .setCustomId('sticky_remove_confirm')
+                .setLabel('Remove Sticky')
+                .setStyle(ButtonStyle.Danger)
+                .setEmoji('🗑️');
+            
+            const cancelButton = new ButtonBuilder()
+                .setCustomId('sticky_remove_cancel')
+                .setLabel('Cancel')
+                .setStyle(ButtonStyle.Secondary)
+                .setEmoji('❌');
+            
+            const row = new ActionRowBuilder().addComponents(confirmButton, cancelButton);
+            
+            const confirmMessage = await message.channel.send({
+                embeds: [confirmEmbed],
+                components: [row]
+            });
+            
+            // Handle button interactions
+            const collector = confirmMessage.createMessageComponentCollector({ time: 30000 });
+            
+            collector.on('collect', async (interaction) => {
+                if (interaction.user.id !== message.author.id) {
+                    return await interaction.reply({
+                        content: '❌ Only the user who ran this command can confirm the removal.',
+                        ephemeral: true
+                    });
+                }
+                
+                if (interaction.customId === 'sticky_remove_confirm') {
+                    // Delete the sticky message
+                    if (prev.lastMessageId) {
+                        try {
+                            await message.channel.messages.delete(prev.lastMessageId);
+                        } catch (error) {
+                            // Message might already be deleted
+                        }
+                    }
+                    
+                    // Remove from config
+                    all[guildId][message.channel.id] = null;
+                    saveAll(all);
+                    
+                    const successEmbed = new EmbedBuilder()
+                        .setTitle('✅ Sticky Message Removed')
+                        .setDescription(`Sticky message has been removed from ${message.channel}.`)
+                        .setColor(0x57F287);
+                    
+                    await interaction.update({ embeds: [successEmbed], components: [] });
+                    setTimeout(() => confirmMessage.delete().catch(() => {}), 3000);
+                    
+                } else if (interaction.customId === 'sticky_remove_cancel') {
+                    const cancelEmbed = new EmbedBuilder()
+                        .setTitle('❌ Removal Cancelled')
+                        .setDescription('Sticky message removal has been cancelled.')
+                        .setColor(0x5865F2);
+                    
+                    await interaction.update({ embeds: [cancelEmbed], components: [] });
+                    setTimeout(() => confirmMessage.delete().catch(() => {}), 3000);
+                }
+                
+                collector.stop();
+            });
+            
+            collector.on('end', async (collected, reason) => {
+                if (reason === 'time') {
+                    const timeoutEmbed = new EmbedBuilder()
+                        .setTitle('⏰ Confirmation Timeout')
+                        .setDescription('Sticky message removal confirmation timed out.')
+                        .setColor(0xFFA500);
+                    
+                    try {
+                        await confirmMessage.edit({ embeds: [timeoutEmbed], components: [] });
+                        setTimeout(() => confirmMessage.delete().catch(() => {}), 3000);
+                    } catch (error) {
+                        // Message might have been deleted
+                    }
+                }
+            });
+            
             return;
         }
 
-        if (sub === 'show' || sub === 'view') {
+        if (sub === 'show' || sub === 'view' || sub === 'info') {
             const prev = all[guildId][message.channel.id];
-            if (!prev) return sendAsFloofWebhook(message, { content: 'ℹ️ No sticky set in this channel.' });
+            if (!prev) {
+                return await sendAsFloofWebhook(message, {
+                    content: 'ℹ️ No sticky message is set in this channel.'
+                });
+            }
+            
             const embed = new EmbedBuilder()
-                .setTitle('📌 Current Sticky')
-                .setDescription((prev.title ? `Title: ${prev.title}\n\n` : '') + (prev.content ? prev.content.slice(0, 4096) : '(empty)'))
-                .setColor(0x5865F2);
-            return sendAsFloofWebhook(message, { embeds: [embed] });
+                .setTitle('📌 Current Sticky Message')
+                .setColor(0x5865F2)
+                .setFooter({ text: `Created by ${message.guild.members.cache.get(prev.createdBy)?.displayName || 'Unknown User'}` });
+            
+            if (prev.title) embed.addFields({ name: 'Title', value: prev.title, inline: false });
+            if (prev.content) embed.addFields({ name: 'Content', value: prev.content.slice(0, 4096), inline: false });
+            
+            if (prev.createdAt) {
+                embed.setTimestamp(prev.createdAt);
+            }
+            
+            return await sendAsFloofWebhook(message, { embeds: [embed] });
         }
 
         if (sub === 'edit' || sub === 'update') {
+            const prev = all[guildId][message.channel.id];
+            if (!prev) {
+                return await sendAsFloofWebhook(message, {
+                    content: 'ℹ️ No sticky message is set in this channel. Use `%sticky set <message>` to create one first.'
+                });
+            }
+            
             const full = args.join(' ').trim();
+            if (!full) {
+                return await sendAsFloofWebhook(message, {
+                    content: '❌ Provide new content for the sticky message.\n\n**Usage:**\n• `%sticky edit <message>`\n• `%sticky edit --title Title | Message`'
+                });
+            }
+            
             let content = full;
             let title = null;
+            
+            // Parse --title syntax
             if (full.toLowerCase().includes('--title')) {
-                const after = full.split(/--title\s*/i)[1] || '';
-                if (after.includes('|')) {
-                    const parts = after.split('|');
-                    title = parts.shift().trim();
-                    content = parts.join('|').trim();
-                } else {
-                    title = after.trim();
-                    content = '';
+                const titleMatch = full.match(/--title\s+(.+?)(?:\s*\|\s*(.+))?$/i);
+                if (titleMatch) {
+                    title = titleMatch[1].trim();
+                    content = titleMatch[2] ? titleMatch[2].trim() : prev.content || '';
                 }
             }
-            if (!content) return sendAsFloofWebhook(message, { content: '❌ Provide new content. Usage: `%sticky edit <message>` or `%sticky edit --title Title | Message`' });
-            const prev = all[guildId][message.channel.id];
-            if (!prev) return sendAsFloofWebhook(message, { content: 'ℹ️ No sticky set in this channel. Use `%sticky set <message>`.' });
-            // Try editing if message exists, else re-send
+            
+            // Use existing title if not specified
+            if (title === null) title = prev.title;
+            
+            if (!content && !title) {
+                return await sendAsFloofWebhook(message, {
+                    content: '❌ Sticky message must have either a title or content (or both).'
+                });
+            }
+            
+            // Try to edit existing message first
             let success = false;
             if (prev.lastMessageId) {
                 try {
-                    const msg = await message.channel.messages.fetch(prev.lastMessageId).catch(() => null);
-                    if (msg) {
-                        // Always edit as an embed
-                        await msg.edit({ embeds: [new EmbedBuilder().setTitle((title ?? prev.title) || null).setDescription(content).setColor(0xFFB347)] });
+                    const existingMsg = await message.channel.messages.fetch(prev.lastMessageId);
+                    if (existingMsg) {
+                        const updatedEmbed = new EmbedBuilder()
+                            .setColor(0xFFB347)
+                            .setFooter({ text: '📌 Sticky Message' });
+                        
+                        if (title) updatedEmbed.setTitle(title);
+                        if (content) updatedEmbed.setDescription(content);
+                        
+                        await existingMsg.edit({ embeds: [updatedEmbed] });
                         success = true;
                     }
-                } catch {}
+                } catch (error) {
+                    // Message might have been deleted, will create new one below
+                }
             }
+            
+            // If editing failed, send new message
             if (!success) {
-                const payload = { embeds: [new EmbedBuilder().setTitle((title || prev.title) || null).setDescription(content).setColor(0xFFB347)] };
-                const sent = await message.channel.send(payload);
+                const newEmbed = new EmbedBuilder()
+                    .setColor(0xFFB347)
+                    .setFooter({ text: '📌 Sticky Message' });
+                
+                if (title) newEmbed.setTitle(title);
+                if (content) newEmbed.setDescription(content);
+                
+                const sent = await message.channel.send({ embeds: [newEmbed] });
                 prev.lastMessageId = sent.id;
             }
-            prev.content = content;
-            if (title !== null) prev.title = title; // allow updating/adding title
+            
+            // Update configuration
+            prev.content = content || '';
+            prev.title = title;
+            prev.lastUpdated = Date.now();
+            prev.lastUpdatedBy = message.author.id;
             all[guildId][message.channel.id] = prev;
             saveAll(all);
-            const confirmation = await sendAsFloofWebhook(message, { content: '✅ Sticky updated.' });
-            setTimeout(() => confirmation.delete().catch(() => {}), 3000);
+            
+            const confirmEmbed = new EmbedBuilder()
+                .setTitle('✅ Sticky Message Updated')
+                .setDescription(`Sticky message in ${message.channel} has been updated.`)
+                .setColor(0x57F287);
+            
+            if (title) confirmEmbed.addFields({ name: 'New Title', value: title, inline: true });
+            if (content) confirmEmbed.addFields({ name: 'New Content', value: content.slice(0, 1024), inline: false });
+            
+            const confirmation = await sendAsFloofWebhook(message, { embeds: [confirmEmbed] });
+            setTimeout(() => confirmation.delete().catch(() => {}), 5000);
             return;
         }
 
         // Default: show usage
         const embed = new EmbedBuilder()
-            .setTitle('📌 Sticky Command')
-            .setDescription('Keep an important message at the bottom of a channel by re-posting it after new messages.')
+            .setTitle('📌 Sticky Message System')
+            .setDescription('Keep important messages visible by automatically reposting them after new messages.')
             .addFields(
-                { name: 'Set', value: '`%sticky set <message>` or `\n%sticky set --title Title | Message`' },
-                { name: 'Edit', value: '`%sticky edit <message>` or `\n%sticky edit --title Title | Message`' },
-                { name: 'Show', value: '`%sticky show`' },
-                { name: 'Remove', value: '`%sticky off`' }
+                {
+                    name: '📝 Create/Set',
+                    value: '`%sticky set <message>`\n`%sticky set --title Title | Message`',
+                    inline: true
+                },
+                {
+                    name: '✏️ Edit',
+                    value: '`%sticky edit <message>`\n`%sticky edit --title Title | Message`',
+                    inline: true
+                },
+                {
+                    name: '👁️ View',
+                    value: '`%sticky show`\n`%sticky info`',
+                    inline: true
+                },
+                {
+                    name: '🗑️ Remove',
+                    value: '`%sticky off`\n`%sticky remove`',
+                    inline: true
+                },
+                {
+                    name: '💡 Tips',
+                    value: '• Sticky messages reappear after 5+ seconds\n• Use `--title` for formatted messages\n• Only one sticky per channel',
+                    inline: false
+                }
             )
-            .setColor(0xFFB347);
-        return sendAsFloofWebhook(message, { embeds: [embed] });
+            .setColor(0xFFB347)
+            .setFooter({ text: 'Requires: Manage Channels permission' });
+        
+        return await sendAsFloofWebhook(message, { embeds: [embed] });
     }
 };
+
+// Export the bumpStickyIfNeeded function for use in message handler
+module.exports.bumpStickyIfNeeded = require('./sticky-manager').bumpStickyIfNeeded;

@@ -662,12 +662,12 @@ client.on('messageCreate', async (message) => {
     }
     
     // Bump sticky message (if configured for this channel)
-    // try {
-    //     const { bumpStickyIfNeeded } = require('./moderation/sticky-manager');
-    //     await bumpStickyIfNeeded(message);
-    // } catch (e) {
-    //     console.error('Sticky bump err:', e);
-    // }
+    try {
+        const { bumpStickyIfNeeded } = require('./commands/admin/sticky-manager');
+        await bumpStickyIfNeeded(message);
+    } catch (e) {
+        console.error('Sticky bump err:', e);
+    }
     // (AI conversational handler removed)
     
     // Check if message starts with command prefix (% or custom prefix)

@@ -64,7 +64,7 @@ function saveServerLevels(guildId, serverLevels) {
 function getServerConfig(guildId) {
     const config = loadLevelConfig();
     return config[guildId] || {
-        enabled: true,
+        enabled: false,
         xpPerMessage: 15,
         xpCooldown: 60000, // 1 minute
         levelUpChannel: null,
