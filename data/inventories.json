@@ -1,7 +1,9 @@
 {
   "1007799027716329484": {
     "items": {
-      "pistol": 1
+      "pistol": 1,
+      "laser": 1,
+      "energy": 15
     },
     "equipped_weapon": "pistol",
     "equipped_protection": [],

@@ -1,8 +1,9 @@
 {
-  "totalRaces": 1,
-  "totalBets": 0,
+  "totalRaces": 2,
+  "totalBets": 2,
   "totalWinnings": 0,
   "participantWins": {
-    "midnight_shadow": 1
+    "midnight_shadow": 1,
+    "fire_spirit": 1
   }
 }
