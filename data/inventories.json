@@ -1,0 +1,29 @@
+{
+  "1007799027716329484": {
+    "items": {
+      "pistol": 1
+    },
+    "equipped_weapon": "pistol",
+    "equipped_protection": [],
+    "stats": {
+      "health": 100,
+      "max_health": 100,
+      "energy": 100,
+      "max_energy": 100
+    }
+  },
+  "1248115416790995028": {
+    "items": {
+      "pistol": 1,
+      "bullets": 25
+    },
+    "equipped_weapon": "pistol",
+    "equipped_protection": [],
+    "stats": {
+      "health": 100,
+      "max_health": 100,
+      "energy": 100,
+      "max_energy": 100
+    }
+  }
+}

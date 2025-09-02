@@ -1,0 +1,117 @@
+{
+  "1393659651832152185": {
+    "enabled": false,
+    "xpPerMessage": 15,
+    "xpCooldown": 60000,
+    "levelUpChannel": null,
+    "levelRoles": {
+      "1": "1411714234429079574"
+    },
+    "multipliers": {},
+    "ignoredChannels": [],
+    "ignoredRoles": [],
+    "autoCreateRoles": true
+  },
+  "1062223859228610660": {
+    "enabled": false,
+    "xpPerMessage": 15,
+    "xpCooldown": 60000,
+    "levelUpChannel": null,
+    "levelRoles": {
+      "1": "1411715279016165429",
+      "2": "1411738541209292974"
+    },
+    "multipliers": {},
+    "ignoredChannels": [],
+    "ignoredRoles": [],
+    "autoCreateRoles": true
+  },
+  "953921406486339594": {
+    "enabled": false,
+    "xpPerMessage": 15,
+    "xpCooldown": 60000,
+    "levelUpChannel": null,
+    "levelRoles": {},
+    "multipliers": {},
+    "ignoredChannels": [],
+    "ignoredRoles": [],
+    "autoCreateRoles": true
+  },
+  "1233375464672985109": {
+    "enabled": false,
+    "xpPerMessage": 15,
+    "xpCooldown": 60000,
+    "levelUpChannel": null,
+    "levelRoles": {},
+    "multipliers": {},
+    "ignoredChannels": [],
+    "ignoredRoles": [],
+    "autoCreateRoles": true
+  },
+  "1378628339190992976": {
+    "enabled": false,
+    "xpPerMessage": 15,
+    "xpCooldown": 60000,
+    "levelUpChannel": null,
+    "levelRoles": {},
+    "multipliers": {},
+    "ignoredChannels": [],
+    "ignoredRoles": [],
+    "autoCreateRoles": true
+  },
+  "1387539570568200404": {
+    "enabled": false,
+    "xpPerMessage": 15,
+    "xpCooldown": 60000,
+    "levelUpChannel": null,
+    "levelRoles": {},
+    "multipliers": {},
+    "ignoredChannels": [],
+    "ignoredRoles": [],
+    "autoCreateRoles": true
+  },
+  "1387574542456586420": {
+    "enabled": false,
+    "xpPerMessage": 15,
+    "xpCooldown": 60000,
+    "levelUpChannel": null,
+    "levelRoles": {},
+    "multipliers": {},
+    "ignoredChannels": [],
+    "ignoredRoles": [],
+    "autoCreateRoles": true
+  },
+  "1392710210862321694": {
+    "enabled": false,
+    "xpPerMessage": 15,
+    "xpCooldown": 60000,
+    "levelUpChannel": null,
+    "levelRoles": {},
+    "multipliers": {},
+    "ignoredChannels": [],
+    "ignoredRoles": [],
+    "autoCreateRoles": true
+  },
+  "1393691176330203361": {
+    "enabled": false,
+    "xpPerMessage": 15,
+    "xpCooldown": 60000,
+    "levelUpChannel": null,
+    "levelRoles": {},
+    "multipliers": {},
+    "ignoredChannels": [],
+    "ignoredRoles": [],
+    "autoCreateRoles": true
+  },
+  "1397445087218241547": {
+    "enabled": false,
+    "xpPerMessage": 15,
+    "xpCooldown": 60000,
+    "levelUpChannel": null,
+    "levelRoles": {},
+    "multipliers": {},
+    "ignoredChannels": [],
+    "ignoredRoles": [],
+    "autoCreateRoles": true
+  }
+}

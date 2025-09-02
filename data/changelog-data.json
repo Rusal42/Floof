@@ -1,0 +1,127 @@
+{
+  "changelogs": [
+    {
+      "id": 5,
+      "version": "v2.1.9",
+      "title": "Uptime formatting + website version sync",
+      "description": "Humanized uptime across site and API; streamlined website version updates via changelog; clarified per-user prefix docs.",
+      "features": [
+        "Human-readable uptime on status page",
+        "Local /api/health shows uptime",
+        "Changelog now updates website version only"
+      ],
+      "improvements": [
+        "Prefer max(bot uptime, server uptime) for accuracy",
+        "Netlify default uptime set to 0 to avoid stale",
+        "Docs: per-user prefix via %prefix set",
+        "%prefix list shows default % hint"
+      ],
+      "fixes": [
+        "Netlify health uptime no longer stuck around ~50s",
+        "Removed server-wide %config prefix mention to reduce confusion"
+      ],
+      "timestamp": "2025-08-17T06:46:48.707Z",
+      "messageId": "1406529683667025960",
+      "channelId": "1393667713208946728",
+      "guildId": "1393659651832152185"
+    },
+    {
+      "id": 4,
+      "version": "v2.1.8",
+      "title": "Website uptime + prefix docs",
+      "description": "Humanized uptime (days/h/m/s) with accurate reporting, plus clarified per-user prefix docs and in-bot help.",
+      "features": [
+        "Human-readable uptime on status page",
+        "Local /api/health now includes uptime output"
+      ],
+      "improvements": [
+        "Prefer max(bot uptime, server uptime) to avoid regressions",
+        "Default uptime set to 0 in Netlify stats store",
+        "Docs: per-user prefix via %prefix set",
+        "Help: default % tip added to %prefix list"
+      ],
+      "fixes": [
+        "Uptime no longer stuck around ~50s in Netlify health",
+        "Removed server-wide %config prefix mention to avoid confusion"
+      ],
+      "timestamp": "2025-08-17T06:36:31.445Z",
+      "messageId": "1406527094590017586",
+      "channelId": "1393667713208946728",
+      "guildId": "1393659651832152185"
+    },
+    {
+      "id": 3,
+      "version": "v2.1.7",
+      "title": "Commands page refinements",
+      "description": "Improved category navigation and visibility behavior.",
+      "features": [
+        "Category-only view per section",
+        "Quickbar always visible",
+        "Roles shows grid + docs together"
+      ],
+      "improvements": [
+        "Explorer grid hides on category",
+        "No auto-scroll on select",
+        "Counts and filters stay in sync"
+      ],
+      "fixes": [
+        "Fixed Roles section showing under other categories",
+        "Minor layout/visibility polish"
+      ],
+      "timestamp": "2025-08-17T05:46:53.384Z",
+      "messageId": "1406514603646521444",
+      "channelId": "1393667713208946728",
+      "guildId": "1393659651832152185"
+    },
+    {
+      "id": 2,
+      "version": "v2.1.6",
+      "title": "Commands page overhaul",
+      "description": "Redesigned commands explorer and categories for clarity.",
+      "features": [
+        "Added Voice (VC) section",
+        "Added Tickets section",
+        "Added quickbar chips",
+        "Added command count badges",
+        "Added Back-to-Top button"
+      ],
+      "improvements": [
+        "Moved advancedlog to Moderation",
+        "Moved analytics to General",
+        "Ensured All shows every command by default",
+        "Improved quickbar drag/active handling",
+        "Auto-populated section counts"
+      ],
+      "fixes": [
+        "Removed Important category",
+        "Removed changelog command from website list",
+        "Removed duplicate ticket entry"
+      ],
+      "timestamp": "2025-08-17T05:02:02.015Z",
+      "messageId": "1406503308796887191",
+      "channelId": "1393667713208946728",
+      "guildId": "1393659651832152185"
+    },
+    {
+      "id": 1,
+      "version": "v2.1.5",
+      "title": "Data System & Infractions Migration",
+      "description": "Centralized data handling and safe startup restore to keep environments consistent across servers and teammates.",
+      "features": [
+        "Centralized infractions to data/infractions.json",
+        "Auto-restore infractions from infractions.json.backup on startup (only if empty)",
+        "Created/verified data/ directory on boot",
+        "Safer writes with directory checks across moderation commands",
+        "Tightened git hygiene (ignore data/, avoid committing sensitive files)",
+        "Better multi-server consistency and portability"
+      ],
+      "improvements": [],
+      "fixes": [],
+      "timestamp": "2025-08-16T16:12:42.758Z",
+      "messageId": "1406309707269931059",
+      "channelId": "1393667713208946728",
+      "guildId": "1393659651832152185"
+    }
+  ],
+  "nextId": 6
+}
