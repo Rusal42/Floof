@@ -18,7 +18,7 @@ function getTimeAgo(timestamp) {
 
 module.exports = {
     name: 'snipe',
-    aliases: ['s'],
+    aliases: ['snp'],
     description: 'Shows the most recently deleted message in this channel',
     async execute(message, args) {
         // Access the deleted messages from the client's global storage
