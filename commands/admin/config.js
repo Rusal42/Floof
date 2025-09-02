@@ -967,30 +967,47 @@ module.exports = {
     async setGamblingChannel(message, channelInput) {
         if (!channelInput) {
             return await sendAsFloofWebhook(message, {
-                content: '❌ Please specify a channel: `%config gambling #channel`'
+                content: '❌ Please specify a channel or category: `%config gambling #channel` or `%config gambling #category`'
             });
         }
 
-        const channel = this.parseChannel(message, channelInput);
+        // Try to parse as channel first
+        let channel = this.parseChannel(message, channelInput);
+        let isCategory = false;
+        
+        // If not a channel, try parsing as category
+        if (!channel) {
+            const categoryId = channelInput.replace(/[<#>]/g, '');
+            const category = message.guild.channels.cache.get(categoryId);
+            if (category && category.type === ChannelType.GuildCategory) {
+                channel = category;
+                isCategory = true;
+            }
+        }
+
         if (!channel) {
             return await sendAsFloofWebhook(message, {
-                content: '❌ Invalid channel. Please mention a valid text channel.'
+                content: '❌ Invalid channel or category. Please mention a valid text channel or category.'
             });
         }
 
         await this.updateConfig(message.guild.id, 'gamblingChannel', channel.id);
+        await this.updateConfig(message.guild.id, 'gamblingIsCategory', isCategory);
 
         const embed = new EmbedBuilder()
-            .setTitle('✅ Gambling Channel Set')
-            .setDescription(`Gambling commands will work best in ${channel}`)
+            .setTitle(`✅ Gambling ${isCategory ? 'Category' : 'Channel'} Set`)
+            .setDescription(`Gambling commands will work best in ${isCategory ? 'channels within' : ''} ${channel}`)
             .setColor(0x00FF7F)
             .addFields({
                 name: '🎰 Available Commands:',
                 value: [
+                    '• `%jobs` - Get a job and work for coins',
                     '• `%balance` - Check your coins',
-                    '• `%daily` - Claim daily reward',
                     '• `%slots` - Play slot machine',
-                    '• `%coinflip` - Flip a coin'
+                    '• `%attack` - Combat other users',
+                    '• `%shop` - Buy weapons and protection',
+                    '• `%rob` - Rob banks and businesses',
+                    '• `%floofgambling` - See all commands'
                 ].join('\n')
             });
 
