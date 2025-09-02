@@ -14,6 +14,13 @@ const {
     calculateSpecificBusinessIncome
 } = require('./utils/business-manager');
 
+const {
+    handleNumberedSelection,
+    handleNumberedBuyBusiness,
+    handleNumberedHireEmployee,
+    handleNumberedHireBodyguard
+} = require('./business-numbered-handlers');
+
 // Business cooldowns
 const businessCooldowns = {};
 
@@ -62,14 +69,35 @@ module.exports = {
 
         const action = args[0].toLowerCase();
         
+        // Handle numbered selection for any action
+        if (!isNaN(parseInt(action))) {
+            const itemNumber = parseInt(action);
+            return await handleNumberedSelection(message, userId, itemNumber, args.slice(1));
+        }
+        
         switch (action) {
             case 'buy':
             case 'purchase':
+                // Handle buy with number: %business buy 1
+                if (args[1] && !isNaN(parseInt(args[1]))) {
+                    const itemNumber = parseInt(args[1]);
+                    return await handleNumberedBuyBusiness(message, userId, itemNumber);
+                }
                 return await handleBuyBusiness(message, userId, args.slice(1));
             case 'hire':
+                // Handle hire with number: %business hire 1
+                if (args[1] && !isNaN(parseInt(args[1]))) {
+                    const itemNumber = parseInt(args[1]);
+                    return await handleNumberedHireEmployee(message, userId, itemNumber);
+                }
                 return await handleHireEmployee(message, userId, args.slice(1));
             case 'bodyguard':
             case 'guard':
+                // Handle bodyguard with number: %business bodyguard 1
+                if (args[1] && !isNaN(parseInt(args[1]))) {
+                    const itemNumber = parseInt(args[1]);
+                    return await handleNumberedHireBodyguard(message, userId, itemNumber);
+                }
                 return await handleHireBodyguard(message, userId, args.slice(1));
             case 'collect':
             case 'income':

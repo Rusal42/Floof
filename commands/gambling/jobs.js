@@ -154,13 +154,19 @@ module.exports = {
             });
         }
 
-        // Handle numbered application
+        // Handle apply with number: %jobs apply 1
+        if (args[0] && args[0].toLowerCase() === 'apply' && args[1] && !isNaN(parseInt(args[1]))) {
+            const jobNumber = parseInt(args[1]);
+            return await handleNumberedApplication(message, userId, jobNumber);
+        }
+
+        // Handle numbered application: %jobs 1
         if (!isNaN(parseInt(args[0]))) {
             const jobNumber = parseInt(args[0]);
             return await handleNumberedApplication(message, userId, jobNumber);
         }
 
-        // Handle apply command
+        // Handle apply command with job name: %jobs apply cashier
         if (args[0] && args[0].toLowerCase() === 'apply' && args[1]) {
             const jobId = args[1].toLowerCase();
             return await handleJobApplication(message, userId, jobId);

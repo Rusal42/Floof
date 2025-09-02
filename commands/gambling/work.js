@@ -11,7 +11,7 @@ module.exports = {
     description: 'Work at your job to earn coins',
     usage: '%work',
     category: 'gambling',
-    aliases: ['job'],
+    aliases: [],
     cooldown: 30, // 30 seconds
 
     async execute(message, args) {

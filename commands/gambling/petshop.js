@@ -38,13 +38,21 @@ module.exports = {
             return await displayPetShop(message, userId);
         }
 
-        // Handle numbered selection
+        // Handle buy with number: %petshop buy 1
+        if (args[0].toLowerCase() === 'buy' && args[1] && !isNaN(parseInt(args[1]))) {
+            const itemNumber = parseInt(args[1]);
+            const amount = args[2] ? parseInt(args[2]) : 1;
+            return await handleNumberedPurchase(message, userId, itemNumber, amount);
+        }
+
+        // Handle numbered selection: %petshop 1
         if (!isNaN(parseInt(args[0]))) {
             const itemNumber = parseInt(args[0]);
             const amount = args[1] ? parseInt(args[1]) : 1;
             return await handleNumberedPurchase(message, userId, itemNumber, amount);
         }
 
+        // Handle buy with name: %petshop buy dog
         if (args[0].toLowerCase() === 'buy' && args[1]) {
             const itemId = args[1].toLowerCase();
             const amount = args[2] ? parseInt(args[2]) : 1;
