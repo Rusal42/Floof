@@ -33,7 +33,7 @@ module.exports = {
         );
         
         const jobCommands = gambleCmds.filter(cmd => 
-            ['jobs', 'work'].includes(cmd.name)
+            ['work'].includes(cmd.name)
         );
         
         const combatCommands = gambleCmds.filter(cmd => 
@@ -53,7 +53,7 @@ module.exports = {
             .join('\n');
 
         const tips = [
-            '💼 **Getting Started:** Get a job with `%jobs apply cashier`, then `%work` every 30 seconds',
+            '💼 **Getting Started:** Use `%work` every 30 seconds to earn coins',
             '🎰 **Gambling:** Try `%slots 50`, `%blackjack 100`, or `%coinflip heads 25`',
             '🛡️ **Protection:** Use `%vault deposit` to store coins safely, or hire bodyguards with `%shop`',
             '⚔️ **Combat:** Attack others with `%attack @user` or defend with pets from `%petshop`',
