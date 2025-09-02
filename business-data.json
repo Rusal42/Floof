@@ -1,0 +1,38 @@
+{
+  "1007799027716329484": {
+    "businesses": {
+      "corner_store": {
+        "id": "corner_store_1756846940637",
+        "name": "Corner Store",
+        "type": "corner_store",
+        "purchased_at": 1756846940637,
+        "employees": [],
+        "last_income_collection": 1756846940637,
+        "total_earned": 0,
+        "times_robbed": 0
+      },
+      "counterfeit_shop": {
+        "id": "counterfeit_shop_1756849465288",
+        "name": "Counterfeit Shop",
+        "type": "counterfeit_shop",
+        "purchased_at": 1756849465288,
+        "employees": [],
+        "last_income_collection": 1756849465288,
+        "total_earned": 0,
+        "times_robbed": 0
+      }
+    },
+    "employees": {},
+    "bodyguards": {
+      "elite_bodyguard": {
+        "id": "elite_bodyguard_1756849134662",
+        "type": "elite_bodyguard",
+        "hired_at": 1756849134662,
+        "total_wages_paid": 0,
+        "assignment": "personal"
+      }
+    },
+    "last_collection": 0,
+    "total_income": 0
+  }
+}

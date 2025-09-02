@@ -3,7 +3,7 @@ const { sendAsFloofWebhook } = require('../../utils/webhook-util');
 const { getBalance, addBalance, subtractBalance } = require('./utils/balance-manager');
 const { getActiveEffects, hasActiveEffect, getEffectMultiplier } = require('./utils/blackmarket-manager');
 const { getEquippedWeapon, getEquippedProtection, getItemInfo, hasItem, removeItem, getStats, updateStats, getInventory } = require('./utils/inventory-manager');
-const { getActivePet, isUserAFK, updateUserActivity, simulatePetDefense, defendWithPet, PET_TYPES } = require('./utils/pet-manager');
+const { getActivePet, isUserAFK, updateUserActivity, simulatePetDefense, PET_TYPES } = require('./utils/pet-manager');
 
 // Attack cooldowns
 const attackCooldowns = {};

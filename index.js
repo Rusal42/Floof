@@ -2,6 +2,7 @@ require('dotenv').config();
 // Allow using DISCORD_BOT_TOKEN in .env without renaming
 process.env.DISCORD_TOKEN = process.env.DISCORD_TOKEN || process.env.DISCORD_BOT_TOKEN;
 const { Client, GatewayIntentBits, PermissionsBitField, EmbedBuilder, Partials } = require('discord.js');
+const { syncData } = require('./scripts/sync-data.js');
 const fs = require('fs').promises;
 const path = require('path');
 
@@ -281,9 +282,10 @@ client.on('interactionCreate', async (interaction) => {
         interaction.customId.startsWith('bodyguards_') ||
         interaction.customId.startsWith('business_') ||
         interaction.customId.startsWith('races_') ||
-        interaction.customId.startsWith('floofgambling_')) {
-        const { handleInteraction } = require('./handlers/gambling-interaction-handler');
-        await handleInteraction(interaction);
+        interaction.customId.startsWith('floofgambling_') ||
+        interaction.customId.startsWith('networth_')) {
+        const { handleGamblingInteraction } = require('./handlers/gambling-interaction-handler');
+        await handleGamblingInteraction(interaction);
         return;
     }
     
@@ -1262,7 +1264,6 @@ async function handleVoiceInteraction(interaction) {
 }
 
 async function handleSnipeInteraction(interaction) {
-    const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
     
     const parts = interaction.customId.split('_');
     const action = parts[1]; // prev, next, info

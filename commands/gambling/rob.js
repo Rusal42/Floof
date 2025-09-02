@@ -64,14 +64,12 @@ module.exports = {
             return await handleNumberedRobbery(message, userId, targetNumber);
         }
         
-        if (targetType === 'bank') {
-            return await handleBankRobbery(message, userId, args.slice(1));
-        } else if (targetType === 'business') {
+        if (targetType === 'business') {
             return await handleBusinessRobbery(message, userId, args.slice(1));
         } else if (targetType === 'stats') {
-            return await displayCrimeStats(message, userId);
+            return await handleCrimeStats(message, userId);
         } else {
-            // Try direct bank/business name
+            // Try direct business name only
             return await handleDirectRobbery(message, userId, targetType);
         }
     }
@@ -85,18 +83,8 @@ async function displayRobberyMenu(message, userId) {
     description += `🎯 **Your Crime Level:** ${crimeData.crime_level}\n`;
     description += `📊 **Success Rate:** ${crimeData.total_crimes > 0 ? Math.floor((crimeData.successful_crimes / crimeData.total_crimes) * 100) : 0}%\n\n`;
     
-    description += '**🏦 Banks Available:**\n';
-    let targetIndex = 1;
-    Object.entries(BANKS).forEach(([bankId, bank]) => {
-        description += `**${targetIndex}.** ${bank.emoji} **${bank.name}**\n`;
-        description += `└ 💰 Payout: ${bank.payout.min.toLocaleString()}-${bank.payout.max.toLocaleString()} coins\n`;
-        description += `└ 🚔 Risk: ${Math.floor(bank.arrest_chance * 100)}%\n`;
-        description += `└ ${bank.description}\n`;
-        description += `└ \`%r ${targetIndex}\` or \`%r ${bankId}\`\n\n`;
-        targetIndex++;
-    });
-
     description += '**🏪 Businesses Available:**\n';
+    let targetIndex = 1;
     Object.entries(BUSINESSES).forEach(([businessId, business]) => {
         description += `**${targetIndex}.** ${business.emoji} **${business.name}**\n`;
         description += `└ 💰 Payout: ${business.payout.min.toLocaleString()}-${business.payout.max.toLocaleString()} coins\n`;
@@ -361,16 +349,29 @@ async function handleCrimeStats(message, userId) {
     await sendAsFloofWebhook(message, { embeds: [embed] });
 }
 
-// Handle numbered robbery selection
+// Handle direct robbery by name (businesses only)
+async function handleDirectRobbery(message, userId, targetName) {
+    // Only check businesses - banks are no longer robbable
+    const target = BUSINESSES[targetName];
+    
+    if (!target) {
+        return await sendAsFloofWebhook(message, {
+            embeds: [
+                new EmbedBuilder()
+                    .setDescription('❌ Invalid business target! Use `%rob` to see available businesses.')
+                    .setColor(0xff0000)
+            ]
+        });
+    }
+
+    return await handleBusinessRobbery(message, userId, [targetName]);
+}
+
+// Handle numbered robbery selection (businesses only)
 async function handleNumberedRobbery(message, userId, targetNumber) {
     const allTargets = [];
     
-    // Add all banks first
-    Object.entries(BANKS).forEach(([bankId, bank]) => {
-        allTargets.push({ id: bankId, type: 'bank', data: bank });
-    });
-    
-    // Add all businesses
+    // Only add businesses - banks are no longer robbable
     Object.entries(BUSINESSES).forEach(([businessId, business]) => {
         allTargets.push({ id: businessId, type: 'business', data: business });
     });
@@ -379,17 +380,12 @@ async function handleNumberedRobbery(message, userId, targetNumber) {
         return await sendAsFloofWebhook(message, {
             embeds: [
                 new EmbedBuilder()
-                    .setDescription(`❌ Invalid target number! Choose 1-${allTargets.length}.\nUse \`%r\` to see all targets.`)
+                    .setDescription(`❌ Invalid business number! Choose 1-${allTargets.length}.\nUse \`%rob\` to see all businesses.`)
                     .setColor(0xff0000)
             ]
         });
     }
     
     const selectedTarget = allTargets[targetNumber - 1];
-    
-    if (selectedTarget.type === 'bank') {
-        return await handleBankRobbery(message, userId, [selectedTarget.id]);
-    } else {
-        return await handleBusinessRobbery(message, userId, [selectedTarget.id]);
-    }
+    return await handleBusinessRobbery(message, userId, [selectedTarget.id]);
 }

@@ -186,7 +186,7 @@ async function displaySmugglingMenu(message, userId) {
             description += `└ 🛠️ Equipment Needed: ${route.required_items.join(', ')}\n`;
         }
         
-        description += `└ \`%smuggle ${routeId}\`\n\n`;
+        description += `└ \`%smuggle ${routeId.replace(/_/g, ' ')}\`\n\n`;
     });
     
     description += '**📦 Contraband Types:**\n';
@@ -210,7 +210,9 @@ async function displaySmugglingMenu(message, userId) {
 }
 
 async function handleSmuggling(message, userId, routeId) {
-    const route = SMUGGLING_ROUTES[routeId];
+    // Handle spaced route names by converting back to underscore format
+    const normalizedRouteId = routeId.replace(/\s+/g, '_');
+    const route = SMUGGLING_ROUTES[normalizedRouteId];
     
     if (!route) {
         return await sendAsFloofWebhook(message, {

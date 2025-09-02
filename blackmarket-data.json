@@ -1,33 +1,29 @@
 {
-  "last_stock_update": "Mon Sep 01 2025",
+  "last_stock_update": "Tue Sep 02 2025",
   "daily_stock": {
-    "stolen_goods": {
-      "price": 2144,
-      "stock": 12
-    },
-    "adrenaline": {
-      "price": 2660,
-      "stock": 11
-    },
-    "steroids": {
-      "price": 3144,
-      "stock": 14
-    },
-    "opioids": {
-      "price": 1820,
-      "stock": 12
-    },
-    "police_scanner": {
-      "price": 2424,
-      "stock": 14
+    "vodka": {
+      "price": 871,
+      "stock": 6
     },
     "counterfeit_money": {
-      "price": 1661,
-      "stock": 8
+      "price": 1325,
+      "stock": 11
+    },
+    "basic_bodyguard": {
+      "price": 5072,
+      "stock": 9
+    },
+    "adrenaline": {
+      "price": 2409,
+      "stock": 5
+    },
+    "stolen_goods": {
+      "price": 1545,
+      "stock": 6
     },
     "sleeping_pills": {
-      "price": 688,
-      "stock": 11
+      "price": 501,
+      "stock": 12
     }
   },
   "357357431883563009": {
@@ -36,6 +32,11 @@
     "last_purchase": 0
   },
   "1007799027716329484": {
+    "items": {},
+    "active_effects": {},
+    "last_purchase": 0
+  },
+  "1403189710729383986": {
     "items": {},
     "active_effects": {},
     "last_purchase": 0

@@ -1,14 +1,42 @@
 {
   "1007799027716329484": {
-    "pets": [],
-    "active_pet": null,
+    "pets": [
+      {
+        "id": "1756850155028",
+        "type": "dragon",
+        "level": 1,
+        "xp": 20,
+        "stats": {
+          "attack": 41,
+          "defense": 30,
+          "speed": 18,
+          "health": 150
+        },
+        "hunger": 80,
+        "happiness": 70,
+        "last_fed": 1756850155028,
+        "last_played": 1756850155028,
+        "battles_won": 0,
+        "battles_lost": 0,
+        "training_sessions": 2,
+        "accessories": [],
+        "created_at": 1756850155028
+      }
+    ],
+    "active_pet": "1756850155028",
     "pet_items": {},
-    "last_activity": 1756781615565
+    "last_activity": 1756850957791
   },
   "1248115416790995028": {
     "pets": [],
     "active_pet": null,
     "pet_items": {},
     "last_activity": 1756781062158
+  },
+  "1403189710729383986": {
+    "pets": [],
+    "active_pet": null,
+    "pet_items": {},
+    "last_activity": 1756849825007
   }
 }

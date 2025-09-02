@@ -172,11 +172,11 @@ async function showRaceMenu(message) {
             description += `👥 **Bettors:** ${activeRace.bettors.size}\n\n`;
             description += `**🐎 Participants:**\n`;
             
-            Object.entries(RACE_PARTICIPANTS).forEach(([id, participant]) => {
-                description += `${participant.emoji} **${participant.name}** (${participant.odds}:1)\n`;
+            Object.entries(RACE_PARTICIPANTS).forEach(([id, participant], index) => {
+                description += `**${index + 1}.** ${participant.emoji} **${participant.name}** (${participant.odds}:1)\n`;
             });
             
-            description += `\n💡 Use \`%races bet <participant> <amount> [bet_type]\` to place bets!`;
+            description += `\n💡 Use \`%races bet <number> <amount> [bet_type]\` to place bets!`;
         } else {
             description = `🏁 **Race in Progress!**\n\nUse \`%races status\` to see live updates!`;
         }
@@ -184,7 +184,7 @@ async function showRaceMenu(message) {
         description = `🏁 **Welcome to Floof Racing!**\n\n`;
         description += `**🎯 How to Play:**\n`;
         description += `• \`%races start\` - Start a new race (60s betting period)\n`;
-        description += `• \`%races bet <participant> <amount> [type]\` - Place your bets\n`;
+        description += `• \`%races bet <number> <amount> [type]\` - Place your bets\n`;
         description += `• \`%races odds\` - View current odds and participants\n\n`;
         
         description += `**🎲 Bet Types:**\n`;
@@ -271,7 +271,7 @@ async function startRace(message) {
 
     const embed = new EmbedBuilder()
         .setTitle('🏁 New Race Starting!')
-        .setDescription(`**🎯 Betting is now open!**\n\n⏰ **Betting closes in:** 60 seconds\n💰 **Minimum bet:** 100 coins\n\n**🐎 Participants:**\n${Object.entries(RACE_PARTICIPANTS).map(([id, p]) => `${p.emoji} **${p.name}** (${p.odds}:1)`).join('\n')}\n\n💡 Use \`%races bet <participant> <amount> [bet_type]\` to place bets!`)
+        .setDescription(`**🎯 Betting is now open!**\n\n⏰ **Betting closes in:** 60 seconds\n💰 **Minimum bet:** 100 coins\n\n**🐎 Participants:**\n${Object.entries(RACE_PARTICIPANTS).map(([id, p], index) => `**${index + 1}.** ${p.emoji} **${p.name}** (${p.odds}:1)`).join('\n')}\n\n💡 Use \`%races bet <number> <amount> [bet_type]\` to place bets!`)
         .setColor(0x00ff00)
         .setTimestamp();
 
@@ -300,36 +300,30 @@ async function placeBet(message, args) {
         return await sendAsFloofWebhook(message, {
             embeds: [
                 new EmbedBuilder()
-                    .setDescription('❌ Usage: `%races bet <participant> <amount> [bet_type]`\n\n**Participants:** lightning, thunder, midnight, golden, silver, crimson')
+                    .setDescription('❌ Usage: `%races bet <number> <amount> [bet_type]`\n\n**Participants:** 1-6 (use numbers instead of names)')
                     .setColor(0xff0000)
             ]
         });
     }
 
-    const participantInput = args[0].toLowerCase();
+    const participantNumber = parseInt(args[0]);
     const amount = parseInt(args[1]);
     const betType = args[2]?.toLowerCase() || 'win';
 
-    // Validate participant with better matching
-    let participant = null;
-    for (const [id, p] of Object.entries(RACE_PARTICIPANTS)) {
-        if (id.includes(participantInput) || 
-            p.name.toLowerCase().includes(participantInput) ||
-            id === participantInput) {
-            participant = [id, p];
-            break;
-        }
-    }
-
-    if (!participant) {
+    // Validate participant number (1-6)
+    if (!participantNumber || participantNumber < 1 || participantNumber > 6) {
         return await sendAsFloofWebhook(message, {
             embeds: [
                 new EmbedBuilder()
-                    .setDescription(`❌ Invalid participant! Try: **lightning**, **thunder**, **midnight**, **golden**, **silver**, or **crimson**`)
+                    .setDescription(`❌ Invalid participant number! Use **1-6**\n\n**Participants:**\n${Object.entries(RACE_PARTICIPANTS).map(([id, p], index) => `**${index + 1}.** ${p.emoji} ${p.name}`).join('\n')}`)
                     .setColor(0xff0000)
             ]
         });
     }
+
+    // Get participant by number
+    const participantEntries = Object.entries(RACE_PARTICIPANTS);
+    const participant = [participantEntries[participantNumber - 1][0], participantEntries[participantNumber - 1][1]];
 
     // Validate bet type
     if (!BET_TYPES[betType]) {
@@ -652,8 +646,8 @@ async function showRaceStatus(message) {
 async function showOdds(message) {
     let description = `**🐎 Current Participants & Odds:**\n\n`;
     
-    Object.entries(RACE_PARTICIPANTS).forEach(([id, participant]) => {
-        description += `${participant.emoji} **${participant.name}**\n`;
+    Object.entries(RACE_PARTICIPANTS).forEach(([id, participant], index) => {
+        description += `**${index + 1}.** ${participant.emoji} **${participant.name}**\n`;
         description += `└ 📊 Odds: ${participant.odds}:1\n`;
         description += `└ ⚡ Speed: ${participant.speed}/100\n`;
         description += `└ 💪 Stamina: ${participant.stamina}/100\n`;

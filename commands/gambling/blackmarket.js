@@ -125,7 +125,7 @@ async function displayBlackmarket(message, userId, currentPage = 0) {
     description += '🕐 **Stock refreshes daily at midnight**\n\n';
     description += '**📋 Commands:**\n';
     description += '• \`%bm inventory\` - View your stash\n';
-    description += '• \`%bm use <item>\` - Consume items\n';
+    description += '• \`%bm use health pack\` - Consume items\n';
     description += '• \`%bm effects\` - View active effects';
 
     const embed = new EmbedBuilder()
@@ -342,7 +342,7 @@ async function handleInventory(message, userId) {
         .setDescription(inventoryDisplay)
         .setColor(0x2c2c2c)
         .setThumbnail(message.author.displayAvatarURL({ dynamic: true }))
-        .setFooter({ text: 'Use %blackmarket use <item> to consume items' })
+        .setFooter({ text: 'Use %blackmarket use health pack to consume items' })
         .setTimestamp();
 
     await sendAsFloofWebhook(message, { embeds: [embed] });

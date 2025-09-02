@@ -198,7 +198,7 @@ async function handlePetPurchase(message, userId, petId, amount = 1) {
     }
 
     const userPets = getUserPets(userId);
-    const alreadyOwned = userPets.some(pet => pet.type === petId);
+    const alreadyOwned = userPets.pets.some(pet => pet.type === petId);
     
     if (alreadyOwned) {
         return await sendAsFloofWebhook(message, {

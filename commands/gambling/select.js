@@ -66,16 +66,11 @@ module.exports = {
         
         if (itemType === 'weapon') {
             return await handleWeaponSelection(message, userId, args);
-        } else if (itemType === 'protection') {
+        } else if (itemType === 'protection' || itemType === 'armor') {
             return await handleProtectionSelection(message, userId, args);
         } else {
-            return await sendAsFloofWebhook(message, {
-                embeds: [
-                    new EmbedBuilder()
-                        .setDescription('❌ Invalid item type! Use `weapon` or `protection`.\n\n**Examples:**\n• `%select weapon 1`\n• `%select protection 2`')
-                        .setColor(0xff0000)
-                ]
-            });
+            // Check for direct weapon/armor names
+            return await handleDirectSelection(message, userId, itemType, args);
         }
 
     }
@@ -242,6 +237,110 @@ async function handleProtectionSelection(message, userId, args) {
                 .setDescription(message_text)
                 .setColor(success ? 0x43b581 : 0xff0000)
                 .setTimestamp()
+        ]
+    });
+}
+
+// Handle direct item selection by name
+async function handleDirectSelection(message, userId, itemName, args) {
+    const { getInventory, equipProtection, unequipProtection, getEquippedProtection } = require('./utils/inventory-manager');
+    const inventory = getInventory(userId);
+    
+    // Common weapon name mappings
+    const weaponAliases = {
+        'pistol': 'pistol',
+        'rifle': 'rifle', 
+        'laser': 'laser',
+        'crossbow': 'crossbow',
+        'flamethrower': 'flamethrower',
+        'speaker': 'speaker'
+    };
+    
+    // Common armor name mappings
+    const armorAliases = {
+        'vest': 'bulletproof_vest',
+        'helmet': 'helmet',
+        'shield': 'riot_shield',
+        'armor': 'body_armor',
+        'bulletproof': 'bulletproof_vest',
+        'riot': 'riot_shield'
+    };
+    
+    // Check if it's a weapon
+    if (weaponAliases[itemName]) {
+        const weaponId = weaponAliases[itemName];
+        const itemInfo = getItemInfo(weaponId);
+        
+        if (!itemInfo || !inventory.items[weaponId] || inventory.items[weaponId] <= 0) {
+            return await sendAsFloofWebhook(message, {
+                embeds: [
+                    new EmbedBuilder()
+                        .setDescription(`❌ You don't have a ${itemInfo ? itemInfo.name : itemName}! Buy one from the shop first.\n\nUse \`%shop weapons\` to browse weapons.`)
+                        .setColor(0xff0000)
+                ]
+            });
+        }
+        
+        setSelectedWeapon(userId, weaponId);
+        
+        return await sendAsFloofWebhook(message, {
+            embeds: [
+                new EmbedBuilder()
+                    .setDescription(`🎯 **Weapon Selected!**\n\n${itemInfo.emoji} **${itemInfo.name}** - ${itemInfo.damage} damage\n\nNow use \`%attack @user\` to attack with this weapon!`)
+                    .setColor(0x43b581)
+                    .setTimestamp()
+            ]
+        });
+    }
+    
+    // Check if it's armor
+    if (armorAliases[itemName]) {
+        const armorId = armorAliases[itemName];
+        const itemInfo = getItemInfo(armorId);
+        
+        if (!itemInfo || !inventory.items[armorId] || inventory.items[armorId] <= 0) {
+            return await sendAsFloofWebhook(message, {
+                embeds: [
+                    new EmbedBuilder()
+                        .setDescription(`❌ You don't have ${itemInfo ? itemInfo.name : itemName}! Buy it from the shop first.\n\nUse \`%shop protection\` to browse armor.`)
+                        .setColor(0xff0000)
+                ]
+            });
+        }
+        
+        const equippedProtection = getEquippedProtection(userId);
+        const isEquipped = equippedProtection.includes(armorId);
+        
+        let success, message_text;
+        
+        if (isEquipped) {
+            success = unequipProtection(userId, armorId);
+            message_text = success 
+                ? `🛡️ **Unequipped:** ${itemInfo.emoji} ${itemInfo.name}`
+                : `❌ Failed to unequip ${itemInfo.name}`;
+        } else {
+            success = equipProtection(userId, armorId);
+            message_text = success 
+                ? `🛡️ **Equipped:** ${itemInfo.emoji} ${itemInfo.name} (+${itemInfo.defense} defense)`
+                : `❌ Failed to equip ${itemInfo.name}`;
+        }
+        
+        return await sendAsFloofWebhook(message, {
+            embeds: [
+                new EmbedBuilder()
+                    .setDescription(message_text)
+                    .setColor(success ? 0x43b581 : 0xff0000)
+                    .setTimestamp()
+            ]
+        });
+    }
+    
+    // If not found, show error
+    return await sendAsFloofWebhook(message, {
+        embeds: [
+            new EmbedBuilder()
+                .setDescription('❌ Invalid item! Use `weapon` or `protection` for categories, or try:\n\n**Weapons:** pistol, rifle, laser, crossbow, flamethrower, speaker\n**Armor:** vest, helmet, shield, armor\n\n**Examples:**\n• `%select laser`\n• `%select vest`')
+                .setColor(0xff0000)
         ]
     });
 }

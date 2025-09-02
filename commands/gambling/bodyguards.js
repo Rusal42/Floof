@@ -15,6 +15,11 @@ module.exports = {
         const userId = message.author.id;
         const action = args[0]?.toLowerCase() || 'view';
 
+        if (!isNaN(parseInt(action))) {
+            const bodyguardNumber = parseInt(action);
+            return await handleSelectBodyguardByNumber(message, userId, bodyguardNumber, args.slice(1));
+        }
+
         switch (action) {
             case 'view':
             case 'list':
@@ -33,46 +38,57 @@ module.exports = {
 };
 
 async function displayBodyguards(message, userId) {
-    const crimeData = getCrimeData(userId);
-    const bodyguards = crimeData.bodyguards || {};
+    const { getUserBusinessData, BODYGUARD_TYPES } = require('./utils/business-manager');
+    const userData = getUserBusinessData(userId);
+    const bodyguards = userData.bodyguards || {};
     const userBalance = getBalance(userId);
 
-    let description = '**🛡️ Your Personal Protection Force**\n\n';
-
+    let description = '**🛡️ Your Security Force**\n\n';
+    description += `💰 **Balance:** ${userBalance.toLocaleString()} coins\n\n`;
+    
     if (Object.keys(bodyguards).length === 0) {
-        description += '❌ **No bodyguards hired**\n\n';
-        description += '💡 Use `%blackmarket` to hire bodyguards for protection!\n';
-        description += '💡 Or use `%bodyguards hire [type]` to hire directly\n\n';
+        description += '❌ **No bodyguards hired**\n\nUse `%bodyguards hire <type>` to build your security force!\n\n';
+        description += '**Available Types:**\n';
+        let index = 1;
+        Object.entries(BODYGUARD_TYPES).forEach(([type, info]) => {
+            description += `**${index}.** ${info.emoji} **${info.name}** - ${info.price.toLocaleString()} coins\n`;
+            description += `└ 🛡️ ${(info.attack_reduction * 100).toFixed(0)}% damage reduction\n`;
+            description += `└ 💰 ${info.daily_wage.toLocaleString()} coins/day\n`;
+            description += `└ \`%bodyguards hire ${index}\` or \`%bodyguards hire ${type}\`\n\n`;
+            index++;
+        });
     } else {
         let totalProtection = 0;
         let dailyCost = 0;
-
+        let index = 1;
+        
         Object.entries(bodyguards).forEach(([type, data]) => {
-            const info = getBodyguardInfo(type);
-            if (info) {
+            const info = BODYGUARD_TYPES[type];
+            if (info && data.count > 0) {
                 totalProtection += info.attack_reduction * data.count;
                 dailyCost += info.daily_wage * data.count;
                 
-                description += `${info.emoji} **${info.name}** x${data.count}\n`;
+                description += `**${index}.** ${info.emoji} **${info.name}** x${data.count}\n`;
                 description += `└ 🛡️ Protection: ${(info.attack_reduction * 100).toFixed(0)}% each\n`;
                 description += `└ 💰 Daily Cost: ${info.daily_wage.toLocaleString()} coins each\n`;
-                description += `└ 📍 Assignment: ${data.assignment || 'Personal Protection'}\n\n`;
+                description += `└ 📍 Assignment: ${data.assignment || 'Personal Protection'}\n`;
+                description += `└ \`%bodyguards ${index} <command>\` to manage\n\n`;
+                index++;
             }
         });
-
+        
         description += `**📊 Total Protection:** ${(Math.min(totalProtection * 100, 80)).toFixed(0)}% damage reduction\n`;
         description += `**💸 Daily Wages:** ${dailyCost.toLocaleString()} coins\n\n`;
+        description += '**💡 Commands:**\n';
+        description += '• `%bodyguards hire <number/type>` - Hire new bodyguard\n';
+        description += '• `%bodyguards <number> assign <assignment>` - Assign duties\n';
+        description += '• `%bodyguards <number> fire` - Dismiss bodyguard';
     }
-
-    description += '**Available Commands:**\n';
-    description += '• `%bodyguards hire [type]` - Hire from blackmarket\n';
-    description += '• `%bodyguards assign [type] [personal|business]` - Assign protection\n';
-    description += '• `%bodyguards fire [type]` - Dismiss a bodyguard\n';
-    description += '• `%blackmarket` - Browse available bodyguards\n\n';
 
     description += '**💡 Protection Types:**\n';
     description += '• **Personal:** Protects you from attacks and robberies\n';
     description += '• **Business:** Protects your businesses from raids\n';
+    description += '• `%blackmarket` - Browse available bodyguards';
 
     const embed = new EmbedBuilder()
         .setTitle('🛡️ Bodyguard Management')
@@ -111,7 +127,11 @@ async function hireBodyguard(message, userId, bodyguardType) {
     }
 
     const type = bodyguardType.toLowerCase().replace('_bodyguard', '') + '_bodyguard';
-    const info = getBodyguardInfo(type);
+    const { hireBodyguard: businessHireBodyguard, BODYGUARD_TYPES } = require('./utils/business-manager');
+    const { deductBalance } = require('./utils/balance-manager');
+    
+    const userBalance = getBalance(userId);
+    const info = BODYGUARD_TYPES[type];
     
     if (!info) {
         return await sendAsFloofWebhook(message, {
@@ -123,7 +143,6 @@ async function hireBodyguard(message, userId, bodyguardType) {
         });
     }
 
-    const userBalance = getBalance(userId);
     if (userBalance < info.hire_cost) {
         return await sendAsFloofWebhook(message, {
             embeds: [
@@ -134,17 +153,30 @@ async function hireBodyguard(message, userId, bodyguardType) {
         });
     }
 
-    // Deduct cost and add bodyguard
-    const { deductBalance } = require('./utils/balance-manager');
-    deductBalance(userId, info.hire_cost);
-
-    const crimeData = getCrimeData(userId);
-    if (!crimeData.bodyguards) crimeData.bodyguards = {};
-    if (!crimeData.bodyguards[type]) {
-        crimeData.bodyguards[type] = { count: 0, assignment: 'personal' };
+    // Use business manager's hire function
+    const result = businessHireBodyguard(userId, type);
+    
+    if (!result.success) {
+        let errorMsg = '❌ ';
+        switch (result.reason) {
+            case 'already_hired':
+                errorMsg += 'You already have that type of bodyguard!';
+                break;
+            default:
+                errorMsg += 'Failed to hire bodyguard!';
+        }
+        
+        return await sendAsFloofWebhook(message, {
+            embeds: [
+                new EmbedBuilder()
+                    .setDescription(errorMsg)
+                    .setColor(0xff0000)
+            ]
+        });
     }
-    crimeData.bodyguards[type].count += 1;
-    saveCrimeData(userId, crimeData);
+
+    // Deduct cost after successful hire
+    deductBalance(userId, info.hire_cost);
 
     const embed = new EmbedBuilder()
         .setTitle('🛡️ Bodyguard Hired!')
@@ -179,8 +211,10 @@ async function assignBodyguard(message, userId, bodyguardType, assignment) {
         });
     }
 
-    const crimeData = getCrimeData(userId);
-    if (!crimeData.bodyguards?.[type]?.count) {
+    const { getUserBusinessData, saveUserBusinessData, BODYGUARD_TYPES } = require('./utils/business-manager');
+    const userData = getUserBusinessData(userId);
+    
+    if (!userData.bodyguards?.[type]) {
         return await sendAsFloofWebhook(message, {
             embeds: [
                 new EmbedBuilder()
@@ -190,17 +224,76 @@ async function assignBodyguard(message, userId, bodyguardType, assignment) {
         });
     }
 
-    crimeData.bodyguards[type].assignment = assignmentType;
-    saveCrimeData(userId, crimeData);
+    userData.bodyguards[type].assignment = assignmentType;
+    saveUserBusinessData(userId, userData);
 
-    const info = getBodyguardInfo(type);
+    const info = BODYGUARD_TYPES[type];
     const embed = new EmbedBuilder()
         .setTitle('📍 Bodyguard Assignment Updated')
-        .setDescription(`${info.emoji} Your **${info.name}** (x${crimeData.bodyguards[type].count}) has been assigned to **${assignmentType.charAt(0).toUpperCase() + assignmentType.slice(1)} Protection**!`)
+        .setDescription(`${info.emoji} Your **${info.name}** has been assigned to **${assignmentType.charAt(0).toUpperCase() + assignmentType.slice(1)} Protection**!`)
         .setColor(0x00ff00)
         .setTimestamp();
 
     return await sendAsFloofWebhook(message, { embeds: [embed] });
+}
+
+async function handleSelectBodyguardByNumber(message, userId, bodyguardNumber, args) {
+    const { getUserBusinessData, BODYGUARD_TYPES } = require('./utils/business-manager');
+    const userData = getUserBusinessData(userId);
+    const bodyguards = userData.bodyguards || {};
+    
+    const bodyguardTypes = Object.keys(bodyguards).filter(type => bodyguards[type].count > 0);
+    
+    if (bodyguardNumber < 1 || bodyguardNumber > bodyguardTypes.length) {
+        return await sendAsFloofWebhook(message, {
+            embeds: [
+                new EmbedBuilder()
+                    .setDescription(`❌ Invalid bodyguard number! Choose 1-${bodyguardTypes.length}.\nUse \`%bodyguards\` to see your bodyguards.`)
+                    .setColor(0xff0000)
+            ]
+        });
+    }
+    
+    const selectedType = bodyguardTypes[bodyguardNumber - 1];
+    const command = args[0]?.toLowerCase();
+    
+    if (!command) {
+        // Show info about selected bodyguard
+        const info = BODYGUARD_TYPES[selectedType];
+        const data = bodyguards[selectedType];
+        
+        let description = `${info.emoji} **${info.name}** x${data.count}\n\n`;
+        description += `🛡️ **Protection:** ${(info.attack_reduction * 100).toFixed(0)}% damage reduction each\n`;
+        description += `💰 **Daily Cost:** ${info.daily_wage.toLocaleString()} coins each\n`;
+        description += `📍 **Assignment:** ${data.assignment || 'Personal Protection'}\n\n`;
+        description += `**Commands:**\n`;
+        description += `• \`%bodyguards ${bodyguardNumber} assign <assignment>\`\n`;
+        description += `• \`%bodyguards ${bodyguardNumber} fire\``;
+        
+        const embed = new EmbedBuilder()
+            .setTitle(`🛡️ Bodyguard #${bodyguardNumber}`)
+            .setDescription(description)
+            .setColor(0x2c2c2c)
+            .setTimestamp();
+            
+        return await sendAsFloofWebhook(message, { embeds: [embed] });
+    }
+    
+    switch (command) {
+        case 'assign':
+            return await assignBodyguard(message, userId, selectedType, args[1]);
+        case 'fire':
+        case 'dismiss':
+            return await fireBodyguard(message, userId, selectedType);
+        default:
+            return await sendAsFloofWebhook(message, {
+                embeds: [
+                    new EmbedBuilder()
+                        .setDescription(`❌ Invalid command! Use \`assign\` or \`fire\``)
+                        .setColor(0xff0000)
+                ]
+            });
+    }
 }
 
 async function fireBodyguard(message, userId, bodyguardType) {
@@ -208,16 +301,16 @@ async function fireBodyguard(message, userId, bodyguardType) {
         return await sendAsFloofWebhook(message, {
             embeds: [
                 new EmbedBuilder()
-                    .setDescription('❌ Please specify which bodyguard type to fire: `basic`, `professional`, or `elite`')
+                    .setDescription('❌ Please specify bodyguard type to fire!\nExample: `%bodyguards fire basic_bodyguard`')
                     .setColor(0xff0000)
             ]
         });
     }
 
-    const type = bodyguardType.toLowerCase().replace('_bodyguard', '') + '_bodyguard';
-    const crimeData = getCrimeData(userId);
+    const { getUserBusinessData, saveUserBusinessData, BODYGUARD_TYPES } = require('./utils/business-manager');
+    const userData = getUserBusinessData(userId);
 
-    if (!crimeData.bodyguards?.[type]?.count) {
+    if (!userData.bodyguards?.[bodyguardType]) {
         return await sendAsFloofWebhook(message, {
             embeds: [
                 new EmbedBuilder()
@@ -227,16 +320,13 @@ async function fireBodyguard(message, userId, bodyguardType) {
         });
     }
 
-    crimeData.bodyguards[type].count -= 1;
-    if (crimeData.bodyguards[type].count <= 0) {
-        delete crimeData.bodyguards[type];
-    }
-    saveCrimeData(userId, crimeData);
+    delete userData.bodyguards[bodyguardType];
+    saveUserBusinessData(userId, userData);
 
-    const info = getBodyguardInfo(type);
+    const info = BODYGUARD_TYPES[bodyguardType];
     const embed = new EmbedBuilder()
         .setTitle('🚪 Bodyguard Dismissed')
-        .setDescription(`${info.emoji} You have dismissed a **${info.name}**.\n\n💸 You will save ${info.daily_wage.toLocaleString()} coins per day in wages.`)
+        .setDescription(`${info.emoji} You have dismissed your **${info.name}**.\n\n💸 You will save ${info.daily_wage.toLocaleString()} coins per day in wages.`)
         .setColor(0xffa500)
         .setTimestamp();
 
@@ -244,34 +334,8 @@ async function fireBodyguard(message, userId, bodyguardType) {
 }
 
 function getBodyguardInfo(type) {
-    const bodyguardTypes = {
-        basic_bodyguard: {
-            name: 'Basic Bodyguard',
-            emoji: '👨‍💼',
-            hire_cost: 5000,
-            daily_wage: 500,
-            protection_level: 1,
-            attack_reduction: 0.20
-        },
-        professional_bodyguard: {
-            name: 'Professional Bodyguard',
-            emoji: '🕴️',
-            hire_cost: 15000,
-            daily_wage: 1000,
-            protection_level: 2,
-            attack_reduction: 0.40
-        },
-        elite_bodyguard: {
-            name: 'Elite Bodyguard',
-            emoji: '🥷',
-            hire_cost: 50000,
-            daily_wage: 2000,
-            protection_level: 3,
-            attack_reduction: 0.60
-        }
-    };
-    
-    return bodyguardTypes[type];
+    const { BODYGUARD_TYPES } = require('./utils/business-manager');
+    return BODYGUARD_TYPES[type];
 }
 
 // Export display function for interaction handler

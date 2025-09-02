@@ -60,7 +60,7 @@ module.exports = {
             '🏪 **Shopping:** Buy weapons, items, and protection from `%shop`, `%blackmarket`, `%petshop`',
             '🏢 **Business:** Own businesses with `%business buy` and rob others with `%rob business`',
             '🎯 **Crime:** Plan `%heist` operations, join `%cartel` activities, or `%smuggle` contraband',
-            '🍺 **Items:** Use `%use <item>` to consume items from any shop for effects',
+            '🍺 **Items:** Use `%use health pack` or `%use energy drink` to consume items',
             '💰 **Check:** `%balance` for coins, `%inventory` for items, `%leaderboard` for rankings'
         ].join('\n');
 

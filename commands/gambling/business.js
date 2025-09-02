@@ -72,7 +72,7 @@ module.exports = {
         // Handle numbered selection for any action
         if (!isNaN(parseInt(action))) {
             const itemNumber = parseInt(action);
-            return await handleNumberedSelection(message, userId, itemNumber, args.slice(1));
+            return await handleNumberedBuyBusiness(message, userId, itemNumber);
         }
         
         switch (action) {
@@ -104,10 +104,13 @@ module.exports = {
                 return await handleCollectIncome(message, userId, args.slice(1));
             case 'info':
             case 'stats':
-                return await displayBusinessOverview(message, userId);
+                return await displayBusinessInventory(message, userId);
             case 'shop':
             case 'market':
                 return await displayBusinessShop(message, userId);
+            case 'inventory':
+            case 'inv':
+                return await displayBusinessInventory(message, userId);
             default:
                 return await displayBusinessOverview(message, userId);
         }
@@ -172,12 +175,12 @@ async function displayBusinessOverview(message, userId, currentPage = 0) {
             const canAfford = userBalance >= business.purchase_price;
             const affordIcon = canAfford ? '✅' : '❌';
             
-            description += `**${itemNumber}.** ${business.emoji} **${business.name}** ${affordIcon}${owned}\n`;
+            description += `**${itemNumber}.** ${business.emoji} **${business.name.replace(/_/g, ' ')}** ${affordIcon}${owned}\n`;
             description += `└ *${business.description}*\n`;
             description += `└ 💰 Cost: ${business.purchase_price.toLocaleString()} • Income: ${business.daily_income.min.toLocaleString()}-${business.daily_income.max.toLocaleString()}\n`;
             description += `└ 👥 Max Employees: ${business.max_employees}\n`;
             if (!owned) {
-                description += `└ \`%business buy ${item.id}\` or \`%business ${itemNumber}\`\n\n`;
+                description += `└ \`%business buy ${itemNumber}\` or \`%business ${itemNumber}\`\n\n`;
             } else {
                 description += `└ \`%business collect ${item.id}\`\n\n`;
             }
@@ -186,20 +189,20 @@ async function displayBusinessOverview(message, userId, currentPage = 0) {
             const canAfford = userBalance >= employee.hire_cost;
             const affordIcon = canAfford ? '✅' : '❌';
             
-            description += `**${itemNumber}.** ${employee.emoji} **${employee.name}** ${affordIcon}\n`;
+            description += `**${itemNumber}.** ${employee.emoji} **${employee.name.replace(/_/g, ' ')}** ${affordIcon}\n`;
             description += `└ *${employee.description}*\n`;
             description += `└ 💰 Hire: ${employee.hire_cost.toLocaleString()} • Daily: ${employee.daily_wage.toLocaleString()}\n`;
-            description += `└ \`%business hire [business] ${item.id}\`\n\n`;
+            description += `└ \`%business hire ${itemNumber}\`\n\n`;
         } else {
             const bodyguard = item.data;
             const canAfford = userBalance >= bodyguard.hire_cost;
             const affordIcon = canAfford ? '✅' : '❌';
             
-            description += `**${itemNumber}.** ${bodyguard.emoji} **${bodyguard.name}** ${affordIcon}\n`;
+            description += `**${itemNumber}.** ${bodyguard.emoji} **${bodyguard.name.replace(/_/g, ' ')}** ${affordIcon}\n`;
             description += `└ *${bodyguard.description}*\n`;
             description += `└ 💰 Hire: ${bodyguard.hire_cost.toLocaleString()} • Daily: ${bodyguard.daily_wage.toLocaleString()}\n`;
             description += `└ 🛡️ Protection: ${Math.floor(bodyguard.attack_reduction * 100)}%\n`;
-            description += `└ \`%business bodyguard ${item.id}\`\n\n`;
+            description += `└ \`%business bodyguard ${itemNumber}\`\n\n`;
         }
     });
     
@@ -257,7 +260,7 @@ async function displayBusinessShop(message, userId) {
         const canAfford = userBalance >= business.purchase_price;
         const priceDisplay = canAfford ? `💰 ${business.purchase_price.toLocaleString()}` : `❌ ${business.purchase_price.toLocaleString()}`;
         
-        description += `${business.emoji} **${business.name}** - ${priceDisplay}${owned}\n`;
+        description += `${business.emoji} **${business.name.replace(/_/g, ' ')}** - ${priceDisplay}${owned}\n`;
         description += `└ ${business.description}\n`;
         description += `└ 💵 Daily Income: ${business.daily_income.min.toLocaleString()} - ${business.daily_income.max.toLocaleString()}\n`;
         description += `└ 👥 Max Employees: ${business.max_employees}\n`;
@@ -269,14 +272,14 @@ async function displayBusinessShop(message, userId) {
     
     description += '**👥 Employee Types:**\n';
     Object.entries(EMPLOYEE_TYPES).forEach(([employeeId, employee]) => {
-        description += `${employee.emoji} **${employee.name}** - 💰 ${employee.hire_cost.toLocaleString()}\n`;
+        description += `${employee.emoji} **${employee.name.replace(/_/g, ' ')}** - 💰 ${employee.hire_cost.toLocaleString()}\n`;
         description += `└ ${employee.description}\n`;
         description += `└ Daily Wage: ${employee.daily_wage.toLocaleString()} coins\n\n`;
     });
     
     description += '**🛡️ Bodyguard Types:**\n';
     Object.entries(BODYGUARD_TYPES).forEach(([bodyguardId, bodyguard]) => {
-        description += `${bodyguard.emoji} **${bodyguard.name}** - 💰 ${bodyguard.hire_cost.toLocaleString()}\n`;
+        description += `${bodyguard.emoji} **${bodyguard.name.replace(/_/g, ' ')}** - 💰 ${bodyguard.hire_cost.toLocaleString()}\n`;
         description += `└ ${bodyguard.description}\n`;
         description += `└ Daily Wage: ${bodyguard.daily_wage.toLocaleString()} coins\n\n`;
     });
@@ -563,5 +566,91 @@ async function handleCollectIncome(message, userId, args) {
     await sendAsFloofWebhook(message, { embeds: [embed] });
 }
 
+async function displayBusinessInventory(message, userId) {
+    const userBalance = getBalance(userId);
+    const userData = getUserBusinessData(userId);
+    
+    if (!userData.businesses || Object.keys(userData.businesses).length === 0) {
+        return await sendAsFloofWebhook(message, {
+            embeds: [
+                new EmbedBuilder()
+                    .setDescription('❌ **No businesses owned**\n\nUse `%business shop` to start your empire!')
+                    .setColor(0xff0000)
+            ]
+        });
+    }
+    
+    let description = `**🏢 Business Portfolio Management**\n\n`;
+    description += `💰 **Balance:** ${userBalance.toLocaleString()} coins\n\n`;
+    
+    Object.entries(userData.businesses).forEach(([businessId, business]) => {
+        const businessInfo = BUSINESS_TYPES[businessId];
+        if (!businessInfo) return;
+        
+        description += `${businessInfo.emoji} **${businessInfo.name.replace(/_/g, ' ')}**\n`;
+        
+        // Calculate income and next collection time
+        const timeSinceLastCollection = Date.now() - (business.last_collected || business.purchased_at);
+        const hoursElapsed = Math.floor(timeSinceLastCollection / (1000 * 60 * 60));
+        const canCollect = hoursElapsed >= 1;
+        const nextCollection = canCollect ? 'Ready to collect!' : `${60 - Math.floor((timeSinceLastCollection % (1000 * 60 * 60)) / (1000 * 60))} minutes`;
+        
+        // Calculate current income with employees
+        const income = calculateSpecificBusinessIncome(userId, businessId);
+        
+        description += `└ 💰 **Income:** ${income.gross.toLocaleString()} coins/hour\n`;
+        description += `└ 💸 **Expenses:** ${income.wages.toLocaleString()} coins/hour\n`;
+        description += `└ 📈 **Net Profit:** ${income.net.toLocaleString()} coins/hour\n`;
+        description += `└ ⏰ **Collection:** ${canCollect ? '✅' : '⏳'} ${nextCollection}\n`;
+        
+        // Show employees
+        if (business.employees && Object.keys(business.employees).length > 0) {
+            description += `└ 👥 **Employees:** `;
+            const employeeList = Object.entries(business.employees).map(([empType, count]) => {
+                const empInfo = EMPLOYEE_TYPES[empType];
+                return `${empInfo.emoji} ${empInfo.name.replace(/_/g, ' ')} (${count})`;
+            }).join(', ');
+            description += `${employeeList}\n`;
+        } else {
+            description += `└ 👥 **Employees:** None hired\n`;
+        }
+        
+        // Show risk factor
+        const riskFactor = businessInfo.illegal ? 'High' : 'Low';
+        const riskEmoji = businessInfo.illegal ? '🔴' : '🟢';
+        description += `└ ⚠️ **Risk Factor:** ${riskEmoji} ${riskFactor}\n`;
+        
+        description += `└ 🎮 \`%business collect ${businessId}\`\n\n`;
+    });
+    
+    // Show bodyguards if any
+    if (userData.bodyguards && Object.keys(userData.bodyguards).length > 0) {
+        description += `**🛡️ Security Force:**\n`;
+        Object.entries(userData.bodyguards).forEach(([type, data]) => {
+            const info = BODYGUARD_TYPES[type];
+            if (info) {
+                description += `└ ${info.emoji} ${info.name.replace(/_/g, ' ')} - ${(info.attack_reduction * 100).toFixed(0)}% protection\n`;
+            }
+        });
+        description += '\n';
+    }
+    
+    description += `**📋 Management Commands:**\n`;
+    description += `• \`%business hire [business] [employee]\` - Hire staff\n`;
+    description += `• \`%business collect [business]\` - Collect income\n`;
+    description += `• \`%business shop\` - Browse marketplace`;
+
+    const embed = new EmbedBuilder()
+        .setTitle(`🏢 ${message.author.username}'s Business Empire`)
+        .setDescription(description)
+        .setColor(0x2e8b57)
+        .setThumbnail(message.author.displayAvatarURL({ dynamic: true }))
+        .setFooter({ text: 'Collect income every hour for maximum profit!' })
+        .setTimestamp();
+
+    await sendAsFloofWebhook(message, { embeds: [embed] });
+}
+
 // Export functions for interaction handlers
 module.exports.displayBusinessOverview = displayBusinessOverview;
+module.exports.displayBusinessInventory = displayBusinessInventory;

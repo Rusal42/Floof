@@ -244,56 +244,108 @@ async function handleInventoryInteraction(interaction) {
     }
     
     try {
-        const message = {
-            author: interaction.user,
-            channel: interaction.channel,
-            guild: interaction.guild,
-            client: interaction.client
-        };
+        // Create ephemeral response for the user who clicked
+        const { EmbedBuilder } = require('discord.js');
         
         if (action === 'overview' || action === 'refresh') {
-            await interaction.deferUpdate();
-            await displayInventoryOverview(message, userId);
+            const userBalance = require('../commands/gambling/utils/balance-manager').getBalance(userId);
+            const inventoryDisplay = require('../commands/gambling/utils/inventory-manager').formatInventoryDisplay(userId);
+            const businessData = require('../commands/gambling/utils/business-manager').getUserBusinessData(userId);
+            const userPets = require('../commands/gambling/utils/pet-manager').getUserPets(userId);
+            const farmData = require('../commands/gambling/utils/farming-manager').getUserFarmData(userId);
+            const crimeData = require('../commands/gambling/utils/crime-manager').getUserCrimeData(userId);
+
+            const businessCount = businessData.businesses ? Object.keys(businessData.businesses).length : 0;
+            const petCount = userPets.pets ? Object.keys(userPets.pets).length : 0;
+            const farmPlotCount = farmData.plots ? Object.keys(farmData.plots).length : 0;
+            const bodyguardCount = crimeData.bodyguards ? Object.values(crimeData.bodyguards).reduce((sum, bg) => sum + bg.count, 0) : 0;
+
+            let description = `**💰 Balance:** ${userBalance.toLocaleString()} coins\n\n`;
+            description += `**📊 Asset Summary:**\n`;
+            description += `🏢 **Businesses:** ${businessCount}\n`;
+            description += `🐾 **Pets:** ${petCount}\n`;
+            description += `🌱 **Farm Plots:** ${farmPlotCount}\n`;
+            description += `🛡️ **Bodyguards:** ${bodyguardCount}\n\n`;
+            description += `**🎒 Quick Items Overview:**\n${inventoryDisplay}`;
+
+            const embed = new EmbedBuilder()
+                .setTitle(`🎒 ${interaction.user.username}'s Complete Inventory`)
+                .setDescription(description)
+                .setColor(0x3498db)
+                .setThumbnail(interaction.user.displayAvatarURL({ dynamic: true }))
+                .setTimestamp();
+
+            await interaction.reply({ embeds: [embed], ephemeral: true });
+            
         } else if (action === 'items') {
-            const page = parseInt(parts[3]) || 1;
-            await interaction.deferUpdate();
-            await displayItemsCategory(message, userId, page);
+            const inventoryDisplay = require('../commands/gambling/utils/inventory-manager').formatInventoryDisplay(userId);
+            
+            const embed = new EmbedBuilder()
+                .setTitle(`🗡️ ${interaction.user.username}'s Items & Equipment`)
+                .setDescription(inventoryDisplay)
+                .setColor(0xe74c3c)
+                .setTimestamp();
+
+            await interaction.reply({ embeds: [embed], ephemeral: true });
+            
         } else if (action === 'businesses') {
-            const page = parseInt(parts[3]) || 1;
+            await displayBusinessesCategory({ author: interaction.user, channel: interaction.channel }, userId);
             await interaction.deferUpdate();
-            await displayBusinessesCategory(message, userId, page);
+            
         } else if (action === 'pets') {
-            const page = parseInt(parts[3]) || 1;
+            await displayPetsCategory({ author: interaction.user, channel: interaction.channel }, userId);
             await interaction.deferUpdate();
-            await displayPetsCategory(message, userId, page);
+            
         } else if (action === 'farms') {
-            const page = parseInt(parts[3]) || 1;
+            await displayFarmsCategory({ author: interaction.user, channel: interaction.channel }, userId);
             await interaction.deferUpdate();
-            await displayFarmsCategory(message, userId, page);
+            
         } else if (action === 'bodyguards') {
-            const page = parseInt(parts[3]) || 1;
+            await displayBodyguardsCategory({ author: interaction.user, channel: interaction.channel }, userId);
             await interaction.deferUpdate();
-            await displayBodyguardsCategory(message, userId, page);
+
         } else if (action === 'networth') {
-            await interaction.deferUpdate();
-            const { displayNetWorthSummary } = require('../commands/gambling/networth');
-            await displayNetWorthSummary(message, userId);
-        } else if (action === 'business' && parts[2] === 'manage') {
-            await interaction.deferUpdate();
-            await displayBusinessOverview(message, userId);
-        } else if (action === 'pets' && parts[2] === 'manage') {
-            await interaction.reply({ content: '🐾 Pet management coming soon! Use `%pet` for now.', ephemeral: true });
-        } else if (action === 'farms' && parts[2] === 'manage') {
-            await interaction.reply({ content: '🌱 Farm management coming soon! Use `%farm` for now.', ephemeral: true });
-        } else if (action === 'bodyguards' && parts[2] === 'manage') {
-            await interaction.deferUpdate();
-            await displayBodyguardsOverview(message, userId);
+            await handleNetworthInteraction(interaction);
         }
     } catch (error) {
         console.error('Error in inventory interaction:', error);
         if (!interaction.replied && !interaction.deferred) {
             await interaction.reply({ content: '❌ An error occurred while updating your inventory.', ephemeral: true });
         }
+    }
+}
+
+async function handleNetworthInteraction(interaction) {
+    const userId = interaction.user.id;
+    
+    try {
+        const { calculateNetWorth } = require('../commands/gambling/networth');
+        const netWorthData = await calculateNetWorth(userId);
+        
+        let description = `**💎 Total Net Worth:** ${netWorthData.total.toLocaleString()} coins\n\n`;
+        description += `**💰 Liquid Assets:**\n`;
+        description += `└ 🪙 Cash: ${netWorthData.cash.toLocaleString()} coins\n\n`;
+        description += `**🎒 Inventory Value:**\n`;
+        description += `└ 🗡️ Weapons: ${netWorthData.weapons.toLocaleString()} coins\n`;
+        description += `└ 🛡️ Protection: ${netWorthData.protection.toLocaleString()} coins\n`;
+        description += `└ 💊 Consumables: ${netWorthData.consumables.toLocaleString()} coins\n\n`;
+        description += `**🏢 Business Assets:**\n`;
+        description += `└ 💼 Businesses: ${netWorthData.businesses.toLocaleString()} coins\n\n`;
+        description += `**🐾 Pet Assets:**\n`;
+        description += `└ 🐕 Pets: ${netWorthData.pets.toLocaleString()} coins\n\n`;
+        description += `**🌱 Farm Assets:**\n`;
+        description += `└ 🚜 Farms: ${netWorthData.farms.toLocaleString()} coins`;
+
+        const embed = new EmbedBuilder()
+            .setTitle(`💎 ${interaction.user.username}'s Net Worth`)
+            .setDescription(description)
+            .setColor(0xffd700)
+            .setTimestamp();
+
+        await interaction.reply({ embeds: [embed], ephemeral: true });
+    } catch (error) {
+        console.error('Error calculating net worth:', error);
+        await interaction.reply({ content: '❌ An error occurred while calculating your net worth.', ephemeral: true });
     }
 }
 
@@ -339,59 +391,87 @@ async function handleRacesInteraction(interaction) {
     }
 }
 
-module.exports = {
-    name: 'gambling-interactions',
+async function handleNetworthInteraction(interaction) {
+    const customId = interaction.customId;
+    const parts = customId.split('_');
+    const action = parts[1];
+    const userId = parts[2];
     
-    async handleInteraction(interaction) {
-        if (!interaction.isButton()) return;
+    if (interaction.user.id !== userId) {
+        return await interaction.reply({ content: '❌ This is not your networth display!', ephemeral: true });
+    }
+    
+    try {
+        const message = {
+            author: interaction.user,
+            channel: interaction.channel,
+            guild: interaction.guild,
+            client: interaction.client
+        };
         
-        const customId = interaction.customId;
+        const { calculateNetWorth, displayNetWorthSummary, displayDetailedNetWorth } = require('../commands/gambling/networth');
+        const netWorthData = await calculateNetWorth(userId);
         
-        try {
-            // Route to appropriate game handler based on customId prefix
-            if (customId.startsWith('baccarat_')) {
-                await handleBaccaratInteraction(interaction);
-            } else if (customId.startsWith('keno_')) {
-                await handleKenoInteraction(interaction);
-            } else if (customId.startsWith('wheel_')) {
-                await handleWheelInteraction(interaction);
-            } else if (customId.startsWith('plinko_')) {
-                await handlePlinkoInteraction(interaction);
-            } else if (customId.startsWith('shop_')) {
-                await handleShopInteraction(interaction);
-            } else if (customId.startsWith('cartel_')) {
-                await handleCartelInteraction(interaction);
-            } else if (customId.startsWith('blackmarket_')) {
-                await handleBlackmarketInteraction(interaction);
-            } else if (customId.startsWith('business_')) {
-                await handleBusinessInteraction(interaction);
-            } else if (customId.startsWith('bodyguards_')) {
-                await handleBodyguardsInteraction(interaction);
-            } else if (customId.startsWith('inventory_')) {
-                await handleInventoryInteraction(interaction);
-            } else if (customId.startsWith('races_')) {
-                await handleRacesInteraction(interaction);
-            } else if (customId.startsWith('floofgambling_')) {
-                await handleFloofGamblingInteraction(interaction);
-            }
-        } catch (replyError) {
-            console.error('Failed to send error response:', replyError);
-            // Try to respond with error message
-            try {
-                if (interaction.replied || interaction.deferred) {
-                    await interaction.followUp({ 
-                        content: '❌ An error occurred while processing your action.', 
-                        ephemeral: true 
-                    });
-                } else {
-                    await interaction.reply({ 
-                        content: '❌ An error occurred while processing your action.', 
-                        ephemeral: true 
-                    });
-                }
-            } catch (replyError) {
-                console.error('Failed to send error response:', replyError);
+        if (action === 'detailed') {
+            await interaction.deferUpdate();
+            await displayDetailedNetWorth(message, userId, netWorthData);
+        } else if (action === 'summary') {
+            await interaction.deferUpdate();
+            await displayNetWorthSummary(message, userId, netWorthData);
+        } else if (action === 'refresh') {
+            await interaction.deferUpdate();
+            // Check if current display is detailed or summary based on button context
+            const currentEmbed = interaction.message.embeds[0];
+            if (currentEmbed && currentEmbed.title && currentEmbed.title.includes('Detailed')) {
+                await displayDetailedNetWorth(message, userId, netWorthData);
+            } else {
+                await displayNetWorthSummary(message, userId, netWorthData);
             }
         }
+    } catch (error) {
+        console.error('Error in networth interaction:', error);
+        if (!interaction.replied && !interaction.deferred) {
+            await interaction.reply({ content: '❌ An error occurred while updating your networth display.', ephemeral: true });
+        }
     }
+}
+
+async function handleGamblingInteraction(interaction) {
+    const customId = interaction.customId;
+    
+    try {
+        // Handle different gambling game interactions
+        if (customId.startsWith('baccarat_')) {
+            await handleBaccaratInteraction(interaction);
+        } else if (customId.startsWith('keno_')) {
+            await handleKenoInteraction(interaction);
+        } else if (customId.startsWith('wheel_')) {
+            await handleWheelInteraction(interaction);
+        } else if (customId.startsWith('plinko_')) {
+            await handlePlinkoInteraction(interaction);
+        } else if (customId.startsWith('inventory_')) {
+            await handleInventoryInteraction(interaction);
+        } else if (customId.startsWith('bodyguards_')) {
+            await handleBodyguardsInteraction(interaction);
+        } else if (customId.startsWith('business_')) {
+            await handleBusinessInteraction(interaction);
+        } else if (customId.startsWith('races_')) {
+            await handleRacesInteraction(interaction);
+        } else if (customId.startsWith('floofgambling_')) {
+            await handleFloofgamblingInteraction(interaction);
+        } else if (customId.startsWith('networth_')) {
+            await handleNetworthInteraction(interaction);
+        } else {
+            console.log(`Unhandled gambling interaction: ${customId}`);
+        }
+    } catch (error) {
+        console.error('Error in gambling interaction handler:', error);
+        if (!interaction.replied && !interaction.deferred) {
+            await interaction.reply({ content: '❌ An error occurred while processing your request.', ephemeral: true });
+        }
+    }
+}
+
+module.exports = {
+    handleGamblingInteraction
 };

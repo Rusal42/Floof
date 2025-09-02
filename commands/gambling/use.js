@@ -1,13 +1,13 @@
 const { EmbedBuilder } = require('discord.js');
 const { sendAsFloofWebhook } = require('../../utils/webhook-util');
 const { getBalance, addBalance } = require('./utils/balance-manager');
-const { hasItem, removeItem, getItemInfo } = require('./utils/inventory-manager');
-const { useBlackmarketItem, BLACKMARKET_ITEMS } = require('./utils/blackmarket-manager');
+const { hasItem, removeItem, getItemInfo, addItem } = require('./utils/inventory-manager');
+const { useBlackmarketItem, BLACKMARKET_ITEMS, getUserBlackmarketItems, removeBlackmarketItem } = require('./utils/blackmarket-manager');
 
 module.exports = {
     name: 'use',
     description: 'Use/consume items from your inventory',
-    usage: '%use <item> [amount]',
+    usage: '%use health pack [amount]',
     category: 'gambling',
     aliases: ['consume', 'eat', 'drink'],
     cooldown: 2,
@@ -32,14 +32,27 @@ module.exports = {
             return await sendAsFloofWebhook(message, {
                 embeds: [
                     new EmbedBuilder()
-                        .setDescription('❌ Please specify an item to use!\n\n💡 **Usage:**\n• `%use <item>` - Use an item\n• `%inventory` - View your items\n• `%use beer` - Use beer to reset cooldowns')
+                        .setDescription('❌ Please specify an item to use!\n\n💡 **Usage:**\n• `%use health pack` - Use health pack\n• `%inventory` - View your items\n• `%use beer` - Use beer to reset cooldowns')
                         .setColor(0xff0000)
                 ]
             });
         }
 
-        const itemId = args[0].toLowerCase();
-        const amount = args[1] ? parseInt(args[1]) : 1;
+        // Handle multi-word item names (e.g., "health pack" -> "health_pack")
+        let itemId, amount = 1;
+        
+        // Check if last argument is a number (amount)
+        const lastArg = args[args.length - 1];
+        const isLastArgNumber = !isNaN(parseInt(lastArg)) && parseInt(lastArg) > 0;
+        
+        if (isLastArgNumber && args.length > 1) {
+            // Last arg is amount, everything else is item name
+            amount = parseInt(lastArg);
+            itemId = args.slice(0, -1).join(' ').toLowerCase().replace(/\s+/g, '_');
+        } else {
+            // No amount specified, entire input is item name
+            itemId = args.join(' ').toLowerCase().replace(/\s+/g, '_');
+        }
 
         if (amount <= 0 || amount > 50) {
             return await sendAsFloofWebhook(message, {
@@ -51,62 +64,133 @@ module.exports = {
             });
         }
 
-        // Check if it's a blackmarket item first
-        if (BLACKMARKET_ITEMS[itemId]) {
-            const result = useBlackmarketItem(userId, itemId);
+        // Check if it's a blackmarket item first (check both regular inventory and blackmarket stash)
+        const blackmarketItem = BLACKMARKET_ITEMS[itemId];
+        const userBlackmarketData = getUserBlackmarketItems(userId);
+        const hasBlackmarketItem = userBlackmarketData.items[itemId] && userBlackmarketData.items[itemId] > 0;
+        const hasRegularItem = hasItem(userId, itemId, amount);
+        
+        if (blackmarketItem && (hasBlackmarketItem || hasRegularItem)) {
+            // Use from blackmarket stash first, then regular inventory
+            let useFromBlackmarket = hasBlackmarketItem;
             
-            if (!result.success) {
-                let errorMsg = '❌ ';
-                switch (result.reason) {
-                    case 'no_item':
-                        errorMsg += `You don't have any **${BLACKMARKET_ITEMS[itemId].name}** in your stash!`;
-                        break;
-                    default:
-                        errorMsg += 'Failed to use item!';
+            if (useFromBlackmarket) {
+                const result = useBlackmarketItem(userId, itemId);
+                
+                if (!result.success) {
+                    let errorMsg = '❌ ';
+                    switch (result.reason) {
+                        case 'no_item':
+                            errorMsg += `You don't have any **${blackmarketItem.name}** in your stash!`;
+                            break;
+                        default:
+                            errorMsg += 'Failed to use item!';
+                    }
+                    
+                    return await sendAsFloofWebhook(message, {
+                        embeds: [
+                            new EmbedBuilder()
+                                .setDescription(errorMsg)
+                                .setColor(0xff0000)
+                        ]
+                    });
+                }
+
+                // Success message for blackmarket items
+                let successMsg = `${result.item.emoji} **Used ${result.item.name}!**\n\n`;
+                
+                if (result.effects.duration) {
+                    successMsg += `⚡ **Effects Active:**\n`;
+                    if (result.effects.luck_boost) successMsg += `🍀 Luck boost: +${result.effects.luck_boost}%\n`;
+                    if (result.effects.speed_boost) successMsg += `⚡ Speed boost: +${result.effects.speed_boost}%\n`;
+                    if (result.effects.cooldown_reduction) successMsg += `⏰ Cooldown reduction: ${result.effects.cooldown_reduction}%\n`;
+                    if (result.effects.xp_multiplier) successMsg += `📈 XP multiplier: ${result.effects.xp_multiplier}x\n`;
+                    if (result.effects.damage_immunity) successMsg += `🛡️ Damage immunity: ${result.effects.damage_immunity}%\n`;
+                    if (result.effects.attack_boost) successMsg += `⚔️ Attack boost: +${result.effects.attack_boost}%\n`;
+                    if (result.effects.defense_boost) successMsg += `🛡️ Defense boost: +${result.effects.defense_boost}%\n`;
+                    if (result.effects.sleep_protection) successMsg += `😴 Sleep protection: Safe from attacks\n`;
+                    successMsg += `\n⏱️ **Duration:** ${result.effects.duration} minutes`;
                 }
                 
+                if (result.effects.cooldown_reset) {
+                    successMsg += `⏰ **All cooldowns reset!**`;
+                }
+                
+                if (result.effects.arrest_immunity) {
+                    successMsg += `🆔 **Arrest immunity:** Protected from next arrest`;
+                }
+
                 return await sendAsFloofWebhook(message, {
                     embeds: [
                         new EmbedBuilder()
-                            .setDescription(errorMsg)
-                            .setColor(0xff0000)
+                            .setTitle('✨ Item Used Successfully')
+                            .setDescription(successMsg)
+                            .setColor(0x00ff00)
+                            .setTimestamp()
+                    ]
+                });
+            } else if (hasRegularItem) {
+                // Use from regular inventory - remove item and apply blackmarket effects
+                removeItem(userId, itemId, amount);
+                
+                // Apply blackmarket effects manually
+                const effects = blackmarketItem.effects;
+                if (effects.duration) {
+                    // Apply timed effects (would need to integrate with blackmarket effect system)
+                    const userData = getUserBlackmarketItems(userId);
+                    const effectId = `${itemId}_${Date.now()}`;
+                    userData.active_effects[effectId] = {
+                        ...effects,
+                        expires_at: Date.now() + (effects.duration * 60 * 1000)
+                    };
+                    
+                    // Save the effect
+                    const fs = require('fs');
+                    const path = require('path');
+                    const dataFile = path.join(__dirname, '../../../blackmarket-data.json');
+                    let data = {};
+                    try {
+                        data = JSON.parse(fs.readFileSync(dataFile, 'utf8'));
+                    } catch (error) {
+                        data = {};
+                    }
+                    data[userId] = userData;
+                    fs.writeFileSync(dataFile, JSON.stringify(data, null, 2));
+                }
+                
+                let successMsg = `${blackmarketItem.emoji} **Used ${blackmarketItem.name}!**\n\n`;
+                
+                if (effects.duration) {
+                    successMsg += `⚡ **Effects Active:**\n`;
+                    if (effects.luck_boost) successMsg += `🍀 Luck boost: +${effects.luck_boost}%\n`;
+                    if (effects.speed_boost) successMsg += `⚡ Speed boost: +${effects.speed_boost}%\n`;
+                    if (effects.cooldown_reduction) successMsg += `⏰ Cooldown reduction: ${effects.cooldown_reduction}%\n`;
+                    if (effects.xp_multiplier) successMsg += `📈 XP multiplier: ${effects.xp_multiplier}x\n`;
+                    if (effects.damage_immunity) successMsg += `🛡️ Damage immunity: ${effects.damage_immunity}%\n`;
+                    if (effects.attack_boost) successMsg += `⚔️ Attack boost: +${effects.attack_boost}%\n`;
+                    if (effects.defense_boost) successMsg += `🛡️ Defense boost: +${effects.defense_boost}%\n`;
+                    if (effects.sleep_protection) successMsg += `😴 Sleep protection: Safe from attacks\n`;
+                    successMsg += `\n⏱️ **Duration:** ${effects.duration} minutes`;
+                }
+                
+                if (effects.cooldown_reset) {
+                    successMsg += `⏰ **All cooldowns reset!**`;
+                }
+                
+                if (effects.arrest_immunity) {
+                    successMsg += `🆔 **Arrest immunity:** Protected from next arrest`;
+                }
+
+                return await sendAsFloofWebhook(message, {
+                    embeds: [
+                        new EmbedBuilder()
+                            .setTitle('✨ Item Used Successfully')
+                            .setDescription(successMsg)
+                            .setColor(0x00ff00)
+                            .setTimestamp()
                     ]
                 });
             }
-
-            // Success message for blackmarket items
-            let successMsg = `🏴‍☠️ **Used ${result.item.emoji} ${result.item.name}!**\n\n`;
-            
-            if (result.effects.duration) {
-                successMsg += `⚡ **Effects Active:**\n`;
-                if (result.effects.luck_boost) successMsg += `🍀 Luck boost: +${result.effects.luck_boost}%\n`;
-                if (result.effects.speed_boost) successMsg += `⚡ Speed boost: +${result.effects.speed_boost}%\n`;
-                if (result.effects.cooldown_reduction) successMsg += `⏰ Cooldown reduction: ${result.effects.cooldown_reduction}%\n`;
-                if (result.effects.xp_multiplier) successMsg += `📈 XP multiplier: ${result.effects.xp_multiplier}x\n`;
-                if (result.effects.damage_immunity) successMsg += `🛡️ Damage immunity: ${result.effects.damage_immunity}%\n`;
-                if (result.effects.attack_boost) successMsg += `⚔️ Attack boost: +${result.effects.attack_boost}%\n`;
-                if (result.effects.defense_boost) successMsg += `🛡️ Defense boost: +${result.effects.defense_boost}%\n`;
-                if (result.effects.sleep_protection) successMsg += `😴 Sleep protection: Safe from attacks\n`;
-                successMsg += `\n⏱️ **Duration:** ${result.effects.duration} minutes`;
-            }
-            
-            if (result.effects.cooldown_reset) {
-                successMsg += `⏰ **All cooldowns reset!**`;
-            }
-            
-            if (result.effects.arrest_immunity) {
-                successMsg += `🆔 **Arrest immunity:** Protected from next arrest`;
-            }
-
-            return await sendAsFloofWebhook(message, {
-                embeds: [
-                    new EmbedBuilder()
-                        .setTitle('🏴‍☠️ Blackmarket Item Used')
-                        .setDescription(successMsg)
-                        .setColor(0x2c2c2c)
-                        .setTimestamp()
-                ]
-            });
         }
 
         // Check if it's a regular shop item
