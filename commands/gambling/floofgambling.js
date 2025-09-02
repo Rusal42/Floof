@@ -27,8 +27,29 @@ module.exports = {
             return sendAsFloofWebhook(message, { content: 'No gambling commands found.' });
         }
 
-        const list = gambleCmds
-            .map(cmd => `• %${cmd.name}${cmd.aliases && cmd.aliases.length ? ` (${cmd.aliases.join(', ')})` : ''} — ${cmd.description || ''}`)
+        // Split commands into categories for better organization
+        const coreCommands = gambleCmds.filter(cmd => 
+            ['balance', 'beg', 'slots', 'blackjack', 'coinflip', 'roulette', 'baccarat', 'craps', 'keno', 'wheel', 'plinko', 'leaderboard', 'donate'].includes(cmd.name)
+        );
+        
+        const jobCommands = gambleCmds.filter(cmd => 
+            ['jobs', 'work'].includes(cmd.name)
+        );
+        
+        const combatCommands = gambleCmds.filter(cmd => 
+            ['attack', 'select', 'rob', 'business', 'streetdealer', 'blackmarket', 'bail', 'beatup'].includes(cmd.name)
+        );
+        
+        const petCommands = gambleCmds.filter(cmd => 
+            ['pet', 'petshop', 'petattack', 'petbattle'].includes(cmd.name)
+        );
+        
+        const utilityCommands = gambleCmds.filter(cmd => 
+            ['shop', 'inventory', 'vault', 'preferences', 'briefcase', 'farm', 'beer'].includes(cmd.name)
+        );
+
+        const formatCmdList = (cmds) => cmds
+            .map(cmd => `• %${cmd.name} — ${cmd.description || ''}`)
             .join('\n');
 
         const tips = [
@@ -45,10 +66,15 @@ module.exports = {
             .setTitle('🎰 Floof Gambling Menu')
             .setColor(0x00FF00)
             .addFields(
-                { name: 'Getting Started', value: tips },
-                { name: 'All gambling commands', value: list.slice(0, 4000) }
+                { name: 'Getting Started Guide', value: tips },
+                { name: '🎲 Core Gambling', value: formatCmdList(coreCommands) || 'None found', inline: true },
+                { name: '💼 Jobs & Work', value: formatCmdList(jobCommands) || 'None found', inline: true },
+                { name: '⚔️ Combat & Crime', value: formatCmdList(combatCommands).slice(0, 1000) || 'None found', inline: true },
+                { name: '🐾 Pets & Battles', value: formatCmdList(petCommands) || 'None found', inline: true },
+                { name: '🛒 Shopping & Utils', value: formatCmdList(utilityCommands).slice(0, 1000) || 'None found', inline: true },
+                { name: 'More Commands', value: 'Use `%help <command>` for detailed usage\nType `%floofgambling` to see this menu again', inline: true }
             )
-            .setFooter({ text: 'Tip: %help <command> for usage and examples' });
+            .setFooter({ text: 'Tip: All commands work best in your configured gambling channel!' });
 
         return sendAsFloofWebhook(message, { embeds: [embed] });
     }
