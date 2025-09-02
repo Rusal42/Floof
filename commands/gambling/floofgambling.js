@@ -49,7 +49,7 @@ module.exports = {
         );
 
         const formatCmdList = (cmds) => cmds
-            .map(cmd => `• %${cmd.name} — ${cmd.description || ''}`)
+            .map(cmd => `• %${cmd.name}`)
             .join('\n');
 
         const tips = [
@@ -69,9 +69,9 @@ module.exports = {
                 { name: 'Getting Started Guide', value: tips },
                 { name: '🎲 Core Gambling', value: formatCmdList(coreCommands) || 'None found', inline: true },
                 { name: '💼 Jobs & Work', value: formatCmdList(jobCommands) || 'None found', inline: true },
-                { name: '⚔️ Combat & Crime', value: formatCmdList(combatCommands).slice(0, 1000) || 'None found', inline: true },
+                { name: '⚔️ Combat & Crime', value: formatCmdList(combatCommands) || 'None found', inline: true },
                 { name: '🐾 Pets & Battles', value: formatCmdList(petCommands) || 'None found', inline: true },
-                { name: '🛒 Shopping & Utils', value: formatCmdList(utilityCommands).slice(0, 1000) || 'None found', inline: true },
+                { name: '🛒 Shopping & Utils', value: formatCmdList(utilityCommands) || 'None found', inline: true },
                 { name: 'More Commands', value: 'Use `%help <command>` for detailed usage\nType `%floofgambling` to see this menu again', inline: true }
             )
             .setFooter({ text: 'Tip: All commands work best in your configured gambling channel!' });

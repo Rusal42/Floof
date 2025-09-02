@@ -272,6 +272,16 @@ client.on('error', (error) => {
 client.on('interactionCreate', async (interaction) => {
     if (!interaction.isButton()) return;
     
+    // Handle gambling game interactions
+    if (interaction.customId.startsWith('baccarat_') || 
+        interaction.customId.startsWith('keno_') || 
+        interaction.customId.startsWith('wheel_') || 
+        interaction.customId.startsWith('plinko_')) {
+        const { handleInteraction } = require('./handlers/gambling-interaction-handler');
+        await handleInteraction(interaction);
+        return;
+    }
+    
     // Handle blackjack button interactions
     if (interaction.customId === 'blackjack_hit' || interaction.customId === 'blackjack_stand') {
         const { handleBlackjackInteraction } = require('./commands/gambling/blackjack-handler');
