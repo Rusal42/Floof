@@ -8,7 +8,6 @@ module.exports = {
     usage: '%donate <@user> <amount>',
     category: 'gambling',
     aliases: ['give', 'transfer'],
-    cooldown: 5,
 
     async execute(message, args) {
         const userId = message.author.id;

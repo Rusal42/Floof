@@ -8,10 +8,21 @@ module.exports = {
     usage: '%coinflip <heads/tails> <amount>',
     category: 'gambling',
     aliases: ['cf', 'flip'],
-    cooldown: 3,
 
     async execute(message, args) {
         const userId = message.author.id;
+        
+        // Check if user is sleeping
+        const { isUserSleeping } = require('./utils/blackmarket-manager');
+        if (isUserSleeping(userId)) {
+            return sendAsFloofWebhook(message, {
+                embeds: [
+                    new EmbedBuilder()
+                        .setDescription(`😴 You are fast asleep! You cannot gamble while under the effects of sleeping pills.\n\n💊 Wait for the effects to wear off before gambling again.`)
+                        .setColor(0x9b59b6)
+                ]
+            });
+        }
         
         // Check if user is arrested
         const { isArrested, getArrestTimeRemaining } = require('./beatup');

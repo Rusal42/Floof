@@ -32,9 +32,13 @@ module.exports = {
             .join('\n');
 
         const tips = [
-            'Start with `%balance` and `%work`',
-            'Try `%slots 50`, `%blackjack 100`, or `%coinflip heads 25`',
-            'Check `%leaderboard` to see the top players'
+            '💼 **Getting Started:** Get a job with `%jobs apply cashier`, then `%work` every 30 seconds',
+            '🎰 **Gambling:** Try `%slots 50`, `%blackjack 100`, or `%coinflip heads 25`',
+            '🛡️ **Protection:** Use `%vault deposit` to store coins safely, or hire bodyguards with `%shop`',
+            '⚔️ **Combat:** Attack others with `%attack @user` or defend with pets from `%petshop`',
+            '🏪 **Shopping:** Buy weapons, items, and protection from `%shop`, `%blackmarket`, `%petshop`',
+            '🏢 **Business:** Own businesses with `%business buy` and rob others with `%rob business`',
+            '💰 **Check:** `%balance` for coins, `%inventory` for items, `%leaderboard` for rankings'
         ].join('\n');
 
         const embed = new EmbedBuilder()

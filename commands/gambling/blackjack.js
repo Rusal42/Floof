@@ -1,6 +1,7 @@
 const { EmbedBuilder } = require('discord.js');
 const { sendAsFloofWebhook } = require('../../utils/webhook-util');
 const { loadBalances, saveBalances, getBalance, setBalance, addBalance } = require('./utils/balance-manager');
+const { getActiveEffects, hasActiveEffect, getEffectMultiplier } = require('./utils/blackmarket-manager');
 
 // Blackjack command: %blackjack <amount>
 // In-memory blackjack state: { [userId_channelId]: { deck, player, dealer, bet, messageId } }
@@ -54,6 +55,18 @@ function formatHand(hand, hideFirstCard = false) {
 async function blackjack(message, amountArg) {
     const userId = message.author.id;
     
+    // Check if user is sleeping
+    const { isUserSleeping } = require('./utils/blackmarket-manager');
+    if (isUserSleeping(userId)) {
+        return sendAsFloofWebhook(message, {
+            embeds: [
+                new EmbedBuilder()
+                    .setDescription(`😴 You are fast asleep! You cannot gamble while under the effects of sleeping pills.\n\n💊 Wait for the effects to wear off before gambling again.`)
+                    .setColor(0x9b59b6)
+            ]
+        });
+    }
+    
     // Check if user is arrested
     const { isArrested, getArrestTimeRemaining } = require('./beatup');
     if (isArrested(userId)) {
@@ -68,17 +81,7 @@ async function blackjack(message, amountArg) {
         });
     }
     
-    // Restrict to channels under category 1393667685753159742
-    if (!message.channel.parentId || message.channel.parentId !== '1393667685753159742') {
-        return sendAsFloofWebhook(message, {
-            embeds: [
-                new EmbedBuilder()
-                    .setTitle('Blackjack')
-                    .setDescription('Blackjack can only be played in channels under the allowed gambling category.')
-                    .setColor(0xff6961)
-            ]
-        });
-    }
+    // Remove hardcoded server restriction for multi-server compatibility
     amountArg = parseInt(amountArg, 10);
     if (isNaN(amountArg) || amountArg <= 0) {
         return sendAsFloofWebhook(message, {
@@ -101,6 +104,13 @@ async function blackjack(message, amountArg) {
             ]
         });
     }
+    // Check for luck boost effects
+    const activeEffects = getActiveEffects(userId);
+    let luckBoost = 0;
+    Object.values(activeEffects).forEach(effect => {
+        if (effect.luck_boost) luckBoost += effect.luck_boost;
+    });
+    
     // Deduct bet up front
     addBalance(userId, -amountArg);
     saveBalances();
@@ -110,7 +120,7 @@ async function blackjack(message, amountArg) {
     const dealer = [deck.pop(), deck.pop()];
     // Store game state
     const stateKey = `${userId}_${message.channel.id}`;
-    blackjackGames[stateKey] = { deck, player, dealer, bet: amountArg, messageId: null };
+    blackjackGames[stateKey] = { deck, player, dealer, bet: amountArg, messageId: null, luckBoost };
     // Prepare embed
     const embed = new EmbedBuilder()
         .setTitle('Blackjack')
@@ -141,7 +151,6 @@ module.exports = {
     description: 'Play blackjack and bet your coins against the dealer',
     aliases: ['bj'],
     permissions: [],
-    cooldown: 3,
     
     async execute(message, args) {
         const amountArg = args[0];

@@ -323,9 +323,81 @@ module.exports = {
     getCommandUsageCount,
     sendChangelogUpdate,
     initializeStats,
-    // Exported for rules syncing
-    sendRulesConfigUpdate
+    // Exported for syncing
+    sendRulesConfigUpdate,
+    sendGamblingCommandsUpdate
 };
+
+// Send gambling commands documentation to website
+async function sendGamblingCommandsUpdate() {
+    try {
+        const url = `${resolveWebsiteBase()}/api/commands-sync`;
+        
+        const gamblingCommands = [
+            // Core Gambling
+            { name: 'balance', description: 'Check your coin balance', usage: '%balance [@user]', category: 'gambling' },
+            { name: 'beg', description: 'Beg for coins when unemployed', usage: '%beg', category: 'gambling' },
+            { name: 'slots', description: 'Play slot machine', usage: '%slots <amount>', category: 'gambling' },
+            { name: 'blackjack', description: 'Play blackjack', usage: '%blackjack <amount>', category: 'gambling' },
+            { name: 'coinflip', description: 'Flip a coin for double or nothing', usage: '%coinflip <amount> <heads/tails>', category: 'gambling' },
+            { name: 'roulette', description: 'Play roulette', usage: '%roulette <amount> <bet>', category: 'gambling' },
+            { name: 'leaderboard', description: 'View coin leaderboard', usage: '%leaderboard', category: 'gambling' },
+            { name: 'donate', description: 'Give coins to another user', usage: '%donate <amount> @user', category: 'gambling' },
+            
+            // Job System
+            { name: 'jobs', description: 'Browse and apply for jobs', usage: '%jobs [apply <jobtype>]', category: 'gambling' },
+            { name: 'work', description: 'Work at your job to earn coins', usage: '%work', category: 'gambling' },
+            
+            // Shopping & Items
+            { name: 'shop', description: 'Browse and buy items', usage: '%shop [buy <number>]', category: 'gambling' },
+            { name: 'inventory', description: 'View your items', usage: '%inventory', category: 'gambling' },
+            { name: 'vault', description: 'Store coins safely', usage: '%vault <deposit/withdraw> <amount>', category: 'gambling' },
+            
+            // Combat & Crime
+            { name: 'attack', description: 'Attack another user', usage: '%attack @user', category: 'gambling' },
+            { name: 'select', description: 'Choose your weapon for attacks', usage: '%select weapon', category: 'gambling' },
+            { name: 'rob', description: 'Rob banks or businesses', usage: '%rob <bank/business> [name]', category: 'gambling' },
+            { name: 'business', description: 'Manage your business', usage: '%business <buy/hire/fire/status>', category: 'gambling' },
+            { name: 'streetdealer', description: 'Deal drugs on the street', usage: '%streetdealer', category: 'gambling' },
+            { name: 'blackmarket', description: 'Buy illegal items', usage: '%blackmarket [buy <number>]', category: 'gambling' },
+            { name: 'bail', description: 'Pay bail to get out of jail', usage: '%bail [self/friend/@user]', category: 'gambling' },
+            
+            // Pets
+            { name: 'pet', description: 'Manage your pet', usage: '%pet <buy/feed/train/status>', category: 'gambling' },
+            { name: 'petshop', description: 'Buy pet items', usage: '%petshop [buy <number>]', category: 'gambling' },
+            { name: 'petattack', description: 'Attack with your pet', usage: '%petattack @user', category: 'gambling' },
+            { name: 'petbattle', description: 'Battle pets against each other', usage: '%petbattle @user', category: 'gambling' },
+            
+            // Utilities
+            { name: 'preferences', description: 'Manage your privacy settings', usage: '%preferences <toggle> <setting>', category: 'gambling' },
+            { name: 'briefcase', description: 'Manage briefcase storage', usage: '%briefcase <store/retrieve> <amount>', category: 'gambling' },
+            { name: 'farm', description: 'Manage your farm', usage: '%farm <plant/harvest/status>', category: 'gambling' }
+        ];
+
+        const payload = {
+            commands: gamblingCommands,
+            category: 'gambling',
+            version: BOT_VERSION,
+            timestamp: Date.now()
+        };
+
+        const headers = { 'Content-Type': 'application/json' };
+        if (BOT_API_TOKEN) headers['x-bot-token'] = BOT_API_TOKEN;
+
+        const res = await fetch(url, { method: 'POST', headers, body: JSON.stringify(payload) });
+        const raw = await res.text().catch(() => '');
+        let parsed;
+        try { parsed = raw ? JSON.parse(raw) : {}; } catch (_) { parsed = { raw }; }
+
+        if (res.ok) {
+            logInfo('✅ Synced gambling commands to website.', { url, status: res.status });
+        } else {
+            logWarn('⚠️ Gambling commands sync did not succeed', { status: res.status, parsed });
+        }
+    } catch (err) {
+        logError('❌ Error syncing gambling commands to website:', err?.message || err);
+    }
+}
 
 // Send rules configuration to website for display in the Rules area
 // cfg is expected to include keys like rulesChannel, rulesTitle, rulesDescription, rulesFooter, rulesButton, rulesAssignRole

@@ -64,6 +64,33 @@ function getPayout(betType) {
 // Roulette command
 async function roulette(message, args) {
     const userId = message.author.id;
+    
+    // Check if user is sleeping
+    const { isUserSleeping } = require('./utils/blackmarket-manager');
+    if (isUserSleeping(userId)) {
+        return await sendAsFloofWebhook(message, {
+            embeds: [
+                new EmbedBuilder()
+                    .setDescription(`😴 You are fast asleep! You cannot gamble while under the effects of sleeping pills.\n\n💊 Wait for the effects to wear off before gambling again.`)
+                    .setColor(0x9b59b6)
+            ]
+        });
+    }
+    
+    // Check if user is arrested
+    const { isArrested, getArrestTimeRemaining } = require('./beatup');
+    if (isArrested(userId)) {
+        const remainingMinutes = Math.ceil(getArrestTimeRemaining(userId) / 60);
+        return await sendAsFloofWebhook(message, {
+            embeds: [
+                new EmbedBuilder()
+                    .setTitle('🚔 You are arrested!')
+                    .setDescription(`You are currently in jail and cannot gamble. You have ${remainingMinutes} minutes remaining on your sentence.`)
+                    .setColor(0xff6961)
+            ]
+        });
+    }
+
     const amount = parseInt(args[0]);
     let betType = args[1]?.toLowerCase();
     let betValue = args[2];
@@ -199,7 +226,6 @@ module.exports = {
     description: 'Play roulette and bet your coins',
     aliases: ['rl'],
     permissions: [],
-    cooldown: 3,
     
     async execute(message, args) {
         await roulette(message, args);

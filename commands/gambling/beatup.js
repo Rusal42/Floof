@@ -4,6 +4,7 @@
 const { EmbedBuilder } = require('discord.js');
 const { sendAsFloofWebhook } = require('../../utils/webhook-util');
 const { loadBalances, saveBalances, getBalance, setBalance } = require('./utils/balance-manager');
+const { getActivePet, isUserAFK, updateUserActivity, simulatePetDefense, PET_TYPES } = require('./utils/pet-manager');
 
 // Constants
 const OWNER_ID = '1007799027716329484';
@@ -43,6 +44,9 @@ function resolveTargetUser(message, args) {
 
 function beatup(message, targetUser) {
     const attacker = message.author;
+    
+    // Update user activity
+    updateUserActivity(attacker.id);
     
     // Check cooldown (60 seconds) - Skip for owner
     const now = Date.now();
@@ -107,6 +111,35 @@ function beatup(message, targetUser) {
         ] });
     }
     
+    // Check if target is AFK and has a defending pet
+    const targetIsAFK = isUserAFK(targetUser.id);
+    const targetPet = getActivePet(targetUser.id);
+    let petDefenseResult = null;
+
+    if (targetIsAFK && targetPet) {
+        // Pet attempts to defend owner
+        const mockAttackerStats = {
+            stats: { attack: 20, speed: 15, defense: 10, health: 100 },
+            hunger: 80,
+            happiness: 80
+        };
+        petDefenseResult = simulatePetDefense(mockAttackerStats, targetPet);
+        
+        if (petDefenseResult.defended) {
+            // Pet successfully defended - beatup fails
+            const targetPetInfo = PET_TYPES[targetPet.type];
+            return sendAsFloofWebhook(message, {
+                embeds: [
+                    new EmbedBuilder()
+                        .setTitle('🛡️ Pet Defense Successful!')
+                        .setDescription(`👊 You tried to beat up **${targetUser.username}**!\n\n🛡️ **${targetPet.name}** (Lv.${targetPet.level}) successfully defended their AFK owner!\n\n${targetPetInfo.emoji} **${targetPet.name}** blocks your attack and growls menacingly!\n\n💥 **Attack Blocked:** ${petDefenseResult.damage_blocked} damage\n🎯 **Defense Success:** ${petDefenseResult.defense_chance}%\n\n❌ No coins were stolen due to pet protection!`)
+                        .setColor(0x43b581)
+                        .setTimestamp()
+                ]
+            });
+        }
+    }
+
     // Set cooldown for this user
     beatupCooldowns[attacker.id] = now;
     
@@ -159,8 +192,14 @@ function beatup(message, targetUser) {
         }
     } else {
         // Successful theft!
-        const maxSteal = Math.min(targetBalance, Math.floor(targetBalance * 0.3)); // Max 30% of target's coins
+        let maxSteal = Math.min(targetBalance, Math.floor(targetBalance * 0.3)); // Max 30% of target's coins
         const minSteal = Math.min(maxSteal, 50); // At least 50 coins or whatever they have
+        
+        // Reduce steal amount if pet attempted defense but failed
+        if (petDefenseResult && !petDefenseResult.defended) {
+            maxSteal = Math.floor(maxSteal * 0.6); // 40% reduction for failed pet defense
+        }
+        
         const stolenAmount = Math.floor(Math.random() * (maxSteal - minSteal + 1)) + minSteal;
         
         // Transfer coins
@@ -181,15 +220,23 @@ function beatup(message, targetUser) {
         
         const randomMessage = beatupMessages[Math.floor(Math.random() * beatupMessages.length)];
         
+        let successMsg = `${randomMessage}\n\n`;
+        
+        // Add pet defense information if applicable
+        if (petDefenseResult && !petDefenseResult.defended) {
+            const targetPetInfo = PET_TYPES[targetPet.type];
+            successMsg += `🛡️ **${targetPet.name}** (Lv.${targetPet.level}) tried to defend but failed! (${petDefenseResult.defense_chance}% chance)\n`;
+            successMsg += `🐾 **Pet Defense Penalty:** -40% coins stolen\n\n`;
+        }
+        
+        successMsg += `💰 <@${attacker.id}> stole **${stolenAmount}** coins from <@${targetUser.id}>!\n\n`;
+        successMsg += `**<@${attacker.id}>** now has: **${getBalance(attacker.id)}** coins\n`;
+        successMsg += `**<@${targetUser.id}>** now has: **${getBalance(targetUser.id)}** coins`;
+
         sendAsFloofWebhook(message, { embeds: [
             new EmbedBuilder()
                 .setTitle('Beat Up - Success!')
-                .setDescription(
-                    `${randomMessage}\n\n` +
-                    `💰 <@${attacker.id}> stole **${stolenAmount}** coins from <@${targetUser.id}>!\n\n` +
-                    `**<@${attacker.id}>** now has: **${getBalance(attacker.id)}** coins\n` +
-                    `**<@${targetUser.id}>** now has: **${getBalance(targetUser.id)}** coins`
-                )
+                .setDescription(successMsg)
                 .setColor(0x43b581)
         ] });
     }
@@ -225,10 +272,6 @@ function handleFloofBeatup(message, attacker, targetUser) {
     
     // Initialize attacker balance if needed
     let attackerBalance = getBalance(attacker.id);
-    if (attackerBalance === 0) {
-        setBalance(attacker.id, STARTING_BALANCE);
-        attackerBalance = STARTING_BALANCE;
-    }
     
     // Give Floof infinite coins if she doesn't have a balance
     let floofBalance = getBalance(targetUser.id);

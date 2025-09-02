@@ -2,16 +2,12 @@ const { EmbedBuilder } = require('discord.js');
 const { sendAsFloofWebhook } = require('../../utils/webhook-util');
 const { getBalance, addBalance } = require('./utils/balance-manager');
 
-// Cooldown tracking
-const begCooldowns = {};
-
 module.exports = {
     name: 'beg',
     description: 'Beg for coins when you\'re broke',
     usage: '%beg',
     category: 'gambling',
     aliases: ['plead', 'ask'],
-    cooldown: 60, // 1 minute cooldown
 
     async execute(message, args) {
         const userId = message.author.id;
@@ -28,24 +24,6 @@ module.exports = {
                 ]
             });
         }
-
-        // Check cooldown
-        const now = Date.now();
-        const cooldownAmount = 60 * 1000; // 1 minute
-        
-        if (begCooldowns[userId] && now < begCooldowns[userId] + cooldownAmount) {
-            const timeLeft = Math.round((begCooldowns[userId] + cooldownAmount - now) / 1000);
-            return await sendAsFloofWebhook(message, {
-                embeds: [
-                    new EmbedBuilder()
-                        .setDescription(`⏰ You need to wait **${timeLeft}** more seconds before begging again!`)
-                        .setColor(0xffa500)
-                ]
-            });
-        }
-
-        // Set cooldown
-        begCooldowns[userId] = now;
 
         // Beg responses and amounts
         const begResponses = [
@@ -67,13 +45,10 @@ module.exports = {
         
         const embed = new EmbedBuilder()
             .setTitle('🥺 Begging Results')
-            .setDescription(`${selectedResponse.text}\n\nYou received **${earnings.toLocaleString()}** coins!\n\n💰 New balance: **${newBalance.toLocaleString()}** coins`)
+            .setDescription(`${selectedResponse.text}\n\nYou received **${earnings.toLocaleString()}** coins!\n\n💰 **New Balance:** ${newBalance.toLocaleString()} coins\n\n💡 **Tip:** Get a steady income with \`%jobs\`!`)
             .setColor(0x00ff00)
             .setTimestamp();
 
         await sendAsFloofWebhook(message, { embeds: [embed] });
     }
 };
-
-// Export cooldowns for external access if needed
-module.exports.cooldowns = begCooldowns;

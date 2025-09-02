@@ -5,6 +5,9 @@ const { Client, GatewayIntentBits, PermissionsBitField, EmbedBuilder, Partials }
 const fs = require('fs').promises;
 const path = require('path');
 
+// Website integration (disabled)
+// const { startStatsUpdater, sendGamblingCommandsUpdate } = require('./utils/website-integration');
+
 // Initialize data directory
 async function initializeDataDirectory() {
     const dataDir = path.join(__dirname, 'data');

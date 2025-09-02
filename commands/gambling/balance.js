@@ -33,7 +33,7 @@ module.exports = {
             // Get balance with error handling
             let balance;
             try {
-                balance = await getBalance(targetUser.id);
+                balance = getBalance(targetUser.id);
             } catch (error) {
                 console.error('Error getting balance:', error);
                 return await sendAsFloofWebhook(message, {

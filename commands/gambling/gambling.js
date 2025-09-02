@@ -3,44 +3,24 @@
 
 const { EmbedBuilder } = require('discord.js');
 const { sendAsFloofWebhook } = require('../../utils/webhook-util');
+const { getBalance, setBalance, addBalance, subtractBalance, hasBalance, STARTING_BALANCE } = require('./utils/balance-manager');
 
-const fs = require('fs');
-const path = require('path');
-const balancesDir = path.resolve(__dirname, '../../data');
-const BALANCES_FILE = path.join(balancesDir, 'balances.json');
-
-let userBalances = {};
-const STARTING_BALANCE = 1000;
 const begCooldowns = {};
-
-function loadBalances() {
-    try {
-        if (!fs.existsSync(balancesDir)) {
-            fs.mkdirSync(balancesDir);
-        }
-        if (fs.existsSync(BALANCES_FILE)) {
-            const data = fs.readFileSync(BALANCES_FILE, 'utf8');
-            userBalances = JSON.parse(data);
-        }
-    } catch (err) {
-        console.error('Error loading balances.json:', err);
-        userBalances = {};
-    }
-}
-
-function saveBalances() {
-    try {
-        fs.writeFileSync(BALANCES_FILE, JSON.stringify(userBalances, null, 2));
-    } catch (err) {
-        console.error('Error saving balances.json:', err);
-    }
-}
-
-// Load balances on startup
-loadBalances();
 
 function coinflip(message, side, amount) {
     const userId = message.author.id;
+    
+    // Check if user is sleeping
+    const { isUserSleeping } = require('./utils/blackmarket-manager');
+    if (isUserSleeping(userId)) {
+        return sendAsFloofWebhook(message, {
+            embeds: [
+                new EmbedBuilder()
+                    .setDescription(`😴 You are fast asleep! You cannot gamble while under the effects of sleeping pills.\n\n💊 Wait for the effects to wear off before gambling again.`)
+                    .setColor(0x9b59b6)
+            ]
+        });
+    }
     
     // Check if user is arrested
     const { isArrested, getArrestTimeRemaining } = require('./beatup');
@@ -74,25 +54,24 @@ function coinflip(message, side, amount) {
                 .setColor(0xffd700)
         ] });
     }
-    if (!(userId in userBalances)) userBalances[userId] = STARTING_BALANCE;
-    if (userBalances[userId] < amount) {
+    const currentBalance = getBalance(userId);
+    if (currentBalance < amount) {
         return sendAsFloofWebhook(message, { embeds: [
             new EmbedBuilder()
                 .setTitle('Coinflip')
-                .setDescription(`You only have ${userBalances[userId]} coins!`)
+                .setDescription(`You only have ${currentBalance} coins!`)
                 .setColor(0xffd700)
         ] });
     }
     const result = Math.random() < 0.5 ? 'heads' : 'tails';
     let reply;
+    let newBalance;
     if (side === result) {
-        userBalances[userId] += amount;
-        saveBalances();
-        reply = `🪙 The coin landed on **${result}**! You won ${amount} coins. New balance: ${userBalances[userId]}`;
+        newBalance = addBalance(userId, amount);
+        reply = `🪙 The coin landed on **${result}**! You won ${amount} coins. New balance: ${newBalance}`;
     } else {
-        userBalances[userId] -= amount;
-        saveBalances();
-        reply = `🪙 The coin landed on **${result}**! You lost ${amount} coins. New balance: ${userBalances[userId]}`;
+        newBalance = subtractBalance(userId, amount);
+        reply = `🪙 The coin landed on **${result}**! You lost ${amount} coins. New balance: ${newBalance}`;
     }
     sendAsFloofWebhook(message, { embeds: [
         new EmbedBuilder()
@@ -110,15 +89,14 @@ function balance(message, userArg) {
     }
     // If no targetUser found, default to the sender
     if (!targetUser) targetUser = message.author;
-    if (!(targetUser.id in userBalances)) userBalances[targetUser.id] = STARTING_BALANCE;
-    saveBalances();
+    const targetBalance = getBalance(targetUser.id);
     const isSelf = targetUser.id === message.author.id;
     sendAsFloofWebhook(message, { embeds: [
         new EmbedBuilder()
             .setTitle('Balance')
             .setDescription(isSelf ?
-                `You (${targetUser.tag}) have **${userBalances[targetUser.id]}** coins.` :
-                `${targetUser.tag} has **${userBalances[targetUser.id]}** coins.`)
+                `You (${targetUser.tag}) have **${targetBalance}** coins.` :
+                `${targetUser.tag} has **${targetBalance}** coins.`)
             .setColor(0xffd700)
     ] });
 }
@@ -150,7 +128,7 @@ function beg(message) {
                 .setColor(0x7289da)
         ] });
     }
-    if (!(userId in userBalances)) userBalances[userId] = STARTING_BALANCE;
+    const currentBalance = getBalance(userId);
     begCooldowns[userId] = now;
 
     // Insulting/funny outcomes
@@ -158,18 +136,18 @@ function beg(message) {
         // Good outcomes
         (user) => {
             const amount = Math.floor(Math.random() * 201) + 50;
-            userBalances[user] += amount;
+            const newBalance = addBalance(user, amount);
             return {
-                desc: `You begged like a true degenerate and got **${amount}** coins. Try not to spend it all in one place.\nNew balance: ${userBalances[user]}`,
+                desc: `You begged like a true degenerate and got **${amount}** coins. Try not to spend it all in one place.\nNew balance: ${newBalance}`,
                 color: 0x7289da
             };
         },
         // Bad outcomes
         (user) => {
             const loss = Math.floor(Math.random() * 51) + 10;
-            userBalances[user] = Math.max(0, userBalances[user] - loss);
+            const newBalance = subtractBalance(user, loss);
             return {
-                desc: `Floof laughs and steals **${loss}** coins from your pocket. Maybe begging isn't your thing.\nNew balance: ${userBalances[user]}`,
+                desc: `Floof laughs and steals **${loss}** coins from your pocket. Maybe begging isn't your thing.\nNew balance: ${newBalance}`,
                 color: 0xff6961
             };
         },
@@ -187,9 +165,9 @@ function beg(message) {
         },
         (user) => {
             const amount = Math.floor(Math.random() * 101) + 10;
-            userBalances[user] += amount;
+            const newBalance = addBalance(user, amount);
             return {
-                desc: `Floof sighs and tosses you **${amount}** pity coins. Don't spend it all in one place.\nNew balance: ${userBalances[user]}`,
+                desc: `Floof sighs and tosses you **${amount}** pity coins. Don't spend it all in one place.\nNew balance: ${newBalance}`,
                 color: 0x7289da
             };
         },
@@ -207,17 +185,17 @@ function beg(message) {
         },
         (user) => {
             const loss = Math.floor(Math.random() * 101) + 10;
-            userBalances[user] = Math.max(0, userBalances[user] - loss);
+            const newBalance = subtractBalance(user, loss);
             return {
-                desc: `Floof is offended by your begging and fines you **${loss}** coins.\nNew balance: ${userBalances[user]}`,
+                desc: `Floof is offended by your begging and fines you **${loss}** coins.\nNew balance: ${newBalance}`,
                 color: 0xff6961
             };
         },
         (user) => {
             const amount = Math.floor(Math.random() * 51) + 10;
-            userBalances[user] += amount;
+            const newBalance = addBalance(user, amount);
             return {
-                desc: `You annoy Floof, but someone else takes pity and gives you **${amount}** coins.\nNew balance: ${userBalances[user]}`,
+                desc: `You annoy Floof, but someone else takes pity and gives you **${amount}** coins.\nNew balance: ${newBalance}`,
                 color: 0x7289da
             };
         },
@@ -266,7 +244,7 @@ function work(message) {
         });
     }
     work.cooldowns[userId] = now;
-    if (!(userId in userBalances)) userBalances[userId] = STARTING_BALANCE;
+    const currentBalance = getBalance(userId);
     // Job list with payout ranges
     const jobs = [
         { name: 'Dog Walker', min: 25, max: 75 },
@@ -284,13 +262,12 @@ function work(message) {
     const job = jobs[Math.floor(Math.random() * jobs.length)];
     // Random payout in range
     const payout = Math.floor(Math.random() * (job.max - job.min + 1)) + job.min;
-    userBalances[userId] += payout;
-    saveBalances();
+    const newBalance = addBalance(userId, payout);
     sendAsFloofWebhook(message, {
         embeds: [
             new EmbedBuilder()
                 .setTitle('Work')
-                .setDescription(`You worked as a **${job.name}** and earned **${payout}** coins!\nNew balance: **${userBalances[userId]}** coins.`)
+                .setDescription(`You worked as a **${job.name}** and earned **${payout}** coins!\nNew balance: **${newBalance}** coins.`)
                 .setColor(0x43b581)
         ]
     });
@@ -337,9 +314,8 @@ function donate(message, targetUser, amount) {
                 .setColor(0xffd700)
         ] });
     }
-    if (!(senderId in userBalances)) userBalances[senderId] = STARTING_BALANCE;
-    if (!(targetUser.id in userBalances)) userBalances[targetUser.id] = STARTING_BALANCE;
-    if (userBalances[senderId] < amount) {
+    const senderBalance = getBalance(senderId);
+    if (senderBalance < amount) {
         return sendAsFloofWebhook(message, { embeds: [
             new EmbedBuilder()
                 .setTitle('Donate')
@@ -347,21 +323,20 @@ function donate(message, targetUser, amount) {
                 .setColor(0xff6961)
         ] });
     }
-    userBalances[senderId] -= amount;
-    userBalances[targetUser.id] += amount;
-    saveBalances();
+    const senderNewBalance = subtractBalance(senderId, amount);
+    const receiverNewBalance = addBalance(targetUser.id, amount);
     // Sender receipt
     sendAsFloofWebhook(message, { embeds: [
         new EmbedBuilder()
             .setTitle('Donate')
-            .setDescription(`You donated **${amount}** coins to <@${targetUser.id}>!\nYour new balance: ${userBalances[senderId]}`)
+            .setDescription(`You donated **${amount}** coins to <@${targetUser.id}>!\nYour new balance: ${senderNewBalance}`)
             .setColor(0x7289da)
     ] });
     // Recipient receipt (in channel, tag recipient)
     sendAsFloofWebhook(message, { content: `<@${targetUser.id}>`, embeds: [
         new EmbedBuilder()
             .setTitle('You received a donation!')
-            .setDescription(`<@${senderId}> donated **${amount}** coins to you!\nYour new balance: ${userBalances[targetUser.id]}`)
+            .setDescription(`<@${senderId}> donated **${amount}** coins to you!\nYour new balance: ${receiverNewBalance}`)
             .setColor(0x43b581)
     ] });
 }
@@ -371,8 +346,5 @@ module.exports = {
     balance,
     beg,
     work,
-    donate,
-    userBalances,
-    STARTING_BALANCE,
-    saveBalances, // Export for use in owner-gambling.js
+    donate
 };

@@ -4,6 +4,7 @@
 const { EmbedBuilder } = require('discord.js');
 const { sendAsFloofWebhook } = require('../../utils/webhook-util');
 const { loadBalances, saveBalances, getBalance, setBalance, addBalance } = require('./utils/balance-manager');
+const { getActiveEffects, hasActiveEffect, getEffectMultiplier } = require('./utils/blackmarket-manager');
 
 const OWNER_ID = '1007799027716329484';
 
@@ -22,6 +23,18 @@ const slotPayouts = {
 function slots(message, amountArg) {
     const userId = message.author.id;
     
+    // Check if user is sleeping
+    const { isUserSleeping } = require('./utils/blackmarket-manager');
+    if (isUserSleeping(userId)) {
+        return sendAsFloofWebhook(message, {
+            embeds: [
+                new EmbedBuilder()
+                    .setDescription(`😴 You are fast asleep! You cannot gamble while under the effects of sleeping pills.\n\n💊 Wait for the effects to wear off before gambling again.`)
+                    .setColor(0x9b59b6)
+            ]
+        });
+    }
+    
     // Check if user is arrested
     const { isArrested, getArrestTimeRemaining } = require('./beatup');
     if (isArrested(userId)) {
@@ -35,21 +48,6 @@ function slots(message, amountArg) {
             ]
         });
     }
-    const now = Date.now();
-    // No casino police logic here
-    // Cooldown for slots (30s)
-    if (!slots.cooldowns) slots.cooldowns = {};
-    const COOLDOWN = 30 * 1000;
-    if (slots.cooldowns[userId] && now - slots.cooldowns[userId] < COOLDOWN) {
-        const remaining = Math.ceil((COOLDOWN - (now - slots.cooldowns[userId])) / 1000);
-        return sendAsFloofWebhook(message, { embeds: [
-            new EmbedBuilder()
-                .setTitle('Slots')
-                .setDescription(`You need to wait ${remaining} seconds before playing slots again!`)
-                .setColor(0x7289da)
-        ] });
-    }
-    slots.cooldowns[userId] = now;
     let amount = parseInt(amountArg, 10);
     if (isNaN(amount) || amount <= 0) {
         amount = 10;
@@ -63,22 +61,51 @@ function slots(message, amountArg) {
                 .setColor(0xffd700)
         ] });
     }
+    // Check for luck boost effects
+    const activeEffects = getActiveEffects(userId);
+    let luckBoost = 0;
+    Object.values(activeEffects).forEach(effect => {
+        if (effect.luck_boost) luckBoost += effect.luck_boost;
+    });
+    
     // Spin the slots
     const spinArr = Array(3).fill().map(() => slotEmojis[Math.floor(Math.random() * slotEmojis.length)]);
     const result = spinArr.join('');
     let payout = 0;
     let winType = null;
+    let effectsMsg = '';
+    
     if (slotPayouts[result]) {
         payout = amount * slotPayouts[result];
+        // Apply luck boost to jackpots
+        if (luckBoost > 0) {
+            const bonus = Math.floor(payout * (luckBoost / 100));
+            payout += bonus;
+            effectsMsg = `\n🍀 **Luck Bonus:** +${bonus} coins!`;
+        }
         addBalance(userId, payout);
         winType = 'JACKPOT!';
     } else if (spinArr[0] === spinArr[1] || spinArr[1] === spinArr[2] || spinArr[0] === spinArr[2]) {
         payout = Math.floor(amount * 1.5);
+        // Apply luck boost to small wins
+        if (luckBoost > 0) {
+            const bonus = Math.floor(payout * (luckBoost / 100));
+            payout += bonus;
+            effectsMsg = `\n🍀 **Luck Bonus:** +${bonus} coins!`;
+        }
         addBalance(userId, payout);
         winType = 'Small Win!';
     } else {
-        addBalance(userId, -amount);
-        winType = 'No Win';
+        // Luck boost can sometimes save from losses
+        if (luckBoost > 15 && Math.random() < (luckBoost / 200)) {
+            payout = amount;
+            addBalance(userId, 0); // No loss
+            winType = 'Lucky Save!';
+            effectsMsg = '\n🍀 **Your luck saved you from losing!**';
+        } else {
+            addBalance(userId, -amount);
+            winType = 'No Win';
+        }
     }
     saveBalances();
     const embed = new EmbedBuilder()
@@ -86,6 +113,7 @@ function slots(message, amountArg) {
         .setDescription(
             `**${spinArr[0]} | ${spinArr[1]} | ${spinArr[2]}**\n\n` +
             (payout > 0 ? `**${winType}** You won **${payout}** coins!` : 'You lost your bet!') +
+            effectsMsg +
             `\nYour new balance: **${getBalance(userId).toLocaleString()}** coins.`
         )
         .setColor(payout > 0 ? 0x43b581 : 0xff6961);
@@ -97,7 +125,6 @@ module.exports = {
     description: 'Play the slot machine and bet your coins for big payouts',
     aliases: ['slot'],
     permissions: [],
-    cooldown: 30,
     
     async execute(message, args) {
         const amountArg = args[0];
