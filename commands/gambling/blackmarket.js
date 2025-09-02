@@ -1,4 +1,4 @@
-const { EmbedBuilder } = require('discord.js');
+const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const { sendAsFloofWebhook } = require('../../utils/webhook-util');
 const { getBalance, addBalance, subtractBalance } = require('./utils/balance-manager');
 const { 
@@ -54,7 +54,8 @@ module.exports = {
         }
 
         if (args.length === 0) {
-            return await displayBlackmarket(message, userId);
+            await displayBlackmarket(message, userId);
+            return;
         }
 
         const action = args[0].toLowerCase();
@@ -81,45 +82,86 @@ module.exports = {
             case 'active':
                 return await handleActiveEffects(message, userId);
             default:
-                return await displayBlackmarket(message, userId);
+                await displayBlackmarket(message, userId);
+                return;
         }
     }
 };
 
-async function displayBlackmarket(message, userId) {
+async function displayBlackmarket(message, userId, currentPage = 0) {
     const userBalance = getBalance(userId);
     const stock = generateBlackmarketStock();
+    const stockItems = Object.entries(stock);
     
-    let description = '**🏴‍☠️ Welcome to the Underground Blackmarket**\n\n';
-    description += '⚠️ *Psst... looking for something special? I got what you need...*\n\n';
+    const itemsPerPage = 12; // Fit more items per page
+    const totalPages = Math.ceil(stockItems.length / itemsPerPage);
+    
+    // Ensure current page is valid
+    if (currentPage >= totalPages) currentPage = 0;
+    if (currentPage < 0) currentPage = totalPages - 1;
+    
+    const startIndex = currentPage * itemsPerPage;
+    const endIndex = Math.min(startIndex + itemsPerPage, stockItems.length);
+    const pageItems = stockItems.slice(startIndex, endIndex);
+    
+    let description = `**🏴‍☠️ Welcome to the Underground Blackmarket**\n\n`;
+    description += `⚠️ *Psst... looking for something special? I got what you need...*\n\n`;
     description += `💰 **Your Balance:** ${userBalance.toLocaleString()} coins\n\n`;
-    description += '**📦 Today\'s Stock:**\n';
+    description += `**📦 Today's Stock (Page ${currentPage + 1}/${totalPages}):**\n\n`;
     
-    let itemIndex = 1;
-    Object.entries(stock).forEach(([itemId, stockInfo]) => {
+    pageItems.forEach(([itemId, stockInfo], index) => {
         const item = BLACKMARKET_ITEMS[itemId];
+        const itemNumber = startIndex + index + 1;
         const canAfford = userBalance >= stockInfo.price;
         const priceDisplay = canAfford ? `💰 ${stockInfo.price.toLocaleString()}` : `❌ ${stockInfo.price.toLocaleString()}`;
         
-        description += `**${itemIndex}.** ${item.emoji} **${item.name}** - ${priceDisplay}\n`;
-        description += `└ ${item.description}\n`;
-        description += `└ 📦 ${stockInfo.stock} in stock • ⚠️ ${Math.floor(item.risk * 100)}% risk\n`;
-        description += `└ \`%bm ${itemIndex}\` or \`%bm buy ${itemId}\`\n\n`;
-        itemIndex++;
+        description += `**${itemNumber}.** ${item.emoji} **${item.name}** - ${priceDisplay}\n`;
+        description += `└ *${item.description}*\n`;
+        description += `└ 📦 **Stock:** ${stockInfo.stock} • ⚠️ **Risk:** ${Math.floor(item.risk * 100)}%\n`;
+        description += `└ \`%bm ${itemNumber}\` or \`%bm buy ${itemId}\`\n\n`;
     });
     
     description += '⚠️ **Warning:** All purchases carry risk of police detection!\n';
-    description += '🕐 **Stock refreshes daily at midnight**\n';
-    description += '💡 **Quick Buy:** `%bm <number> [amount]`';
+    description += '🕐 **Stock refreshes daily at midnight**\n\n';
+    description += '**📋 Commands:**\n';
+    description += '• \`%bm inventory\` - View your stash\n';
+    description += '• \`%bm use <item>\` - Consume items\n';
+    description += '• \`%bm effects\` - View active effects';
 
     const embed = new EmbedBuilder()
         .setTitle('🏴‍☠️ Underground Blackmarket')
         .setDescription(description)
         .setColor(0x2c2c2c)
-        .setFooter({ text: 'What happens in the blackmarket, stays in the blackmarket...' })
+        .setFooter({ text: `Page ${currentPage + 1}/${totalPages} • What happens in the blackmarket, stays in the blackmarket...` })
         .setTimestamp();
 
-    await sendAsFloofWebhook(message, { embeds: [embed] });
+    // Create navigation buttons
+    const components = [];
+    if (totalPages > 1) {
+        const row = new ActionRowBuilder()
+            .addComponents(
+                new ButtonBuilder()
+                    .setCustomId(`blackmarket_prev_${userId}_${currentPage}`)
+                    .setLabel('⬅️ Previous')
+                    .setStyle(ButtonStyle.Secondary)
+                    .setDisabled(currentPage === 0),
+                new ButtonBuilder()
+                    .setCustomId(`blackmarket_next_${userId}_${currentPage}`)
+                    .setLabel('Next ➡️')
+                    .setStyle(ButtonStyle.Secondary)
+                    .setDisabled(currentPage === totalPages - 1),
+                new ButtonBuilder()
+                    .setCustomId(`blackmarket_refresh_${userId}`)
+                    .setLabel('🔄 Refresh')
+                    .setStyle(ButtonStyle.Primary)
+            );
+        components.push(row);
+    }
+
+    return await sendAsFloofWebhook(message, { 
+        embeds: [embed], 
+        components: components 
+    });
 }
 
 async function handleBuyItem(message, userId, args) {
@@ -356,3 +398,6 @@ async function handleNumberedPurchase(message, userId, itemNumber, amount = 1) {
     const [selectedItemId] = stockItems[itemNumber - 1];
     return await handleBuyItem(message, userId, [selectedItemId, amount.toString()]);
 }
+
+// Export functions for interaction handlers
+module.exports.displayBlackmarket = displayBlackmarket;

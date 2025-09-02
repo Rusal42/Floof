@@ -24,7 +24,7 @@ module.exports = {
             return await sendAsFloofWebhook(message, {
                 embeds: [
                     new EmbedBuilder()
-                        .setDescription(`🚔 You are currently under arrest! You cannot work for another **${remainingMinutes}** minutes.`)
+                        .setDescription(`🚔 **Arrested** | Cannot work for ${remainingMinutes} minutes`)
                         .setColor(0xff0000)
                 ]
             });
@@ -39,7 +39,7 @@ module.exports = {
             return await sendAsFloofWebhook(message, {
                 embeds: [
                     new EmbedBuilder()
-                        .setDescription(`⏰ You need to wait **${timeLeft}** more seconds before working again!`)
+                        .setDescription(`⏰ **Cooldown** | Wait ${timeLeft}s before working again`)
                         .setColor(0xffa500)
                 ]
             });
@@ -53,7 +53,7 @@ module.exports = {
             return await sendAsFloofWebhook(message, {
                 embeds: [
                     new EmbedBuilder()
-                        .setDescription(`❌ You are unemployed! You cannot work without a job.\n\n💼 **Get a job first:**\n• Use \`%jobs\` to browse available positions\n• Use \`%jobs apply <job>\` to apply\n\n💡 **Until then, you can:**\n• \`%beg\` for spare change\n• Gamble with \`%slots\`, \`%blackjack\`, etc.\n• Do crimes like \`%rob\` or \`%attack\``)
+                        .setDescription(`❌ **Unemployed** | Use \`%jobs\` to find work | Try \`%beg\` or \`%slots\` instead`)
                         .setColor(0xff0000)
                 ]
             });
@@ -161,11 +161,11 @@ module.exports = {
         
         description += `\n\n💰 **New Balance:** ${newBalance.toLocaleString()} coins\n⏰ **Next Shift:** Available in 30 seconds`;
 
+        const totalEarnings = earnings;
         const embed = new EmbedBuilder()
-            .setTitle('💼 Work Shift Complete!')
-            .setDescription(description)
-            .setColor(specialEvent ? 0xffd700 : 0x00ff00)
-            .setTimestamp();
+            .setDescription(`💼 **${jobInfo.name}** | +${totalEarnings.toLocaleString()} coins | Balance: ${newBalance.toLocaleString()}${specialEvent ? '\n' + specialEvent.emoji + ' ' + specialEvent.event : ''}`)
+            .setColor(0x00ff00)
+            .setFooter({ text: `Cooldown: 30s` });
 
         await sendAsFloofWebhook(message, { embeds: [embed] });
     }

@@ -46,10 +46,8 @@ module.exports = {
             return await sendAsFloofWebhook(message, {
                 embeds: [
                     new EmbedBuilder()
-                        .setTitle('🎴 Baccarat')
-                        .setDescription('**How to Play:**\n• Bet on Player, Banker, or Tie\n• Closest to 9 wins\n\n**Payouts:** Player 2x | Banker 1.95x | Tie 8x\n\n**Usage:** `%baccarat <bet>`')
+                        .setDescription('🎴 **Baccarat** | Bet: Player/Banker/Tie | Payouts: 2x/1.95x/8x | Min: 100 coins\n`%baccarat <bet>`')
                         .setColor(0x9b59b6)
-                        .setFooter({ text: 'Minimum bet: 100 coins' })
                 ]
             });
         }
@@ -108,16 +106,8 @@ module.exports = {
 
 async function showBettingInterface(message, gameState) {
     const embed = new EmbedBuilder()
-        .setTitle('🎴 Baccarat - Place Your Bet')
-        .setDescription(`**Choose what to bet on:**
-
-👤 **Player** - 2x payout
-🏦 **Banker** - 1.95x payout
-🤝 **Tie** - 8x payout
-
-**Your Bet:** ${gameState.betAmount.toLocaleString()} coins`)
-        .setColor(0x9b59b6)
-        .setFooter({ text: 'Choose your bet and the cards will be dealt!' });
+        .setDescription(`🎴 **Baccarat** | Bet: **${gameState.betAmount.toLocaleString()}** coins\n\n👤 Player (2x) | 🏦 Banker (1.95x) | 🤝 Tie (8x)`)
+        .setColor(0x9b59b6);
 
     const row = new ActionRowBuilder()
         .addComponents(
@@ -176,39 +166,31 @@ async function playBaccaratGame(interaction, gameState, betType) {
 
     // Create result embed
     const embed = new EmbedBuilder()
-        .setTitle('🎴 Baccarat Results')
         .addFields(
             {
-                name: '👤 Player Hand',
-                value: `${formatCards(playerCards)}
-**Total: ${playerTotal}**`,
+                name: '👤 Player',
+                value: `${formatCards(playerCards)}\n**${playerTotal}**`,
                 inline: true
             },
             {
-                name: '🏦 Banker Hand',
-                value: `${formatCards(bankerCards)}
-**Total: ${bankerTotal}**`,
+                name: '🏦 Banker', 
+                value: `${formatCards(bankerCards)}\n**${bankerTotal}**`,
                 inline: true
             },
             {
                 name: '🎯 Result',
-                value: `**Winner: ${winner.toUpperCase()}**
-Your bet: ${betType.toUpperCase()}`,
-                inline: false
+                value: `**${winner.toUpperCase()}** wins\nBet: ${betType.toUpperCase()}`,
+                inline: true
             }
         )
-        .setFooter({ text: `Balance: ${getBalance(gameState.userId).toLocaleString()} coins` })
-        .setTimestamp();
+        .setFooter({ text: `Balance: ${getBalance(gameState.userId).toLocaleString()} coins` });
 
     if (won) {
         embed.setColor(0x00ff00);
-        embed.setDescription(`🎉 **YOU WON!**
-💰 **Winnings:** ${winnings.toLocaleString()} coins
-📈 **Profit:** +${(winnings - gameState.betAmount).toLocaleString()} coins`);
+        embed.setDescription(`🎉 **WON!** +${(winnings - gameState.betAmount).toLocaleString()} coins | Total: ${winnings.toLocaleString()}`);
     } else {
         embed.setColor(0xff0000);
-        embed.setDescription(`💸 **You Lost!**
-📉 **Lost:** ${gameState.betAmount.toLocaleString()} coins`);
+        embed.setDescription(`💸 **LOST** -${gameState.betAmount.toLocaleString()} coins`);
     }
 
     // Clean up game

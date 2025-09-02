@@ -49,6 +49,73 @@ const BUSINESS_TYPES = {
         max_employees: 20,
         employee_cost: 1200,
         description: 'Elite financial institution'
+    },
+    // ILLEGAL BUSINESSES
+    drug_lab: {
+        name: 'Drug Laboratory',
+        emoji: '🧪',
+        purchase_price: 200000,
+        daily_income: { min: 5000, max: 12000 },
+        max_employees: 6,
+        employee_cost: 600,
+        description: 'Underground drug manufacturing facility',
+        illegal: true,
+        risk: 0.15
+    },
+    chop_shop: {
+        name: 'Chop Shop',
+        emoji: '🚗',
+        purchase_price: 120000,
+        daily_income: { min: 3000, max: 8000 },
+        max_employees: 4,
+        employee_cost: 400,
+        description: 'Stolen vehicle dismantling operation',
+        illegal: true,
+        risk: 0.12
+    },
+    counterfeit_shop: {
+        name: 'Counterfeit Shop',
+        emoji: '💵',
+        purchase_price: 300000,
+        daily_income: { min: 6000, max: 15000 },
+        max_employees: 8,
+        employee_cost: 700,
+        description: 'Fake money and document production',
+        illegal: true,
+        risk: 0.20
+    },
+    smuggling_ring: {
+        name: 'Smuggling Ring',
+        emoji: '📦',
+        purchase_price: 400000,
+        daily_income: { min: 8000, max: 18000 },
+        max_employees: 10,
+        employee_cost: 800,
+        description: 'International contraband trafficking',
+        illegal: true,
+        risk: 0.25
+    },
+    underground_casino: {
+        name: 'Underground Casino',
+        emoji: '🎲',
+        purchase_price: 600000,
+        daily_income: { min: 12000, max: 25000 },
+        max_employees: 12,
+        employee_cost: 900,
+        description: 'Illegal high-stakes gambling den',
+        illegal: true,
+        risk: 0.18
+    },
+    money_laundering: {
+        name: 'Money Laundering Front',
+        emoji: '🏧',
+        purchase_price: 800000,
+        daily_income: { min: 15000, max: 35000 },
+        max_employees: 15,
+        employee_cost: 1000,
+        description: 'Cleans dirty money through legitimate businesses',
+        illegal: true,
+        risk: 0.30
     }
 };
 
@@ -86,6 +153,66 @@ const EMPLOYEE_TYPES = {
         daily_wage: 400,
         tax_reduction: 0.15,
         description: 'Reduces tax burden'
+    },
+    // CRIMINAL EMPLOYEES
+    enforcer: {
+        name: 'Enforcer',
+        emoji: '🔫',
+        hire_cost: 5000,
+        daily_wage: 800,
+        income_boost: 0.15,
+        robbery_protection: 0.40,
+        description: 'Intimidates competitors and protects operations',
+        criminal: true
+    },
+    chemist: {
+        name: 'Chemist',
+        emoji: '⚗️',
+        hire_cost: 8000,
+        daily_wage: 1200,
+        income_boost: 0.30,
+        description: 'Improves drug quality and production',
+        criminal: true,
+        business_types: ['drug_lab']
+    },
+    hacker: {
+        name: 'Hacker',
+        emoji: '💻',
+        hire_cost: 6000,
+        daily_wage: 1000,
+        income_boost: 0.25,
+        risk_reduction: 0.20,
+        description: 'Covers digital tracks and launders money',
+        criminal: true
+    },
+    corrupt_cop: {
+        name: 'Corrupt Cop',
+        emoji: '👮‍♂️',
+        hire_cost: 15000,
+        daily_wage: 2000,
+        risk_reduction: 0.50,
+        description: 'Provides police protection and warnings',
+        criminal: true
+    },
+    smuggler: {
+        name: 'Smuggler',
+        emoji: '🚚',
+        hire_cost: 7000,
+        daily_wage: 1100,
+        income_boost: 0.20,
+        description: 'Handles transportation of illegal goods',
+        criminal: true,
+        business_types: ['smuggling_ring', 'drug_lab']
+    },
+    forger: {
+        name: 'Forger',
+        emoji: '🖋️',
+        hire_cost: 10000,
+        daily_wage: 1500,
+        income_boost: 0.35,
+        description: 'Creates fake documents and currency',
+        criminal: true,
+        business_types: ['counterfeit_shop', 'money_laundering']
     }
 };
 
@@ -330,7 +457,7 @@ function canRobBusiness(businessType) {
 }
 
 // Calculate business income for specific business
-function calculateSpecificBusinessIncome(userId, businessType) {
+function calculateBusinessIncome(userId, businessType) {
     const business = BUSINESS_TYPES[businessType];
     const userData = getUserBusinessData(userId);
     const userBusiness = userData.businesses[businessType];
@@ -343,36 +470,153 @@ function calculateSpecificBusinessIncome(userId, businessType) {
     const timeSinceLastCollection = now - userBusiness.last_income_collection;
     const hoursElapsed = timeSinceLastCollection / (1000 * 60 * 60);
     
-    // Calculate base income
-    let netIncome = business.base_income * hoursElapsed;
+    // Calculate base income using random value within range
+    const baseIncomePerHour = (business.daily_income.min + Math.random() * (business.daily_income.max - business.daily_income.min)) / 24;
+    let grossIncome = baseIncomePerHour * hoursElapsed;
     
-    // Apply employee bonuses
-    userData.employees.forEach(employee => {
-        const employeeInfo = EMPLOYEE_TYPES[employee.type];
-        if (employeeInfo && employeeInfo.income_boost) {
-            netIncome *= (1 + employeeInfo.income_boost);
+    // Store original gross income for raid calculations
+    const originalGrossIncome = grossIncome;
+    
+    // Check for police raids on illegal businesses
+    if (business.illegal && Math.random() < business.risk * 0.05) {
+        // Check if bodyguards can fight off the police
+        let bodyguardDefense = false;
+        let defenseStory = '';
+        let lossReduction = 0;
+        let businessBodyguards = [];
+        
+        // Get bodyguards assigned to business protection
+        const { getCrimeData } = require('./crime-manager');
+        const crimeData = getCrimeData(userId);
+        const userBodyguards = crimeData.bodyguards || {};
+        
+        Object.entries(userBodyguards).forEach(([type, data]) => {
+            if (data.assignment === 'business') {
+                const protection = getBusinessBodyguardInfo(type);
+                if (protection) {
+                    businessBodyguards.push({ type, count: data.count, ...protection });
+                }
+            }
+        });
+        
+        if (businessBodyguards.length > 0) {
+            const totalBodyguards = businessBodyguards.reduce((sum, bg) => sum + bg.count, 0);
+            let totalDefense = 0;
+            
+            businessBodyguards.forEach(bg => {
+                totalDefense += bg.attack_reduction * bg.count;
+            });
+            
+            const defenseChance = Math.min(0.7, totalDefense); // Max 70% defense chance
+            
+            if (Math.random() < defenseChance) {
+                bodyguardDefense = true;
+                lossReduction = Math.min(0.8, totalDefense); // Max 80% loss reduction
+                
+                const bodyguardList = businessBodyguards.map(bg => 
+                    `${bg.emoji} ${bg.name} x${bg.count}`
+                ).join(', ');
+                
+                const defenseStories = [
+                    `🔫 Your ${totalBodyguards} bodyguards (${bodyguardList}) engage in a fierce gunfight with the police! Bullets fly as they create a defensive perimeter around your operation.`,
+                    `💥 Your security team opens fire on the raid squad! The ${bodyguardList} unleash hell with automatic weapons as muzzle flashes light up the darkness.`,
+                    `🚨 "CONTACT! CONTACT!" Your ${bodyguardList} scream as they lay down suppressive fire. The police are forced to take cover behind their vehicles.`,
+                    `⚡ Your enforcers spring into action! The ${bodyguardList} use military tactics, forcing the police to call for backup as the situation escalates.`,
+                    `🔥 A full-scale firefight erupts! Your ${totalBodyguards} bodyguards (${bodyguardList}) overwhelm the raid team with superior firepower and training.`
+                ];
+                defenseStory = defenseStories[Math.floor(Math.random() * defenseStories.length)];
+            } else {
+                const bodyguardList = businessBodyguards.map(bg => 
+                    `${bg.emoji} ${bg.name} x${bg.count}`
+                ).join(', ');
+                
+                const failStories = [
+                    `💀 Your ${totalBodyguards} bodyguards (${bodyguardList}) are overwhelmed by the tactical response team! Despite their resistance, they're outgunned and outmaneuvered.`,
+                    `🚁 Police helicopters and SWAT teams surround your operation. Your ${bodyguardList} fight valiantly but are eventually subdued by superior numbers.`,
+                    `⚰️ The raid was a setup! Your ${bodyguardList} walk into an ambush and are quickly neutralized by federal agents with superior firepower.`,
+                    `🩸 Your security team (${bodyguardList}) puts up a fight but the police came prepared. One by one, your bodyguards fall to tactical superiority.`
+                ];
+                defenseStory = failStories[Math.floor(Math.random() * failStories.length)];
+            }
         }
-    });
+        
+        try {
+            const { arrestUser } = require('./crime-manager');
+            const baseArrestTime = 30 + Math.random() * 60; // 30-90 minutes
+            const arrestTime = bodyguardDefense ? baseArrestTime * 0.5 : baseArrestTime; // Reduced if defended
+            const baseBail = Math.floor(grossIncome * 2);
+            const bailAmount = bodyguardDefense ? Math.floor(baseBail * 0.6) : baseBail; // Lower bail if defended
+            const actualLoss = bodyguardDefense ? Math.floor(grossIncome * (1 - lossReduction)) : grossIncome;
+            
+            if (!bodyguardDefense) {
+                arrestUser(userId, arrestTime * 60 * 1000, 'Illegal Business Operation', bailAmount);
+            }
+            
+            return {
+                success: false,
+                reason: 'raided',
+                bodyguard_defense: bodyguardDefense,
+                defense_story: defenseStory,
+                arrest_time: bodyguardDefense ? 0 : Math.floor(arrestTime),
+                bail_amount: bodyguardDefense ? 0 : bailAmount,
+                lost_income: actualLoss,
+                bodyguards_used: userBusiness.bodyguards ? userBusiness.bodyguards.length : 0
+            };
+        } catch (error) {
+            // If crime manager not available, continue without raid
+            console.log('Crime manager not available for business raids');
+        }
+    }
     
-    // Subtract employee wages
-    userData.employees.forEach(employee => {
-        const employeeInfo = EMPLOYEE_TYPES[employee.type];
+    // Apply employee bonuses to the specific business
+    let incomeMultiplier = 1.0;
+    let riskReduction = 0;
+    userBusiness.employees.forEach(emp => {
+        const employeeInfo = EMPLOYEE_TYPES[emp.type];
         if (employeeInfo) {
-            netIncome -= employeeInfo.wage * hoursElapsed;
+            if (employeeInfo.income_boost) {
+                incomeMultiplier += employeeInfo.income_boost;
+            }
+            if (employeeInfo.risk_reduction && business.illegal) {
+                riskReduction += employeeInfo.risk_reduction;
+            }
         }
     });
     
-    // Subtract bodyguard costs
-    userData.bodyguards.forEach(bodyguard => {
+    // Apply risk reduction for illegal businesses
+    if (business.illegal) {
+        const finalRisk = Math.max(0.01, business.risk * (1 - riskReduction));
+        // Risk reduction affects raid chance but doesn't eliminate it completely
+    }
+    
+    grossIncome *= incomeMultiplier;
+    
+    // Calculate employee wages for this business
+    let employeeWages = 0;
+    userBusiness.employees.forEach(emp => {
+        const employeeInfo = EMPLOYEE_TYPES[emp.type];
+        if (employeeInfo) {
+            employeeWages += (employeeInfo.daily_wage / 24) * hoursElapsed;
+        }
+    });
+    
+    // Calculate bodyguard wages (shared across all businesses)
+    let bodyguardWages = 0;
+    Object.values(userData.bodyguards).forEach(bodyguard => {
         const bodyguardInfo = BODYGUARD_TYPES[bodyguard.type];
         if (bodyguardInfo) {
-            netIncome -= bodyguardInfo.wage * hoursElapsed;
+            bodyguardWages += (bodyguardInfo.daily_wage / 24) * hoursElapsed;
         }
     });
+    
+    const netIncome = Math.max(0, grossIncome - employeeWages - bodyguardWages);
     
     return {
         success: true,
-        net_income: Math.floor(Math.max(0, netIncome)),
+        gross_income: Math.floor(grossIncome),
+        employee_wages: Math.floor(employeeWages),
+        bodyguard_wages: Math.floor(bodyguardWages),
+        net_income: Math.floor(netIncome),
         hours_elapsed: Math.floor(hoursElapsed * 10) / 10
     };
 }
@@ -517,18 +761,40 @@ function formatBusinessDisplay(userId) {
     return display;
 }
 
+function getBusinessBodyguardInfo(type) {
+    const bodyguardTypes = {
+        basic_bodyguard: {
+            name: 'Basic Bodyguard',
+            emoji: '👨‍💼',
+            attack_reduction: 0.20
+        },
+        professional_bodyguard: {
+            name: 'Professional Bodyguard',
+            emoji: '🕴️',
+            attack_reduction: 0.40
+        },
+        elite_bodyguard: {
+            name: 'Elite Bodyguard',
+            emoji: '🥷',
+            attack_reduction: 0.60
+        }
+    };
+    
+    return bodyguardTypes[type];
+}
+
 module.exports = {
     BUSINESS_TYPES,
     EMPLOYEE_TYPES,
     BODYGUARD_TYPES,
     getUserBusinessData,
     saveUserBusinessData,
-    buyBusiness,
+    purchaseBusiness,
     hireEmployee,
     hireBodyguard,
-    collectIncome,
+    collectBusinessIncome,
     calculateTotalBusinessIncome,
-    calculateSpecificBusinessIncome,
+    calculateBusinessIncome,
     getBusinessProtection,
     getBodyguardProtection,
     hasBusinessSecurity,

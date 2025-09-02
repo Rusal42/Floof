@@ -276,7 +276,12 @@ client.on('interactionCreate', async (interaction) => {
     if (interaction.customId.startsWith('baccarat_') || 
         interaction.customId.startsWith('keno_') || 
         interaction.customId.startsWith('wheel_') || 
-        interaction.customId.startsWith('plinko_')) {
+        interaction.customId.startsWith('plinko_') ||
+        interaction.customId.startsWith('inventory_') ||
+        interaction.customId.startsWith('bodyguards_') ||
+        interaction.customId.startsWith('business_') ||
+        interaction.customId.startsWith('races_') ||
+        interaction.customId.startsWith('floofgambling_')) {
         const { handleInteraction } = require('./handlers/gambling-interaction-handler');
         await handleInteraction(interaction);
         return;
@@ -292,6 +297,41 @@ client.on('interactionCreate', async (interaction) => {
     // Handle snipe navigation buttons
     if (interaction.customId.startsWith('snipe_') || interaction.customId.startsWith('bulk_')) {
         await handleSnipeInteraction(interaction);
+        return;
+    }
+    
+    // Handle blackmarket pagination buttons
+    if (interaction.customId.startsWith('blackmarket_')) {
+        const { handleBlackmarketInteraction } = require('./handlers/blackmarket-interaction-handler');
+        await handleBlackmarketInteraction(interaction);
+        return;
+    }
+    
+    // Handle shop pagination buttons
+    if (interaction.customId.startsWith('shop_')) {
+        const { handleShopInteraction } = require('./handlers/shop-interaction-handler');
+        await handleShopInteraction(interaction);
+        return;
+    }
+    
+    // Handle cartel pagination buttons
+    if (interaction.customId.startsWith('cartel_')) {
+        const { handleCartelInteraction } = require('./handlers/cartel-interaction-handler');
+        await handleCartelInteraction(interaction);
+        return;
+    }
+    
+    // Handle heist pagination buttons
+    if (interaction.customId.startsWith('heist_')) {
+        const { handleHeistInteraction } = require('./handlers/heist-interaction-handler');
+        await handleHeistInteraction(interaction);
+        return;
+    }
+    
+    // Handle petshop pagination buttons
+    if (interaction.customId.startsWith('petshop_')) {
+        const { handlePetshopInteraction } = require('./handlers/petshop-interaction-handler');
+        await handlePetshopInteraction(interaction);
         return;
     }
     

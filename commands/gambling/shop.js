@@ -82,7 +82,7 @@ module.exports = {
         }
 
         if (args.length === 0) {
-            return await displayShopCategories(message);
+            return await displayShopCategories(message, 0);
         }
 
         const category = args[0].toLowerCase();
@@ -131,66 +131,156 @@ module.exports = {
     }
 };
 
-async function displayShopCategories(message) {
-    let description = '**Welcome to Floof\'s Armory & Supply Store!** 🏪\n\n';
-    description += 'Choose a category to browse items:\n\n';
+// Get ammo type for weapons
+function getAmmoType(weaponId) {
+    const ammoMap = {
+        pistol: 'bullets',
+        rifle: 'bullets', 
+        crossbow: 'arrows',
+        flamethrower: 'fuel',
+        laser: 'energy',
+        speaker: 'sound'
+    };
+    return ammoMap[weaponId];
+}
+
+async function displayShopCategories(message, currentPage = 0) {
+    const userId = message.author.id;
+    const userBalance = getBalance(userId);
     
-    let categoryIndex = 1;
+    // Get all items across all categories
+    const allItems = [];
     for (const [categoryId, category] of Object.entries(SHOP_ITEMS)) {
-        const itemCount = Object.keys(category.items).length;
-        description += `**${categoryIndex}.** ${category.emoji} **${category.name}** (${itemCount} items)\n`;
-        description += `└ \`%s ${categoryId}\` or \`%s ${categoryIndex}\`\n\n`;
-        categoryIndex++;
+        for (const [itemId, shopItem] of Object.entries(category.items)) {
+            const itemInfo = getItemInfo(itemId);
+            allItems.push({
+                itemId,
+                shopItem,
+                categoryId,
+                itemInfo,
+                category
+            });
+        }
     }
     
-    description += '💡 **Quick Buy Options:**\n';
-    description += '• `%s buy <item> [amount]` - Buy by name\n';
-    description += '• `%s <number> [amount]` - Buy by item number\n';
-    description += '• `%s <category> <number>` - Buy from category\n\n';
-    description += '💰 **Your Balance:** ' + getBalance(message.author.id).toLocaleString() + ' coins';
+    const itemsPerPage = 12;
+    const totalPages = Math.ceil(allItems.length / itemsPerPage);
+    
+    // Ensure current page is valid
+    if (currentPage >= totalPages) currentPage = 0;
+    if (currentPage < 0) currentPage = totalPages - 1;
+    
+    const startIndex = currentPage * itemsPerPage;
+    const endIndex = Math.min(startIndex + itemsPerPage, allItems.length);
+    const pageItems = allItems.slice(startIndex, endIndex);
+    
+    let description = `**🏪 Welcome to Floof's Armory & Shop**\n\n`;
+    description += `💰 **Your Balance:** ${userBalance.toLocaleString()} coins\n\n`;
+    description += `**📦 Available Items (Page ${currentPage + 1}/${totalPages}):**\n\n`;
+    
+    pageItems.forEach((item, index) => {
+        const itemNumber = startIndex + index + 1;
+        const canAfford = userBalance >= item.shopItem.price;
+        const priceDisplay = canAfford ? `💰 ${item.shopItem.price.toLocaleString()}` : `❌ ${item.shopItem.price.toLocaleString()}`;
+        
+        description += `**${itemNumber}.** ${item.itemInfo.emoji} **${item.itemInfo.name}** - ${priceDisplay}`;
+        
+        if (item.shopItem.bundle) {
+            description += ` (${item.shopItem.bundle}x bundle)`;
+        }
+        
+        description += `\n└ *${item.shopItem.description}*\n`;
+        description += `└ 📂 **Category:** ${item.category.name}`;
+        
+        // Show ammo requirements for weapons
+        if (item.categoryId === 'weapons') {
+            const ammoType = getAmmoType(item.itemId);
+            if (ammoType) {
+                description += ` • 🔸 **Ammo:** ${ammoType}`;
+            }
+        }
+        
+        description += `\n└ \`%shop ${itemNumber}\` or \`%shop buy ${item.itemId}\`\n\n`;
+    });
+    
+    description += '**📋 Commands:**\n';
+    description += '• `%shop <category>` - Browse specific category\n';
+    description += '• `%shop buy <item> [amount]` - Purchase items\n';
+    description += '• `%inventory` - View your items';
 
     const embed = new EmbedBuilder()
-        .setTitle('🏪 Floof\'s Armory & Supply Store')
+        .setTitle('🏪 Floof\'s Armory & Shop')
         .setDescription(description)
         .setColor(0x3498db)
-        .setFooter({ text: 'All sales are final! Choose wisely.' })
+        .setFooter({ text: `Page ${currentPage + 1}/${totalPages} • All sales final` })
         .setTimestamp();
 
-    await sendAsFloofWebhook(message, { embeds: [embed] });
+    // Create navigation buttons if multiple pages
+    const components = [];
+    if (totalPages > 1) {
+        const row = new ActionRowBuilder()
+            .addComponents(
+                new ButtonBuilder()
+                    .setCustomId(`shop_prev_${userId}_${currentPage}`)
+                    .setLabel('⬅️ Previous')
+                    .setStyle(ButtonStyle.Secondary)
+                    .setDisabled(currentPage === 0),
+                new ButtonBuilder()
+                    .setCustomId(`shop_next_${userId}_${currentPage}`)
+                    .setLabel('Next ➡️')
+                    .setStyle(ButtonStyle.Secondary)
+                    .setDisabled(currentPage === totalPages - 1),
+                new ButtonBuilder()
+                    .setCustomId(`shop_refresh_${userId}`)
+                    .setLabel('🔄 Refresh')
+                    .setStyle(ButtonStyle.Primary)
+            );
+        components.push(row);
+    }
+
+    await sendAsFloofWebhook(message, { 
+        embeds: [embed],
+        components: components
+    });
 }
 
 async function displayCategory(message, categoryId) {
     const category = SHOP_ITEMS[categoryId];
     const userBalance = getBalance(message.author.id);
     
-    let description = `**${category.name}**\n\n`;
+    let description = `${category.emoji} **${category.name}** | Balance: ${userBalance.toLocaleString()}\n\n`;
     
     let itemIndex = 1;
     for (const [itemId, shopItem] of Object.entries(category.items)) {
         const itemInfo = getItemInfo(itemId);
         const canAfford = userBalance >= shopItem.price;
-        const priceDisplay = canAfford ? `💰 ${shopItem.price.toLocaleString()}` : `❌ ${shopItem.price.toLocaleString()}`;
+        const priceIcon = canAfford ? '💰' : '❌';
         
-        description += `**${itemIndex}.** ${itemInfo.emoji} **${itemInfo.name}**\n`;
-        description += `└ ${shopItem.description}\n`;
-        description += `└ ${priceDisplay} coins`;
+        description += `**${itemIndex}.** ${itemInfo.emoji} **${itemInfo.name}** | ${priceIcon}${shopItem.price.toLocaleString()}`;
         
         if (shopItem.bundle) {
             description += ` (${shopItem.bundle}x)`;
         }
         
-        description += `\n└ \`%s ${categoryId} ${itemIndex}\` or \`%s buy ${itemId}\`\n\n`;
+        description += `\n└ ${shopItem.description}`;
+        
+        // Show ammo requirements for weapons
+        if (categoryId === 'weapons') {
+            const ammoType = getAmmoType(itemId);
+            if (ammoType) {
+                description += ` | Ammo: ${ammoType}`;
+            }
+        }
+        
+        description += `\n\n`;
         itemIndex++;
     }
     
-    description += `💰 **Your Balance:** ${userBalance.toLocaleString()} coins`;
+    description += `\`%s ${categoryId} <number>\` or \`%s buy <item>\``;
 
     const embed = new EmbedBuilder()
-        .setTitle(`🏪 ${category.name}`)
         .setDescription(description)
-        .setColor(0x3498db)
-        .setFooter({ text: 'Use %s <category> <number> or %s buy <item> to purchase' })
-        .setTimestamp();
+        .setColor(0x3498db);
 
     await sendAsFloofWebhook(message, { embeds: [embed] });
 }
@@ -200,7 +290,7 @@ async function handlePurchase(message, userId, itemId, amount = 1) {
         return await sendAsFloofWebhook(message, {
             embeds: [
                 new EmbedBuilder()
-                    .setDescription('❌ Invalid amount! You can buy 1-100 items at a time.')
+                    .setDescription('❌ **Invalid Amount** | Range: 1-100')
                     .setColor(0xff0000)
             ]
         });
@@ -222,7 +312,7 @@ async function handlePurchase(message, userId, itemId, amount = 1) {
         return await sendAsFloofWebhook(message, {
             embeds: [
                 new EmbedBuilder()
-                    .setDescription('❌ Item not found in shop! Use `%shop` to see available items.')
+                    .setDescription('❌ **Item Not Found** | Use `%shop` to browse')
                     .setColor(0xff0000)
             ]
         });
@@ -355,3 +445,6 @@ async function handleCategoryNumberedPurchase(message, userId, categoryId, itemN
     const selectedItemId = items[itemNumber - 1];
     return await handlePurchase(message, userId, selectedItemId, amount);
 }
+
+// Export functions for interaction handlers
+module.exports.displayShopCategories = displayShopCategories;

@@ -46,10 +46,8 @@ module.exports = {
             return await sendAsFloofWebhook(message, {
                 embeds: [
                     new EmbedBuilder()
-                        .setTitle('🎱 Keno')
-                        .setDescription('**How to Play:**\n• Pick 5 numbers from 1-20\n• 10 numbers drawn\n\n**Payouts:** 3 matches = 2x | 4 matches = 5x | 5 matches = 20x\n\n**Usage:** `%keno <bet>`')
+                        .setDescription('🎱 **Keno** | Pick 5 from 1-20 | Payouts: 3=2x 4=5x 5=20x | Min: 100\n`%keno <bet>`')
                         .setColor(0xf39c12)
-                        .setFooter({ text: 'Minimum bet: 100 coins' })
                 ]
             });
         }

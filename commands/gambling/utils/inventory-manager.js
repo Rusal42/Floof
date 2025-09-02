@@ -36,7 +36,35 @@ const ITEM_TYPES = {
     // Special Items
     'briefcase': { type: 'special', name: 'Briefcase', emoji: '💼' },
     'lockpick': { type: 'tool', name: 'Lockpick', emoji: '🔓' },
-    'smoke_grenade': { type: 'tool', name: 'Smoke Grenade', emoji: '💨' }
+    'smoke_grenade': { type: 'tool', name: 'Smoke Grenade', emoji: '💨' },
+    
+    // Smuggling Items
+    'fake_id': { type: 'document', name: 'Fake ID', emoji: '🆔' },
+    'fake_passport': { type: 'document', name: 'Fake Passport', emoji: '📘' },
+    'bribe_money': { type: 'currency', name: 'Bribe Money', emoji: '💵' },
+    'pilot_license': { type: 'document', name: 'Pilot License', emoji: '✈️' },
+    
+    // Cartel Items
+    'chemicals': { type: 'material', name: 'Chemical Supplies', emoji: '🧪' },
+    'lab_equipment': { type: 'equipment', name: 'Lab Equipment', emoji: '⚗️' },
+    'vehicles': { type: 'transport', name: 'Transport Vehicles', emoji: '🚛' },
+    'corrupt_contacts': { type: 'connection', name: 'Corrupt Contacts', emoji: '🤝' },
+    'cartel_connections': { type: 'connection', name: 'Cartel Connections', emoji: '🌐' },
+    
+    // Blackmarket Items (drugs and illegal goods)
+    'weed': { type: 'drug', name: 'Cannabis', emoji: '🌿' },
+    'cocaine': { type: 'drug', name: 'Cocaine', emoji: '❄️' },
+    'lsd': { type: 'drug', name: 'LSD', emoji: '🌈' },
+    'heroin': { type: 'drug', name: 'Heroin', emoji: '💉' },
+    'sleeping_pills': { type: 'drug', name: 'Sleeping Pills', emoji: '😴' },
+    'opioids': { type: 'drug', name: 'Opioids', emoji: '💊' },
+    'steroids': { type: 'drug', name: 'Steroids', emoji: '💪' },
+    'adrenaline': { type: 'drug', name: 'Adrenaline Shot', emoji: '⚡' },
+    'whiskey': { type: 'alcohol', name: 'Whiskey', emoji: '🥃' },
+    'vodka': { type: 'alcohol', name: 'Vodka', emoji: '🍸' },
+    'counterfeit_money': { type: 'illegal', name: 'Counterfeit Money', emoji: '💵' },
+    'stolen_goods': { type: 'illegal', name: 'Stolen Goods', emoji: '💎' },
+    'police_scanner': { type: 'tool', name: 'Police Scanner', emoji: '📻' }
 };
 
 function loadInventories() {

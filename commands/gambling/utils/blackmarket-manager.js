@@ -155,6 +155,35 @@ const BLACKMARKET_ITEMS = {
         effects: { raid_warning: true, duration: 120 },
         description: 'Warns of incoming police raids',
         risk: 0.1
+    },
+    
+    // Bodyguards for hire
+    basic_bodyguard: {
+        name: 'Basic Bodyguard',
+        emoji: '👨‍💼',
+        price: { min: 5000, max: 7000 },
+        type: 'bodyguard',
+        effects: { protection_level: 1, attack_reduction: 0.20 },
+        description: 'Basic personal protection - reduces attack damage by 20%',
+        risk: 0.05
+    },
+    professional_bodyguard: {
+        name: 'Professional Bodyguard',
+        emoji: '🕴️',
+        price: { min: 15000, max: 20000 },
+        type: 'bodyguard',
+        effects: { protection_level: 2, attack_reduction: 0.40 },
+        description: 'Experienced security professional - reduces attack damage by 40%',
+        risk: 0.08
+    },
+    elite_bodyguard: {
+        name: 'Elite Bodyguard',
+        emoji: '🥷',
+        price: { min: 50000, max: 70000 },
+        type: 'bodyguard',
+        effects: { protection_level: 3, attack_reduction: 0.60 },
+        description: 'Military-trained protection specialist - reduces attack damage by 60%',
+        risk: 0.12
     }
 };
 

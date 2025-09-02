@@ -473,9 +473,11 @@ module.exports = {
     BANKS,
     BUSINESSES,
     DRUG_DEALERS,
-    NPC_FRIENDS,
+    loadCrimeData,
+    saveCrimeData,
     getUserCrimeData,
     saveUserCrimeData,
+    getCrimeData: getUserCrimeData, // Add alias for compatibility
     attemptCrime,
     buyFromDealer,
     attemptNPCBail,

@@ -8,16 +8,17 @@ const {
     attemptCrime,
     formatCrimeStats
 } = require('./utils/crime-manager');
+const { robPlayerBusiness } = require('./rob-player-business');
 
 // Robbery cooldowns
 const robberyCooldowns = {};
 
 module.exports = {
     name: 'rob',
-    description: 'Rob banks or businesses for big payouts - but beware of arrest!',
-    usage: '%rob [bank/business] [target] | %rob stats',
+    description: 'Rob banks, businesses, or other players\' businesses - but beware of arrest!',
+    usage: '%rob [target/@user] | %rob stats',
     category: 'gambling',
-    aliases: ['robbery', 'heist', 'steal', 'r', 'bank'],
+    aliases: ['robbery', 'heist', 'steal', 'r'],
     cooldown: 15,
 
     async execute(message, args) {
@@ -85,27 +86,72 @@ async function displayRobberyMenu(message, userId) {
     description += `📊 **Success Rate:** ${crimeData.total_crimes > 0 ? Math.floor((crimeData.successful_crimes / crimeData.total_crimes) * 100) : 0}%\n\n`;
     
     description += '**🏦 Banks Available:**\n';
+    let targetIndex = 1;
     Object.entries(BANKS).forEach(([bankId, bank]) => {
-        const riskLevel = '⚠️'.repeat(bank.security_level);
-        description += `${bank.emoji} **${bank.name}** ${riskLevel}\n`;
-        description += `└ 💰 ${bank.payout.min.toLocaleString()} - ${bank.payout.max.toLocaleString()} coins\n`;
-        description += `└ 🚔 ${Math.floor(bank.arrest_chance * 100)}% arrest chance\n`;
-        description += `└ \`%rob bank ${bankId}\`\n\n`;
-    });
-    
-    description += '**🏪 Businesses Available:**\n';
-    let bankIndex = 1;
-    Object.entries(BANKS).forEach(([bankId, bank]) => {
-        description += `**${bankIndex}.** ${bank.emoji} **${bank.name}**\n`;
-        description += `└ 💰 Payout: ${bank.min_payout.toLocaleString()}-${bank.max_payout.toLocaleString()} coins\n`;
-        description += `└ 🚔 Risk: ${Math.floor((1 - bank.success_chance) * 100)}%\n`;
+        description += `**${targetIndex}.** ${bank.emoji} **${bank.name}**\n`;
+        description += `└ 💰 Payout: ${bank.payout.min.toLocaleString()}-${bank.payout.max.toLocaleString()} coins\n`;
+        description += `└ 🚔 Risk: ${Math.floor(bank.arrest_chance * 100)}%\n`;
         description += `└ ${bank.description}\n`;
-        description += `└ \`%r ${bankIndex}\` or \`%r ${bankId}\`\n\n`;
-        bankIndex++;
+        description += `└ \`%r ${targetIndex}\` or \`%r ${bankId}\`\n\n`;
+        targetIndex++;
     });
+
+    description += '**🏪 Businesses Available:**\n';
+    Object.entries(BUSINESSES).forEach(([businessId, business]) => {
+        description += `**${targetIndex}.** ${business.emoji} **${business.name}**\n`;
+        description += `└ 💰 Payout: ${business.payout.min.toLocaleString()}-${business.payout.max.toLocaleString()} coins\n`;
+        description += `└ 🚔 Risk: ${Math.floor(business.arrest_chance * 100)}%\n`;
+        description += `└ ${business.description}\n`;
+        description += `└ \`%r ${targetIndex}\` or \`%r ${businessId}\`\n\n`;
+        targetIndex++;
+    });
+
+    // Add player businesses section
+    try {
+        const { getUserBusinessData } = require('./utils/business-manager');
+        const allUsers = await message.guild.members.fetch();
+        const playerBusinesses = [];
+        
+        for (const [memberId, member] of allUsers) {
+            if (memberId === userId) continue; // Can't rob yourself
+            try {
+                const businessData = getUserBusinessData(memberId);
+                if (businessData && businessData.businesses && businessData.businesses.length > 0) {
+                    businessData.businesses.forEach(business => {
+                        if (business.status === 'active') {
+                            playerBusinesses.push({
+                                ownerId: memberId,
+                                ownerName: member.displayName,
+                                business: business
+                            });
+                        }
+                    });
+                }
+            } catch (err) {
+                // Skip users with no business data
+                continue;
+            }
+        }
+
+        if (playerBusinesses.length > 0) {
+            description += '**👥 Player Businesses:**\n';
+            playerBusinesses.slice(0, 5).forEach((playerBiz, index) => { // Limit to 5 for display
+                const estimatedValue = playerBiz.business.daily_income ? Math.floor(playerBiz.business.daily_income * 7) : 5000;
+                description += `**${targetIndex}.** ${playerBiz.business.emoji || '🏢'} **${playerBiz.ownerName}'s ${playerBiz.business.name}**\n`;
+                description += `└ 💰 Estimated Value: ${estimatedValue.toLocaleString()} coins\n`;
+                description += `└ 🚔 Risk: 25%\n`;
+                description += `└ Rob another player's business\n`;
+                description += `└ \`%r @${playerBiz.ownerName}\`\n\n`;
+                targetIndex++;
+            });
+        }
+    } catch (error) {
+        // If business system isn't available, skip player businesses
+        console.log('Business system not available for player robberies');
+    }
     
     description += '⚠️ **Warning:** All robberies carry risk of arrest!\n';
-    description += '💡 **Quick Rob:** `%r <number>` or `%r <name>`\n';
+    description += '💡 **Quick Rob:** `%r <number>`, `%r <name>`, or `%r @user`\n';
     description += '📈 Use `%rob stats` to view your criminal record.';
 
     const embed = new EmbedBuilder()
@@ -118,25 +164,43 @@ async function displayRobberyMenu(message, userId) {
     await sendAsFloofWebhook(message, { embeds: [embed] });
 }
 
-async function handleBankRobbery(message, userId, args) {
-    if (args.length < 1) {
+async function robTarget(message, args) {
+    const userId = message.author.id;
+    const guildId = message.guild.id;
+
+    if (!args.length) {
         return await sendAsFloofWebhook(message, {
             embeds: [
                 new EmbedBuilder()
-                    .setDescription('❌ Please specify which bank to rob!\nExample: `%rob bank local_credit_union`')
+                    .setDescription('❌ Please specify a target to rob!')
                     .setColor(0xff0000)
             ]
         });
     }
 
-    const bankId = args[0].toLowerCase();
-    const bank = BANKS[bankId];
+    const targetInput = args[0];
     
-    if (!bank) {
+    // Check if robbing a player's business (mentioned user)
+    if (message.mentions.users.size > 0) {
+        const targetUser = message.mentions.users.first();
+        return await robPlayerBusiness(message, targetUser.id);
+    }
+
+    // Check banks first
+    let target = BANKS[targetInput];
+    let targetType = 'bank';
+    
+    // If not a bank, check businesses
+    if (!target) {
+        target = BUSINESSES[targetInput];
+        targetType = 'business';
+    }
+    
+    if (!target) {
         return await sendAsFloofWebhook(message, {
             embeds: [
                 new EmbedBuilder()
-                    .setDescription('❌ Unknown bank! Use `%rob` to see available targets.')
+                    .setDescription('❌ Invalid target! Use `%rob` to see available targets.')
                     .setColor(0xff0000)
             ]
         });

@@ -1,10 +1,9 @@
 const { EmbedBuilder } = require('discord.js');
 const { sendAsFloofWebhook } = require('../../utils/webhook-util');
 const { getBalance, addBalance, subtractBalance } = require('./utils/balance-manager');
-const { updateUserActivity, isUserAFK, defendWithPet } = require('./utils/pet-manager');
 const { getActiveEffects, hasActiveEffect, getEffectMultiplier } = require('./utils/blackmarket-manager');
 const { getEquippedWeapon, getEquippedProtection, getItemInfo, hasItem, removeItem, getStats, updateStats, getInventory } = require('./utils/inventory-manager');
-const { getActivePet, isUserAFK, updateUserActivity, simulatePetDefense, PET_TYPES } = require('./utils/pet-manager');
+const { getActivePet, isUserAFK, updateUserActivity, simulatePetDefense, defendWithPet, PET_TYPES } = require('./utils/pet-manager');
 
 // Attack cooldowns
 const attackCooldowns = {};
@@ -36,17 +35,6 @@ module.exports = {
             });
         }
 
-        // Check if target is sleeping (protected)
-        const { isUserSleeping } = require('./utils/blackmarket-manager');
-        if (isUserSleeping(targetUser.id)) {
-            return await sendAsFloofWebhook(message, {
-                embeds: [
-                    new EmbedBuilder()
-                        .setDescription(`😴 **${targetUser.username}** is fast asleep and cannot be attacked!\n\n💊 They're under the protection of sleeping pills.\n\n💡 Wait for them to wake up or find another target!`)
-                        .setColor(0x9b59b6)
-                ]
-            });
-        }
 
         // Check cooldown
         const now = Date.now();
@@ -89,6 +77,18 @@ module.exports = {
             });
         }
 
+        // Check if target is sleeping (protected)
+        const { isUserSleeping } = require('./utils/blackmarket-manager');
+        if (isUserSleeping(targetUser.id)) {
+            return await sendAsFloofWebhook(message, {
+                embeds: [
+                    new EmbedBuilder()
+                        .setDescription(`😴 **${targetUser.username}** is fast asleep and cannot be attacked!\n\n💊 They're under the protection of sleeping pills.\n\n💡 Wait for them to wake up or find another target!`)
+                        .setColor(0x9b59b6)
+                ]
+            });
+        }
+
         // Can't attack yourself
         if (targetUser.id === userId) {
             return await sendAsFloofWebhook(message, {
@@ -114,9 +114,11 @@ module.exports = {
         // Get selected weapon or equipped weapon
         const { getSelectedWeapon } = require('./select');
         let weaponInfo;
+        let weaponId;
         
         const selectedWeapon = getSelectedWeapon(userId);
         if (selectedWeapon) {
+            weaponId = selectedWeapon;
             weaponInfo = getItemInfo(selectedWeapon);
         } else {
             // Fallback to equipped weapon
@@ -125,15 +127,26 @@ module.exports = {
                 return await sendAsFloofWebhook(message, {
                     embeds: [
                         new EmbedBuilder()
-                            .setDescription('❌ You have no weapon selected or equipped!\n\nUse `%select weapon` to choose a weapon, or `%equip <weapon>` to equip one.')
+                            .setDescription('❌ You have no weapon selected or equipped!\n\nUse `%select weapon` to choose a weapon for attacks.')
                             .setColor(0xff0000)
                     ]
                 });
             }
             
+            weaponId = equippedWeapon;
             weaponInfo = getItemInfo(equippedWeapon);
         }
-        const ammoType = weaponInfo.ammo_type;
+        
+        // Get ammo type for weapon
+        const ammoTypeMap = {
+            pistol: 'bullets',
+            rifle: 'bullets',
+            crossbow: 'arrows', 
+            flamethrower: 'fuel',
+            laser: 'energy',
+            speaker: 'sound'
+        };
+        const ammoType = ammoTypeMap[weaponId] || 'bullets';
 
         // Check if attacker has ammo
         if (!hasItem(userId, ammoType, 1)) {
@@ -214,6 +227,9 @@ module.exports = {
             }
         }
 
+        // Get target's protection
+        const targetProtection = getEquippedProtection(targetUser.id) || [];
+        
         // Calculate damage and defense
         const baseDamage = weaponInfo.damage;
         let totalDefense = 0;

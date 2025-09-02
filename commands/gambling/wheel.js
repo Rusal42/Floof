@@ -54,10 +54,8 @@ module.exports = {
             return await sendAsFloofWebhook(message, {
                 embeds: [
                     new EmbedBuilder()
-                        .setTitle('🎡 Wheel of Fortune')
-                        .setDescription('**How to Play:**\n• Bet on Red, Black, Green, or Gold\n• Spin the wheel!\n\n**Payouts:** Red/Black 2x | Green 14x | Gold 50x\n\n**Usage:** `%wheel <bet>`')
+                        .setDescription('🎡 **Wheel** | Colors: Red/Black/Green/Gold | Payouts: 2x/2x/14x/50x | Min: 200\n`%wheel <bet>`')
                         .setColor(0xe67e22)
-                        .setFooter({ text: 'Minimum bet: 200 coins' })
                 ]
             });
         }
@@ -116,10 +114,8 @@ module.exports = {
 
 async function showBettingInterface(message, gameState) {
     const embed = new EmbedBuilder()
-        .setTitle('🎡 Wheel of Fortune - Place Your Bet')
-        .setDescription(`**Choose a color to bet on:**\n\n🔴 **Red** - 2x payout (46.2% chance)\n⚫ **Black** - 2x payout (46.2% chance)\n🟢 **Green** - 14x payout (5.1% chance)\n🟡 **Gold** - 50x payout (2.6% chance)\n\n**Your Bet:** ${gameState.betAmount.toLocaleString()} coins`)
-        .setColor(0xe67e22)
-        .setFooter({ text: 'Choose wisely - higher payouts have lower chances!' });
+        .setDescription(`🎡 **Wheel** | Bet: **${gameState.betAmount.toLocaleString()}** coins\n\n🔴 Red (2x) | ⚫ Black (2x) | 🟢 Green (14x) | 🟡 Gold (50x)`)
+        .setColor(0xe67e22);
 
     const row = new ActionRowBuilder()
         .addComponents(

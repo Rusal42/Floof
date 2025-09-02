@@ -43,10 +43,8 @@ module.exports = {
             return await sendAsFloofWebhook(message, {
                 embeds: [
                     new EmbedBuilder()
-                        .setTitle('🎲 Craps')
-                        .setDescription('**How to Play:**\n• Roll dice, bet on outcome\n• Pass: Win on 7/11\n• Field: Win on 2,3,4,9,10,11,12\n• Any 7: Win if total = 7\n\n**Payouts:** Pass 2x | Field 2x | Any7 5x\n\n**Usage:** `%craps <bet> <type>`')
+                        .setDescription('🎲 **Craps** | Types: pass/field/any7 | Payouts: 2x/2x/5x | Min: 50 coins\n`%craps <bet> <type>`')
                         .setColor(0xe74c3c)
-                        .setFooter({ text: 'Minimum bet: 50 coins' })
                 ]
             });
         }
@@ -160,38 +158,36 @@ module.exports = {
 
         // Create result embed
         const embed = new EmbedBuilder()
-            .setTitle('🎲 Craps Results')
             .addFields(
                 {
-                    name: '🎲 Dice Roll',
-                    value: `${getDieEmoji(die1)} ${getDieEmoji(die2)}\n**Total: ${total}**`,
+                    name: '🎲 Roll',
+                    value: `${getDieEmoji(die1)} ${getDieEmoji(die2)}\n**${total}**`,
                     inline: true
                 },
                 {
-                    name: '🎯 Your Bet',
-                    value: `**${betType.toUpperCase()}**\n${betAmount.toLocaleString()} coins`,
+                    name: '🎯 Bet',
+                    value: `${betType.toUpperCase()}\n${betAmount.toLocaleString()}`,
                     inline: true
                 },
                 {
                     name: '📊 Result',
-                    value: resultText,
-                    inline: false
+                    value: resultText.replace('Pass Line', 'Pass').replace('Don\'t Pass', 'DontPass'),
+                    inline: true
                 }
             )
-            .setFooter({ text: `Balance: ${getBalance(userId).toLocaleString()} coins` })
-            .setTimestamp();
+            .setFooter({ text: `Balance: ${getBalance(userId).toLocaleString()} coins` });
 
         if (won) {
             embed.setColor(0x00ff00);
             const profit = winnings - betAmount;
             if (profit > 0) {
-                embed.setDescription(`🎉 **YOU WON!**\n💰 **Winnings:** ${winnings.toLocaleString()} coins\n📈 **Profit:** +${profit.toLocaleString()} coins`);
+                embed.setDescription(`🎉 **WON!** +${profit.toLocaleString()} coins | Total: ${winnings.toLocaleString()}`);
             } else {
-                embed.setDescription(`🔄 **PUSH!**\n💰 **Returned:** ${winnings.toLocaleString()} coins`);
+                embed.setDescription(`🔄 **PUSH** | Returned: ${winnings.toLocaleString()} coins`);
             }
         } else {
             embed.setColor(0xff0000);
-            embed.setDescription(`💸 **You Lost!**\n📉 **Lost:** ${betAmount.toLocaleString()} coins`);
+            embed.setDescription(`💸 **LOST** -${betAmount.toLocaleString()} coins`);
         }
 
         await sendAsFloofWebhook(message, { embeds: [embed] });

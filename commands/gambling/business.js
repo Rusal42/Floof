@@ -1,4 +1,4 @@
-const { EmbedBuilder } = require('discord.js');
+const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const { sendAsFloofWebhook } = require('../../utils/webhook-util');
 const { getBalance, addBalance, subtractBalance } = require('./utils/balance-manager');
 const { 
@@ -29,7 +29,7 @@ module.exports = {
     description: 'Own and manage businesses, hire employees and bodyguards',
     usage: '%business [buy/manage/hire/fire/income/list] | %biz [action]',
     category: 'gambling',
-    aliases: ['biz', 'company', 'enterprise', 'bus', 'work'],
+    aliases: ['biz', 'company', 'enterprise', 'bus', 'work', 'buis'],
     cooldown: 10,
 
     async execute(message, args) {
@@ -114,22 +114,134 @@ module.exports = {
     }
 };
 
-async function displayBusinessOverview(message, userId) {
-    const businessDisplay = formatBusinessDisplay(userId);
+async function displayBusinessOverview(message, userId, currentPage = 0) {
+    const userBalance = getBalance(userId);
     const userData = getUserBusinessData(userId);
     
+    // Get all items (businesses + employees + bodyguards)
+    const allItems = [];
+    
+    // Add businesses
+    Object.entries(BUSINESS_TYPES).forEach(([businessId, business]) => {
+        allItems.push({
+            type: 'business',
+            id: businessId,
+            data: business
+        });
+    });
+    
+    // Add employees
+    Object.entries(EMPLOYEE_TYPES).forEach(([employeeId, employee]) => {
+        allItems.push({
+            type: 'employee',
+            id: employeeId,
+            data: employee
+        });
+    });
+    
+    // Add bodyguards
+    Object.entries(BODYGUARD_TYPES).forEach(([bodyguardId, bodyguard]) => {
+        allItems.push({
+            type: 'bodyguard',
+            id: bodyguardId,
+            data: bodyguard
+        });
+    });
+    
+    const itemsPerPage = 8;
+    const totalPages = Math.ceil(allItems.length / itemsPerPage);
+    
+    // Ensure current page is valid
+    if (currentPage >= totalPages) currentPage = 0;
+    if (currentPage < 0) currentPage = totalPages - 1;
+    
+    const startIndex = currentPage * itemsPerPage;
+    const endIndex = Math.min(startIndex + itemsPerPage, allItems.length);
+    const pageItems = allItems.slice(startIndex, endIndex);
+    
+    let description = `**🏢 Business Empire Management**\n\n`;
+    description += `💰 **Your Balance:** ${userBalance.toLocaleString()} coins\n\n`;
+    description += `**📦 Available Options (Page ${currentPage + 1}/${totalPages}):**\n\n`;
+    
+    pageItems.forEach((item, index) => {
+        const itemNumber = startIndex + index + 1;
+        
+        if (item.type === 'business') {
+            const business = item.data;
+            const owned = userData.businesses[item.id] ? ' ✅ **OWNED**' : '';
+            const canAfford = userBalance >= business.purchase_price;
+            const affordIcon = canAfford ? '✅' : '❌';
+            
+            description += `**${itemNumber}.** ${business.emoji} **${business.name}** ${affordIcon}${owned}\n`;
+            description += `└ *${business.description}*\n`;
+            description += `└ 💰 Cost: ${business.purchase_price.toLocaleString()} • Income: ${business.daily_income.min.toLocaleString()}-${business.daily_income.max.toLocaleString()}\n`;
+            description += `└ 👥 Max Employees: ${business.max_employees}\n`;
+            if (!owned) {
+                description += `└ \`%business buy ${item.id}\` or \`%business ${itemNumber}\`\n\n`;
+            } else {
+                description += `└ \`%business collect ${item.id}\`\n\n`;
+            }
+        } else if (item.type === 'employee') {
+            const employee = item.data;
+            const canAfford = userBalance >= employee.hire_cost;
+            const affordIcon = canAfford ? '✅' : '❌';
+            
+            description += `**${itemNumber}.** ${employee.emoji} **${employee.name}** ${affordIcon}\n`;
+            description += `└ *${employee.description}*\n`;
+            description += `└ 💰 Hire: ${employee.hire_cost.toLocaleString()} • Daily: ${employee.daily_wage.toLocaleString()}\n`;
+            description += `└ \`%business hire [business] ${item.id}\`\n\n`;
+        } else {
+            const bodyguard = item.data;
+            const canAfford = userBalance >= bodyguard.hire_cost;
+            const affordIcon = canAfford ? '✅' : '❌';
+            
+            description += `**${itemNumber}.** ${bodyguard.emoji} **${bodyguard.name}** ${affordIcon}\n`;
+            description += `└ *${bodyguard.description}*\n`;
+            description += `└ 💰 Hire: ${bodyguard.hire_cost.toLocaleString()} • Daily: ${bodyguard.daily_wage.toLocaleString()}\n`;
+            description += `└ 🛡️ Protection: ${Math.floor(bodyguard.attack_reduction * 100)}%\n`;
+            description += `└ \`%business bodyguard ${item.id}\`\n\n`;
+        }
+    });
+    
+    description += '**🎮 Commands:**\n';
+    description += '• `%business buy <business>` - Purchase business\n';
+    description += '• `%business hire <business> <employee>` - Hire staff\n';
+    description += '• `%business collect <business>` - Collect income';
+
     const embed = new EmbedBuilder()
-        .setTitle(`🏢 ${message.author.username}'s Business Empire`)
-        .setDescription(businessDisplay)
+        .setTitle('🏢 Business Empire Management')
+        .setDescription(description)
         .setColor(0x2e8b57)
-        .setThumbnail(message.author.displayAvatarURL({ dynamic: true }))
-        .addFields(
-            { name: '💼 Commands', value: '`buy` • `hire` • `bodyguard` • `collect` • `shop`', inline: false }
-        )
-        .setFooter({ text: 'Build your criminal empire! 💰' })
+        .setFooter({ text: `Page ${currentPage + 1}/${totalPages} • Build your criminal empire! 💰` })
         .setTimestamp();
 
-    await sendAsFloofWebhook(message, { embeds: [embed] });
+    // Create navigation buttons if multiple pages
+    const components = [];
+    if (totalPages > 1) {
+        const row = new ActionRowBuilder()
+            .addComponents(
+                new ButtonBuilder()
+                    .setCustomId(`business_prev_${userId}_${currentPage}`)
+                    .setLabel('⬅️ Previous')
+                    .setStyle(ButtonStyle.Secondary)
+                    .setDisabled(currentPage === 0),
+                new ButtonBuilder()
+                    .setCustomId(`business_next_${userId}_${currentPage}`)
+                    .setLabel('Next ➡️')
+                    .setStyle(ButtonStyle.Secondary)
+                    .setDisabled(currentPage === totalPages - 1),
+                new ButtonBuilder()
+                    .setCustomId(`business_refresh_${userId}`)
+                    .setLabel('🔄 Refresh')
+                    .setStyle(ButtonStyle.Primary)
+            );
+        components.push(row);
+    }
+
+    await sendAsFloofWebhook(message, { 
+        embeds: [embed],
+        components: components
+    });
 }
 
 async function displayBusinessShop(message, userId) {
@@ -450,3 +562,6 @@ async function handleCollectIncome(message, userId, args) {
 
     await sendAsFloofWebhook(message, { embeds: [embed] });
 }
+
+// Export functions for interaction handlers
+module.exports.displayBusinessOverview = displayBusinessOverview;

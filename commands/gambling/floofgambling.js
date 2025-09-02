@@ -29,15 +29,15 @@ module.exports = {
 
         // Split commands into categories for better organization
         const coreCommands = gambleCmds.filter(cmd => 
-            ['balance', 'beg', 'slots', 'blackjack', 'coinflip', 'roulette', 'baccarat', 'craps', 'keno', 'wheel', 'plinko', 'leaderboard', 'donate'].includes(cmd.name)
+            ['balance', 'beg', 'slots', 'blackjack', 'coinflip', 'roulette', 'baccarat', 'craps', 'keno', 'wheel', 'plinko', 'races', 'leaderboard', 'donate'].includes(cmd.name)
         );
         
         const jobCommands = gambleCmds.filter(cmd => 
-            ['work'].includes(cmd.name)
+            ['work', 'jobs'].includes(cmd.name)
         );
         
         const combatCommands = gambleCmds.filter(cmd => 
-            ['attack', 'select', 'rob', 'business', 'streetdealer', 'blackmarket', 'bail', 'beatup'].includes(cmd.name)
+            ['beatup', 'rob', 'attack', 'bail'].includes(cmd.name)
         );
         
         const petCommands = gambleCmds.filter(cmd => 
@@ -45,7 +45,7 @@ module.exports = {
         );
         
         const utilityCommands = gambleCmds.filter(cmd => 
-            ['shop', 'inventory', 'vault', 'preferences', 'briefcase', 'farm', 'beer'].includes(cmd.name)
+            ['shop', 'inventory', 'networth', 'bodyguards', 'vault', 'preferences', 'briefcase', 'farm', 'beer', 'use'].includes(cmd.name)
         );
 
         const formatCmdList = (cmds) => cmds
@@ -59,6 +59,8 @@ module.exports = {
             '⚔️ **Combat:** Attack others with `%attack @user` or defend with pets from `%petshop`',
             '🏪 **Shopping:** Buy weapons, items, and protection from `%shop`, `%blackmarket`, `%petshop`',
             '🏢 **Business:** Own businesses with `%business buy` and rob others with `%rob business`',
+            '🎯 **Crime:** Plan `%heist` operations, join `%cartel` activities, or `%smuggle` contraband',
+            '🍺 **Items:** Use `%use <item>` to consume items from any shop for effects',
             '💰 **Check:** `%balance` for coins, `%inventory` for items, `%leaderboard` for rankings'
         ].join('\n');
 
@@ -72,7 +74,7 @@ module.exports = {
                 { name: '⚔️ Combat & Crime', value: formatCmdList(combatCommands) || 'None found', inline: true },
                 { name: '🐾 Pets & Battles', value: formatCmdList(petCommands) || 'None found', inline: true },
                 { name: '🛒 Shopping & Utils', value: formatCmdList(utilityCommands) || 'None found', inline: true },
-                { name: 'More Commands', value: 'Use `%help <command>` for detailed usage\nType `%floofgambling` to see this menu again', inline: true }
+                { name: 'Quick Access Menus', value: '• %shop - Browse weapons, ammo, and items\n• %cartel - Drug cartel operations\n• %blackmarket - Underground illegal goods\n• %business - Own and manage businesses\n• %petshop - Buy and manage pets', inline: false }
             )
             .setFooter({ text: 'Tip: All commands work best in your configured gambling channel!' });
 

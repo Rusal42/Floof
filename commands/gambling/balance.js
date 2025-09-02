@@ -46,9 +46,8 @@ module.exports = {
 
             const embed = new EmbedBuilder()
                 .setColor('#00FF00')
-                .setTitle(`💰 ${isOwnBalance ? 'Your Balance' : `${displayName}'s Balance`}`)
-                .setDescription(`**${balance.toLocaleString()} coins** 🪙`)
-                .setThumbnail(targetUser.displayAvatarURL({ dynamic: true }))
+                .setDescription(`💰 **${balance.toLocaleString()}** coins | ${isOwnBalance ? 'Your Balance' : `${displayName}'s Balance`}`)
+                .setThumbnail(targetUser.displayAvatarURL({ dynamic: true, size: 64 }))
                 .setFooter({ 
                     text: isOwnBalance 
                         ? 'Use %work to earn more coins!' 
@@ -58,9 +57,9 @@ module.exports = {
             // Add helpful tips for new users
             if (balance <= 1000 && isOwnBalance) {
                 embed.addFields({
-                    name: '💡 Getting Started',
-                    value: '• Use `%work` to earn coins\n• Try `%beg` for quick money\n• Play `%slots` to gamble\n• Check `%help gambling` for more commands',
-                    inline: false
+                    name: '💡 Quick Start',
+                    value: '`%work` `%beg` `%slots` `%help gambling`',
+                    inline: true
                 });
             }
 

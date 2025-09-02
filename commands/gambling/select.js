@@ -43,97 +43,208 @@ function setSelectedWeapon(userId, weaponId) {
 
 module.exports = {
     name: 'select',
-    description: 'Select a weapon for attacks',
-    usage: '%select weapon [number] | %sel weapon [number]',
+    description: 'Select a weapon for attacks or equip items',
+    usage: '%select weapon [number] | %select [item] [number]',
     category: 'gambling',
-    aliases: ['sel', 'choose'],
+    aliases: ['sel', 'choose', 'equip'],
     cooldown: 5,
 
     async execute(message, args) {
         const userId = message.author.id;
         
-        if (!args[0] || args[0].toLowerCase() !== 'weapon') {
+        if (!args[0]) {
             return await sendAsFloofWebhook(message, {
                 embeds: [
                     new EmbedBuilder()
-                        .setDescription('❌ Use `%select weapon [number]` to select a weapon for attacks.\n\nExample: `%select weapon 1`')
+                        .setDescription('❌ **Usage:**\n• `%select weapon [number]` - Select weapon for attacks\n• `%select protection [number]` - Equip protection\n\n**Examples:**\n• `%select weapon 1`\n• `%select protection 2`')
+                        .setColor(0xff0000)
+                ]
+            });
+        }
+        
+        const itemType = args[0].toLowerCase();
+        
+        if (itemType === 'weapon') {
+            return await handleWeaponSelection(message, userId, args);
+        } else if (itemType === 'protection') {
+            return await handleProtectionSelection(message, userId, args);
+        } else {
+            return await sendAsFloofWebhook(message, {
+                embeds: [
+                    new EmbedBuilder()
+                        .setDescription('❌ Invalid item type! Use `weapon` or `protection`.\n\n**Examples:**\n• `%select weapon 1`\n• `%select protection 2`')
                         .setColor(0xff0000)
                 ]
             });
         }
 
-        const inventory = getInventory(userId);
-        const weapons = [];
-        
-        // Find all weapons in inventory
-        for (const [itemId, quantity] of Object.entries(inventory)) {
-            const itemInfo = getItemInfo(itemId);
-            if (itemInfo && itemInfo.type === 'weapon' && quantity > 0) {
-                weapons.push({ id: itemId, info: itemInfo });
-            }
-        }
-        
-        if (weapons.length === 0) {
-            return await sendAsFloofWebhook(message, {
-                embeds: [
-                    new EmbedBuilder()
-                        .setDescription('❌ You have no weapons! Visit the shop to buy some weapons first.\n\nUse `%shop` or `%s` to browse weapons.')
-                        .setColor(0xff0000)
-                ]
-            });
-        }
+    }
+};
 
-        // If no weapon number specified, show weapon list
-        if (!args[1]) {
-            let weaponList = '🗡️ **Select a weapon for attacks:**\n\n';
-            weapons.forEach((weapon, index) => {
-                weaponList += `**${index + 1}.** ${weapon.info.emoji} **${weapon.info.name}** - ${weapon.info.damage} damage\n`;
-            });
-            
-            const currentSelected = getSelectedWeapon(userId);
-            if (currentSelected) {
-                const currentInfo = getItemInfo(currentSelected);
-                weaponList += `\n🎯 **Currently Selected:** ${currentInfo.emoji} ${currentInfo.name}`;
-            }
-            
-            weaponList += '\n\n💡 **Usage:** `%select weapon <number>`';
-            
-            return await sendAsFloofWebhook(message, {
-                embeds: [
-                    new EmbedBuilder()
-                        .setDescription(weaponList)
-                        .setColor(0x4169e1)
-                        .setTimestamp()
-                ]
-            });
+// Handle weapon selection
+async function handleWeaponSelection(message, userId, args) {
+    const { getInventory } = require('./utils/inventory-manager');
+    const inventory = getInventory(userId);
+    const weapons = [];
+    
+    // Find all weapons in inventory
+    for (const [itemId, quantity] of Object.entries(inventory.items)) {
+        const itemInfo = getItemInfo(itemId);
+        if (itemInfo && itemInfo.type === 'weapon' && quantity > 0) {
+            weapons.push({ id: itemId, info: itemInfo });
         }
-
-        // Select weapon by number
-        const weaponNumber = parseInt(args[1]) - 1;
-        
-        if (isNaN(weaponNumber) || weaponNumber < 0 || weaponNumber >= weapons.length) {
-            return await sendAsFloofWebhook(message, {
-                embeds: [
-                    new EmbedBuilder()
-                        .setDescription(`❌ Invalid weapon number! Choose a number between 1 and ${weapons.length}.\n\nUse \`%select weapon\` to see your weapons.`)
-                        .setColor(0xff0000)
-                ]
-            });
-        }
-
-        const selectedWeapon = weapons[weaponNumber];
-        setSelectedWeapon(userId, selectedWeapon.id);
-
+    }
+    
+    if (weapons.length === 0) {
         return await sendAsFloofWebhook(message, {
             embeds: [
                 new EmbedBuilder()
-                    .setDescription(`🎯 **Weapon Selected!**\n\n${selectedWeapon.info.emoji} **${selectedWeapon.info.name}** - ${selectedWeapon.info.damage} damage\n\nNow use \`%attack @user\` to attack with this weapon!`)
-                    .setColor(0x43b581)
+                    .setDescription('❌ You have no weapons! Visit the shop to buy some weapons first.\n\nUse `%shop` or `%s` to browse weapons.')
+                    .setColor(0xff0000)
+            ]
+        });
+    }
+
+    // If no weapon number specified, show weapon list
+    if (!args[1]) {
+        let weaponList = '🗡️ **Select a weapon for attacks:**\n\n';
+        weapons.forEach((weapon, index) => {
+            weaponList += `**${index + 1}.** ${weapon.info.emoji} **${weapon.info.name}** - ${weapon.info.damage} damage\n`;
+        });
+        
+        const currentSelected = getSelectedWeapon(userId);
+        if (currentSelected) {
+            const currentInfo = getItemInfo(currentSelected);
+            weaponList += `\n🎯 **Currently Selected:** ${currentInfo.emoji} ${currentInfo.name}`;
+        }
+        
+        weaponList += '\n\n💡 **Usage:** `%select weapon <number>`';
+        
+        return await sendAsFloofWebhook(message, {
+            embeds: [
+                new EmbedBuilder()
+                    .setDescription(weaponList)
+                    .setColor(0x4169e1)
                     .setTimestamp()
             ]
         });
     }
-};
+
+    // Select weapon by number
+    const weaponNumber = parseInt(args[1]) - 1;
+    
+    if (isNaN(weaponNumber) || weaponNumber < 0 || weaponNumber >= weapons.length) {
+        return await sendAsFloofWebhook(message, {
+            embeds: [
+                new EmbedBuilder()
+                    .setDescription(`❌ Invalid weapon number! Choose a number between 1 and ${weapons.length}.\n\nUse \`%select weapon\` to see your weapons.`)
+                    .setColor(0xff0000)
+            ]
+        });
+    }
+
+    const selectedWeapon = weapons[weaponNumber];
+    setSelectedWeapon(userId, selectedWeapon.id);
+
+    return await sendAsFloofWebhook(message, {
+        embeds: [
+            new EmbedBuilder()
+                .setDescription(`🎯 **Weapon Selected!**\n\n${selectedWeapon.info.emoji} **${selectedWeapon.info.name}** - ${selectedWeapon.info.damage} damage\n\nNow use \`%attack @user\` to attack with this weapon!`)
+                .setColor(0x43b581)
+                .setTimestamp()
+        ]
+    });
+}
+
+// Handle protection selection
+async function handleProtectionSelection(message, userId, args) {
+    const { getInventory, equipProtection, unequipProtection, getEquippedProtection } = require('./utils/inventory-manager');
+    const inventory = getInventory(userId);
+    const protectionItems = [];
+    
+    // Find all protection items in inventory
+    for (const [itemId, quantity] of Object.entries(inventory.items)) {
+        const itemInfo = getItemInfo(itemId);
+        if (itemInfo && itemInfo.type === 'protection' && quantity > 0) {
+            protectionItems.push({ id: itemId, info: itemInfo });
+        }
+    }
+    
+    if (protectionItems.length === 0) {
+        return await sendAsFloofWebhook(message, {
+            embeds: [
+                new EmbedBuilder()
+                    .setDescription('❌ You have no protection items! Visit the shop to buy some armor first.\n\nUse `%shop protection` to browse armor.')
+                    .setColor(0xff0000)
+            ]
+        });
+    }
+
+    // If no item number specified, show protection list
+    if (!args[1]) {
+        let protectionList = '🛡️ **Select protection to equip/unequip:**\n\n';
+        const equippedProtection = getEquippedProtection(userId);
+        
+        protectionItems.forEach((item, index) => {
+            const isEquipped = equippedProtection.includes(item.id);
+            const status = isEquipped ? '✅ **EQUIPPED**' : '⚪ Available';
+            protectionList += `**${index + 1}.** ${item.info.emoji} **${item.info.name}** - ${item.info.defense} defense ${status}\n`;
+        });
+        
+        protectionList += '\n\n💡 **Usage:** `%select protection <number>` to toggle equip/unequip';
+        
+        return await sendAsFloofWebhook(message, {
+            embeds: [
+                new EmbedBuilder()
+                    .setDescription(protectionList)
+                    .setColor(0x4169e1)
+                    .setTimestamp()
+            ]
+        });
+    }
+
+    // Select protection by number
+    const itemNumber = parseInt(args[1]) - 1;
+    
+    if (isNaN(itemNumber) || itemNumber < 0 || itemNumber >= protectionItems.length) {
+        return await sendAsFloofWebhook(message, {
+            embeds: [
+                new EmbedBuilder()
+                    .setDescription(`❌ Invalid item number! Choose a number between 1 and ${protectionItems.length}.\n\nUse \`%select protection\` to see your items.`)
+                    .setColor(0xff0000)
+            ]
+        });
+    }
+
+    const selectedItem = protectionItems[itemNumber];
+    const equippedProtection = getEquippedProtection(userId);
+    const isEquipped = equippedProtection.includes(selectedItem.id);
+    
+    let success, message_text;
+    
+    if (isEquipped) {
+        // Unequip the item
+        success = unequipProtection(userId, selectedItem.id);
+        message_text = success 
+            ? `🛡️ **Unequipped:** ${selectedItem.info.emoji} ${selectedItem.info.name}`
+            : `❌ Failed to unequip ${selectedItem.info.name}`;
+    } else {
+        // Equip the item
+        success = equipProtection(userId, selectedItem.id);
+        message_text = success 
+            ? `🛡️ **Equipped:** ${selectedItem.info.emoji} ${selectedItem.info.name} (+${selectedItem.info.defense} defense)`
+            : `❌ Failed to equip ${selectedItem.info.name}`;
+    }
+
+    return await sendAsFloofWebhook(message, {
+        embeds: [
+            new EmbedBuilder()
+                .setDescription(message_text)
+                .setColor(success ? 0x43b581 : 0xff0000)
+                .setTimestamp()
+        ]
+    });
+}
 
 // Export functions for use in other commands
 module.exports.getSelectedWeapon = getSelectedWeapon;

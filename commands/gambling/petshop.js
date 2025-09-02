@@ -1,4 +1,4 @@
-const { EmbedBuilder } = require('discord.js');
+const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const { sendAsFloofWebhook } = require('../../utils/webhook-util');
 const { getBalance, subtractBalance } = require('./utils/balance-manager');
 const { 
@@ -63,36 +63,58 @@ module.exports = {
     }
 };
 
-async function displayPetShop(message, userId) {
+async function displayPetShop(message, userId, currentPage = 0) {
     const userBalance = getBalance(userId);
-    const userPets = getUserPets(userId);
+    const userData = getUserPets(userId);
+    const userPets = userData.pets || [];
     
-    let description = '🐾 **Welcome to the Pet Shop!**\n\n';
-    description += '**🐕 Available Pets:**\n';
+    // Collect all items
+    const allItems = [];
     
-    let itemIndex = 1;
-    
-    // Display pets
+    // Add pets
     for (const [petId, petInfo] of Object.entries(PET_TYPES)) {
         const owned = userPets.some(pet => pet.type === petId);
-        const status = owned ? '✅ Owned' : `💰 ${petInfo.price.toLocaleString()} coins`;
-        
-        description += `**${itemIndex}.** ${petInfo.emoji} **${petInfo.name}** - ${status}\n`;
-        description += `└ ${petInfo.description}\n`;
-        itemIndex++;
+        allItems.push({
+            id: petId,
+            info: petInfo,
+            type: 'pet',
+            owned: owned
+        });
     }
     
-    description += '\n**🎁 Pet Items:**\n';
-    
-    // Display pet items
+    // Add pet items
     for (const [itemId, itemInfo] of Object.entries(PET_ITEMS)) {
-        description += `**${itemIndex}.** ${itemInfo.emoji} **${itemInfo.name}** - 💰 ${itemInfo.price.toLocaleString()} coins\n`;
-        description += `└ ${itemInfo.description}\n`;
+        allItems.push({
+            id: itemId,
+            info: itemInfo,
+            type: 'item',
+            owned: false
+        });
+    }
+    
+    const itemsPerPage = 8;
+    const totalPages = Math.ceil(allItems.length / itemsPerPage);
+    const startIndex = currentPage * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    const pageItems = allItems.slice(startIndex, endIndex);
+    
+    let description = '🐾 **Welcome to the Pet Shop!**\n\n';
+    
+    let itemIndex = startIndex + 1;
+    for (const item of pageItems) {
+        const categoryIcon = item.type === 'pet' ? '🐕' : '🎁';
+        const status = item.owned ? '✅ Owned' : `💰 ${item.info.price.toLocaleString()} coins`;
+        const affordable = userBalance >= item.info.price && !item.owned ? '✅' : '❌';
+        
+        description += `**${itemIndex}.** ${item.info.emoji} **${item.info.name}** ${affordable}\n`;
+        description += `└ ${item.info.description}\n`;
+        description += `└ ${status}\n\n`;
         itemIndex++;
     }
     
-    description += `\n💰 **Your Balance:** ${userBalance.toLocaleString()} coins\n`;
-    description += `\n💡 **Quick Buy:** \`%ps <number>\` or \`%ps buy <name>\``;
+    description += `💰 **Your Balance:** ${userBalance.toLocaleString()} coins\n`;
+    description += `📄 **Page ${currentPage + 1}/${totalPages}**\n\n`;
+    description += `💡 **Quick Buy:** \`%ps <number>\` or \`%ps buy <name>\``;
 
     const embed = new EmbedBuilder()
         .setTitle('🐾 Pet Shop')
@@ -100,7 +122,35 @@ async function displayPetShop(message, userId) {
         .setColor(0xff69b4)
         .setTimestamp();
 
-    await sendAsFloofWebhook(message, { embeds: [embed] });
+    // Create navigation buttons
+    const row = new ActionRowBuilder();
+    
+    if (currentPage > 0) {
+        row.addComponents(
+            new ButtonBuilder()
+                .setCustomId(`petshop_prev_${currentPage}_${userId}`)
+                .setLabel('◀ Previous')
+                .setStyle(ButtonStyle.Primary)
+        );
+    }
+    
+    row.addComponents(
+        new ButtonBuilder()
+            .setCustomId(`petshop_refresh_${currentPage}_${userId}`)
+            .setLabel('🔄 Refresh')
+            .setStyle(ButtonStyle.Secondary)
+    );
+    
+    if (currentPage < totalPages - 1) {
+        row.addComponents(
+            new ButtonBuilder()
+                .setCustomId(`petshop_next_${currentPage}_${userId}`)
+                .setLabel('Next ▶')
+                .setStyle(ButtonStyle.Primary)
+        );
+    }
+
+    await sendAsFloofWebhook(message, { embeds: [embed], components: [row] });
 }
 
 async function handleNumberedPurchase(message, userId, itemNumber, amount = 1) {

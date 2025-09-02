@@ -29,7 +29,7 @@ function slots(message, amountArg) {
         return sendAsFloofWebhook(message, {
             embeds: [
                 new EmbedBuilder()
-                    .setDescription(`😴 You are fast asleep! You cannot gamble while under the effects of sleeping pills.\n\n💊 Wait for the effects to wear off before gambling again.`)
+                    .setDescription(`😴 **Sleeping** | Cannot gamble while under sleeping pills effect`)
                     .setColor(0x9b59b6)
             ]
         });
@@ -42,8 +42,7 @@ function slots(message, amountArg) {
         return sendAsFloofWebhook(message, {
             embeds: [
                 new EmbedBuilder()
-                    .setTitle('Slots')
-                    .setDescription(`You are currently arrested and cannot gamble! You'll be free in **${remainingMinutes} minutes**.`)
+                    .setDescription(`🚔 **Arrested** | Cannot gamble for ${remainingMinutes} minutes`)
                     .setColor(0xff6961)
             ]
         });
@@ -56,9 +55,8 @@ function slots(message, amountArg) {
     if (currentBalance < amount) {
         return sendAsFloofWebhook(message, { embeds: [
             new EmbedBuilder()
-                .setTitle('Slots')
-                .setDescription(`You only have ${currentBalance} coins!`)
-                .setColor(0xffd700)
+                .setDescription(`🎰 **Slots** | Need ${amount} coins | You have: ${currentBalance}`)
+                .setColor(0xff0000)
         ] });
     }
     // Check for luck boost effects
