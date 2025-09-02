@@ -3,7 +3,7 @@
     "items": {
       "pistol": 1,
       "laser": 1,
-      "energy": 15
+      "energy": 14
     },
     "equipped_weapon": "pistol",
     "equipped_protection": [],

@@ -1,0 +1,24 @@
+{
+  "1403189710729383986": {
+    "allow_attacks": true,
+    "allow_robberies": true,
+    "allow_pet_attacks": true,
+    "bodyguard_protection": true,
+    "pet_defense": true,
+    "auto_bail_friends": true,
+    "crime_notifications": true,
+    "arrest_notifications": true,
+    "bail_notifications": true,
+    "business_notifications": true,
+    "show_in_leaderboards": true,
+    "allow_friend_requests": true,
+    "public_business_info": true,
+    "allow_drug_deals": true,
+    "allow_business_partnerships": true,
+    "receive_crime_invites": true,
+    "auto_collect_income": false,
+    "smart_bodyguard_mode": true,
+    "pet_auto_feed": false,
+    "crime_risk_warnings": true
+  }
+}
