@@ -636,6 +636,9 @@ function collectBusinessIncome(userId, businessType) {
     userBusiness.total_earned += incomeResult.net_income;
     userData.total_income += incomeResult.net_income;
     
+    // Return the amount collected for the calling function
+    incomeResult.amount = incomeResult.net_income;
+    
     // Update employee wage totals
     userBusiness.employees.forEach(emp => {
         const employeeType = EMPLOYEE_TYPES[emp.type];

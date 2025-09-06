@@ -231,15 +231,20 @@ function buyBlackmarketItem(userId, itemId, quantity = 1) {
     const item = BLACKMARKET_ITEMS[itemId];
     if (!item) return { success: false, reason: 'invalid_item' };
     
+    const { getBalance } = require('./balance-manager');
     const userBalance = getBalance(userId);
-    const totalCost = item.price * quantity;
+    const stock = generateBlackmarketStock();
+    const stockInfo = stock[itemId];
+    if (!stockInfo) return { success: false, reason: 'not_in_stock' };
+    
+    const totalCost = stockInfo.price * quantity;
     
     if (userBalance < totalCost) {
         return { success: false, reason: 'insufficient_funds' };
     }
     
     // Check if caught by police
-    if (Math.random() < item.arrest_chance) {
+    if (Math.random() < item.risk) {
         // Calculate arrest time and bail for blackmarket purchase
         const arrestTime = 1 + Math.floor(Math.random() * 4); // 1-5 minutes
         const bailAmount = Math.floor(totalCost * 2 + Math.random() * 5000); // 2x cost + random

@@ -236,14 +236,14 @@ function attemptCrime(userId, crimeType, targetId) {
         target = BANKS[targetId];
         if (!target) return { success: false, reason: 'invalid_target' };
         
-        baseSuccessChance = target.success_chance;
-        basePayout = { min: target.min_payout, max: target.max_payout };
+        baseSuccessChance = 1 - target.arrest_chance;
+        basePayout = target.payout;
     } else if (crimeType === 'business') {
         target = BUSINESSES[targetId];
         if (!target) return { success: false, reason: 'invalid_target' };
         
-        baseSuccessChance = target.success_chance;
-        basePayout = { min: target.min_payout, max: target.max_payout };
+        baseSuccessChance = 1 - target.arrest_chance;
+        basePayout = target.payout;
         
         // Check if this business is owned by someone and has security
         const { canRobBusiness } = require('./business-manager');
@@ -283,7 +283,8 @@ function attemptCrime(userId, crimeType, targetId) {
         addBalance(userId, payout);
         
         // Increase crime XP and level
-        userCrimeData.crime_xp = (userCrimeData.crime_xp || 0) + target.xp_reward;
+        const xpReward = 10; // Default XP reward
+        userCrimeData.crime_xp = (userCrimeData.crime_xp || 0) + xpReward;
         const newLevel = Math.floor(userCrimeData.crime_xp / 100) + 1;
         if (newLevel > userCrimeData.crime_level) {
             userCrimeData.crime_level = newLevel;
@@ -299,12 +300,12 @@ function attemptCrime(userId, crimeType, targetId) {
             success: true,
             payout,
             target,
-            crime_level: userCrimeData.crime_level,
-            xp_gained: target.xp_reward
+            new_level: userCrimeData.crime_level,
+            xp_gained: xpReward
         };
     } else {
         // Failed - calculate arrest time and bail
-        const arrestTime = calculateArrestTime(target.min_jail_time, target.max_jail_time, userCrimeData);
+        const arrestTime = calculateArrestTime(5, 15, userCrimeData); // Default jail time range
         const bailAmount = calculateBailAmount(arrestTime, crimeType);
         
         // Update arrest history

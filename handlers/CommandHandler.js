@@ -48,7 +48,7 @@ class CommandHandler {
         const dirName = path.basename(path.dirname(filePath));
         
         // Skip utility files that aren't commands
-        const skipFiles = ['BaseCommand.js', 'balance-manager.js', 'gambling.js', 'gambling-menu.js', 'blackjack-handler.js'];
+        const skipFiles = ['BaseCommand.js', 'balance-manager.js', 'gambling-menu.js', 'blackjack-handler.js'];
         
         if (skipFiles.includes(fileName)) {
             if (VERBOSE_CMD_LOAD) console.log(`Skipping non-command file: ${fileName}`);

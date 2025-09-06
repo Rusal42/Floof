@@ -430,19 +430,29 @@ async function handleOperation(message, userId, operationId) {
 
 async function handleNumberedOperation(message, userId, operationNumber) {
     const operations = Object.keys(DRUG_OPERATIONS);
+    const territories = Object.keys(TERRITORIES);
+    const totalItems = operations.length + territories.length;
     
-    if (operationNumber < 1 || operationNumber > operations.length) {
+    if (operationNumber < 1 || operationNumber > totalItems) {
         return await sendAsFloofWebhook(message, {
             embeds: [
                 new EmbedBuilder()
-                    .setDescription(`❌ Invalid operation number! Choose 1-${operations.length}.`)
+                    .setDescription(`❌ Invalid selection! Choose 1-${totalItems}.\n\n**Operations:** 1-${operations.length}\n**Territories:** ${operations.length + 1}-${totalItems}`)
                     .setColor(0xff0000)
             ]
         });
     }
     
-    const operationId = operations[operationNumber - 1];
-    return await handleOperation(message, userId, operationId);
+    // Handle operations (1-4)
+    if (operationNumber <= operations.length) {
+        const operationId = operations[operationNumber - 1];
+        return await handleOperation(message, userId, operationId);
+    }
+    
+    // Handle territories (5-8)
+    const territoryIndex = operationNumber - operations.length - 1;
+    const territoryId = territories[territoryIndex];
+    return await handleTerritoryControl(message, userId, territoryId);
 }
 
 async function displayCartelEmpire(message, userId) {
@@ -461,6 +471,62 @@ async function displayCartelEmpire(message, userId) {
         .setDescription(description)
         .setColor(0x8b0000)
         .setThumbnail(message.author.displayAvatarURL({ dynamic: true }))
+        .setTimestamp();
+
+    await sendAsFloofWebhook(message, { embeds: [embed] });
+}
+
+async function handleTerritoryControl(message, userId, territoryId) {
+    const territory = TERRITORIES[territoryId];
+    
+    if (!territory) {
+        return await sendAsFloofWebhook(message, {
+            embeds: [
+                new EmbedBuilder()
+                    .setDescription('❌ Invalid territory! Use `%cartel territories` to see available territories.')
+                    .setColor(0xff0000)
+            ]
+        });
+    }
+
+    const userBalance = getBalance(userId);
+    
+    if (userBalance < territory.control_cost) {
+        return await sendAsFloofWebhook(message, {
+            embeds: [
+                new EmbedBuilder()
+                    .setDescription(`❌ Insufficient funds to control this territory!\n\n💰 **Required:** ${territory.control_cost.toLocaleString()} coins\n💳 **Your Balance:** ${userBalance.toLocaleString()} coins`)
+                    .setColor(0xff0000)
+            ]
+        });
+    }
+
+    // Set cooldown
+    cartelCooldowns[userId] = Date.now();
+    
+    // Deduct control cost
+    subtractBalance(userId, territory.control_cost);
+    
+    // Calculate success/failure based on defense requirement
+    const successChance = Math.max(0.3, 1 - (territory.defense_requirement * 0.1));
+    const isSuccess = Math.random() < successChance;
+
+    if (!isSuccess) {
+        // Failed to control territory
+        const embed = new EmbedBuilder()
+            .setTitle('🚫 TERRITORY CONTROL FAILED!')
+            .setDescription(`${territory.emoji} **${territory.name}** control attempt failed!\n\n💰 **Investment Lost:** ${territory.control_cost.toLocaleString()} coins\n🛡️ **Defense Level:** ${territory.defense_requirement}/10\n💳 **New Balance:** ${getBalance(userId).toLocaleString()} coins\n\n*The rival gangs were too well organized! Try again when you're stronger.*`)
+            .setColor(0xff0000)
+            .setTimestamp();
+
+        return await sendAsFloofWebhook(message, { embeds: [embed] });
+    }
+
+    // Successfully controlled territory
+    const embed = new EmbedBuilder()
+        .setTitle('🏴‍☠️ TERRITORY CONTROLLED!')
+        .setDescription(`${territory.emoji} **${territory.name}** is now under your control!\n\n💰 **Control Cost:** ${territory.control_cost.toLocaleString()} coins\n💵 **Daily Income:** ${territory.daily_income.toLocaleString()} coins\n🛡️ **Defense Level:** ${territory.defense_requirement}/10\n💳 **New Balance:** ${getBalance(userId).toLocaleString()} coins\n\n*Your cartel now controls this territory! Collect daily income with future updates.*`)
+        .setColor(0x00ff00)
         .setTimestamp();
 
     await sendAsFloofWebhook(message, { embeds: [embed] });

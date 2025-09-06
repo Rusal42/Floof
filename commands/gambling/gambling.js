@@ -342,6 +342,65 @@ function donate(message, targetUser, amount) {
 }
 
 module.exports = {
+    name: 'gambling',
+    description: 'Main gambling command with subcommands',
+    usage: '%gambling <subcommand>',
+    category: 'gambling',
+    aliases: ['gamble'],
+    cooldown: 1,
+
+    async execute(message, args) {
+        if (!args[0]) {
+            return await sendAsFloofWebhook(message, {
+                content: '❌ Please specify a gambling action!\n💡 **Available:** `coinflip`, `balance`, `beg`, `work`, `donate`'
+            });
+        }
+
+        const subcommand = args[0].toLowerCase();
+        const subArgs = args.slice(1);
+
+        switch (subcommand) {
+            case 'coinflip':
+            case 'cf':
+                if (!subArgs[0] || !subArgs[1]) {
+                    return await sendAsFloofWebhook(message, {
+                        content: '❌ Usage: `%gambling coinflip <heads|tails> <amount>`'
+                    });
+                }
+                return await coinflip(message, subArgs[0], parseInt(subArgs[1]));
+
+            case 'balance':
+            case 'bal':
+                return await balance(message, subArgs);
+
+            case 'beg':
+                return await beg(message);
+
+            case 'work':
+                return await work(message);
+
+            case 'donate':
+                if (!subArgs[0] || !subArgs[1]) {
+                    return await sendAsFloofWebhook(message, {
+                        content: '❌ Usage: `%gambling donate <@user> <amount>`'
+                    });
+                }
+                const targetUser = message.mentions.users.first();
+                if (!targetUser) {
+                    return await sendAsFloofWebhook(message, {
+                        content: '❌ Please mention a valid user to donate to!'
+                    });
+                }
+                return await donate(message, targetUser, parseInt(subArgs[1]));
+
+            default:
+                return await sendAsFloofWebhook(message, {
+                    content: '❌ Unknown gambling command!\n💡 **Available:** `coinflip`, `balance`, `beg`, `work`, `donate`'
+                });
+        }
+    },
+
+    // Export individual functions for other modules to use
     coinflip,
     balance,
     beg,

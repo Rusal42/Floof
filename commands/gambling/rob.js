@@ -197,25 +197,7 @@ async function robTarget(message, args) {
     // Set cooldown
     robberyCooldowns[userId] = Date.now();
 
-    // Check if user has crime risk warnings enabled
-    const { userAllows } = require('./utils/user-preferences');
-    if (userAllows(userId, 'crime_risk_warnings')) {
-        const bank = BANKS[bankId];
-        const riskLevel = Math.floor((1 - bank.success_chance) * 100);
-        
-        if (riskLevel > 50) {
-            // High risk warning
-            const warningEmbed = new EmbedBuilder()
-                .setTitle('⚠️ High Risk Crime Warning')
-                .setDescription(`**${bank.emoji} ${bank.name}** has a **${riskLevel}% arrest chance**!\n\n🚔 **Jail Time:** ${bank.min_jail_time}-${bank.max_jail_time} minutes\n💸 **Potential Bail:** ${Math.floor(bank.min_jail_time * 500)}-${Math.floor(bank.max_jail_time * 1000)} coins\n\n*Are you sure you want to proceed?*\n\nDisable warnings: \`%preferences disable crime_risk_warnings\``)
-                .setColor(0xff6b35)
-                .setTimestamp();
-                
-            await sendAsFloofWebhook(message, { embeds: [warningEmbed] });
-        }
-    }
-
-    const result = attemptCrime(userId, 'bank', bankId);
+    const result = attemptCrime(userId, targetType, targetInput);
 
     if (!result.success) {
         if (result.reason === 'owner_disabled_robberies') {
