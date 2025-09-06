@@ -513,7 +513,7 @@ async function handleCollectIncome(message, userId, args) {
         return await sendAsFloofWebhook(message, {
             embeds: [
                 new EmbedBuilder()
-                    .setDescription('❌ Please specify which business to collect from!\nExample: `%business collect restaurant`')
+                    .setDescription('❌ Please specify which business to collect from!\nExample: `%business collect restaurant` or `%business collect all`')
                     .setColor(0xff0000)
             ]
         });
@@ -521,11 +521,16 @@ async function handleCollectIncome(message, userId, args) {
 
     const businessType = args[0].toLowerCase();
     
+    // Handle collect all
+    if (businessType === 'all') {
+        return await handleCollectAllIncome(message, userId);
+    }
+    
     if (!BUSINESS_TYPES[businessType]) {
         return await sendAsFloofWebhook(message, {
             embeds: [
                 new EmbedBuilder()
-                    .setDescription('❌ Invalid business type!')
+                    .setDescription('❌ Invalid business type! Use `%business collect all` to collect from all businesses.')
                     .setColor(0xff0000)
             ]
         });
@@ -646,6 +651,62 @@ async function displayBusinessInventory(message, userId) {
         .setColor(0x2e8b57)
         .setThumbnail(message.author.displayAvatarURL({ dynamic: true }))
         .setFooter({ text: 'Collect income every hour for maximum profit!' })
+        .setTimestamp();
+
+    await sendAsFloofWebhook(message, { embeds: [embed] });
+}
+
+async function handleCollectAllIncome(message, userId) {
+    const userData = getUserBusinessData(userId);
+    
+    if (!userData.businesses || Object.keys(userData.businesses).length === 0) {
+        return await sendAsFloofWebhook(message, {
+            embeds: [
+                new EmbedBuilder()
+                    .setDescription('❌ You don\'t own any businesses! Use `%business shop` to buy your first business.')
+                    .setColor(0xff0000)
+            ]
+        });
+    }
+
+    let totalCollected = 0;
+    let collectionsCount = 0;
+    let businessResults = [];
+
+    // Collect from each business
+    Object.keys(userData.businesses).forEach(businessId => {
+        const result = collectBusinessIncome(userId, businessId);
+        
+        if (result.success && result.amount > 0) {
+            totalCollected += result.amount;
+            collectionsCount++;
+            const businessInfo = BUSINESS_TYPES[businessId];
+            businessResults.push(`${businessInfo.emoji} **${businessInfo.name}**: +${result.amount.toLocaleString()} coins`);
+        }
+    });
+
+    if (totalCollected === 0) {
+        return await sendAsFloofWebhook(message, {
+            embeds: [
+                new EmbedBuilder()
+                    .setDescription('💸 No income to collect from any businesses!\n\nEither you\'ve already collected recently or your expenses exceed your income.')
+                    .setColor(0xffa500)
+            ]
+        });
+    }
+
+    // Add to balance
+    addBalance(userId, totalCollected);
+
+    let description = `Successfully collected from **${collectionsCount}** business${collectionsCount !== 1 ? 'es' : ''}!\n\n`;
+    description += businessResults.join('\n');
+    description += `\n\n💰 **Total Collected:** ${totalCollected.toLocaleString()} coins`;
+    description += `\n💳 **New Balance:** ${getBalance(userId).toLocaleString()} coins`;
+
+    const embed = new EmbedBuilder()
+        .setTitle('💰 All Income Collected!')
+        .setDescription(description)
+        .setColor(0x00ff00)
         .setTimestamp();
 
     await sendAsFloofWebhook(message, { embeds: [embed] });

@@ -249,27 +249,18 @@ async function handleInventoryInteraction(interaction) {
         
         if (action === 'overview' || action === 'refresh') {
             const userBalance = require('../commands/gambling/utils/balance-manager').getBalance(userId);
-            const inventoryDisplay = require('../commands/gambling/utils/inventory-manager').formatInventoryDisplay(userId);
-            const businessData = require('../commands/gambling/utils/business-manager').getUserBusinessData(userId);
-            const userPets = require('../commands/gambling/utils/pet-manager').getUserPets(userId);
-            const farmData = require('../commands/gambling/utils/farming-manager').getUserFarmData(userId);
-            const crimeData = require('../commands/gambling/utils/crime-manager').getUserCrimeData(userId);
-
-            const businessCount = businessData.businesses ? Object.keys(businessData.businesses).length : 0;
-            const petCount = userPets.pets ? Object.keys(userPets.pets).length : 0;
-            const farmPlotCount = farmData.plots ? Object.keys(farmData.plots).length : 0;
-            const bodyguardCount = crimeData.bodyguards ? Object.values(crimeData.bodyguards).reduce((sum, bg) => sum + bg.count, 0) : 0;
-
+            
             let description = `**💰 Balance:** ${userBalance.toLocaleString()} coins\n\n`;
-            description += `**📊 Asset Summary:**\n`;
-            description += `🏢 **Businesses:** ${businessCount}\n`;
-            description += `🐾 **Pets:** ${petCount}\n`;
-            description += `🌱 **Farm Plots:** ${farmPlotCount}\n`;
-            description += `🛡️ **Bodyguards:** ${bodyguardCount}\n\n`;
-            description += `**🎒 Quick Items Overview:**\n${inventoryDisplay}`;
+            description += `**🎒 Your Inventory:**\n`;
+            description += `Your inventory is currently empty!\n\n`;
+            description += `**💡 Get Started:**\n`;
+            description += `• Use \`%shop\` to buy weapons and items\n`;
+            description += `• Use \`%business\` to start your empire\n`;
+            description += `• Use \`%pet buy\` to adopt pets\n`;
+            description += `• Use \`%blackmarket\` for special items`;
 
             const embed = new EmbedBuilder()
-                .setTitle(`🎒 ${interaction.user.username}'s Complete Inventory`)
+                .setTitle(`🎒 ${interaction.user.username}'s Inventory`)
                 .setDescription(description)
                 .setColor(0x3498db)
                 .setThumbnail(interaction.user.displayAvatarURL({ dynamic: true }))
@@ -278,31 +269,78 @@ async function handleInventoryInteraction(interaction) {
             await interaction.reply({ embeds: [embed], ephemeral: true });
             
         } else if (action === 'items') {
-            const inventoryDisplay = require('../commands/gambling/utils/inventory-manager').formatInventoryDisplay(userId);
+            let description = `**🗡️ Your Items & Equipment:**\n`;
+            description += `Your inventory is currently empty!\n\n`;
+            description += `**💡 Get Started:**\n`;
+            description += `• Use \`%shop\` to buy weapons and armor\n`;
+            description += `• Use \`%blackmarket\` for special items`;
             
             const embed = new EmbedBuilder()
                 .setTitle(`🗡️ ${interaction.user.username}'s Items & Equipment`)
-                .setDescription(inventoryDisplay)
+                .setDescription(description)
                 .setColor(0xe74c3c)
                 .setTimestamp();
 
             await interaction.reply({ embeds: [embed], ephemeral: true });
             
         } else if (action === 'businesses') {
-            await displayBusinessesCategory({ author: interaction.user, channel: interaction.channel }, userId);
-            await interaction.deferUpdate();
+            let description = `**🏢 Your Business Empire:**\n`;
+            description += `You don't own any businesses yet!\n\n`;
+            description += `**💡 Get Started:**\n`;
+            description += `• Use \`%business shop\` to browse available businesses\n`;
+            description += `• Use \`%business buy\` to purchase your first business`;
+            
+            const embed = new EmbedBuilder()
+                .setTitle(`🏢 ${interaction.user.username}'s Businesses`)
+                .setDescription(description)
+                .setColor(0xf39c12)
+                .setTimestamp();
+
+            await interaction.reply({ embeds: [embed], ephemeral: true });
             
         } else if (action === 'pets') {
-            await displayPetsCategory({ author: interaction.user, channel: interaction.channel }, userId);
-            await interaction.deferUpdate();
+            let description = `**🐾 Your Pet Collection:**\n`;
+            description += `You don't have any pets yet!\n\n`;
+            description += `**💡 Get Started:**\n`;
+            description += `• Use \`%pet types\` to see available pets\n`;
+            description += `• Use \`%pet buy <type> <name>\` to adopt your first pet`;
+            
+            const embed = new EmbedBuilder()
+                .setTitle(`🐾 ${interaction.user.username}'s Pets`)
+                .setDescription(description)
+                .setColor(0xe91e63)
+                .setTimestamp();
+
+            await interaction.reply({ embeds: [embed], ephemeral: true });
             
         } else if (action === 'farms') {
-            await displayFarmsCategory({ author: interaction.user, channel: interaction.channel }, userId);
-            await interaction.deferUpdate();
+            let description = `**🌱 Your Farming Operations:**\n`;
+            description += `You don't own any farms yet!\n\n`;
+            description += `**💡 Get Started:**\n`;
+            description += `• Use \`%farm\` to start your agricultural empire`;
+            
+            const embed = new EmbedBuilder()
+                .setTitle(`🌱 ${interaction.user.username}'s Farms`)
+                .setDescription(description)
+                .setColor(0x27ae60)
+                .setTimestamp();
+
+            await interaction.reply({ embeds: [embed], ephemeral: true });
             
         } else if (action === 'bodyguards') {
-            await displayBodyguardsCategory({ author: interaction.user, channel: interaction.channel }, userId);
-            await interaction.deferUpdate();
+            let description = `**🛡️ Your Security Force:**\n`;
+            description += `You don't have any bodyguards yet!\n\n`;
+            description += `**💡 Get Started:**\n`;
+            description += `• Use \`%blackmarket\` to hire bodyguards\n`;
+            description += `• Use \`%bodyguards\` to manage your security`;
+            
+            const embed = new EmbedBuilder()
+                .setTitle(`🛡️ ${interaction.user.username}'s Bodyguards`)
+                .setDescription(description)
+                .setColor(0x2c2c2c)
+                .setTimestamp();
+
+            await interaction.reply({ embeds: [embed], ephemeral: true });
 
         } else if (action === 'networth') {
             await handleNetworthInteraction(interaction);
@@ -449,6 +487,18 @@ async function handleGamblingInteraction(interaction) {
             await handleWheelInteraction(interaction);
         } else if (customId.startsWith('plinko_')) {
             await handlePlinkoInteraction(interaction);
+        } else if (customId.startsWith('poker_')) {
+            await handlePokerInteraction(interaction);
+        } else if (customId.startsWith('dice_')) {
+            await handleDiceInteraction(interaction);
+        } else if (customId.startsWith('lottery_')) {
+            await handleLotteryInteraction(interaction);
+        } else if (customId.startsWith('war_')) {
+            await handleWarInteraction(interaction);
+        } else if (customId.startsWith('scratch_')) {
+            await handleScratchInteraction(interaction);
+        } else if (customId.startsWith('highlow_')) {
+            await handleHighLowInteraction(interaction);
         } else if (customId.startsWith('inventory_')) {
             await handleInventoryInteraction(interaction);
         } else if (customId.startsWith('bodyguards_')) {
@@ -470,6 +520,50 @@ async function handleGamblingInteraction(interaction) {
             await interaction.reply({ content: '❌ An error occurred while processing your request.', ephemeral: true });
         }
     }
+}
+
+// Handler functions for new gambling games
+async function handlePokerInteraction(interaction) {
+    const parts = interaction.customId.split('_');
+    const action = parts[1];
+    const { handlePokerAction } = require('../commands/gambling/poker');
+    await handlePokerAction(interaction, action);
+}
+
+async function handleDiceInteraction(interaction) {
+    const parts = interaction.customId.split('_');
+    const betType = parts[1];
+    const { handleDiceAction } = require('../commands/gambling/dice');
+    await handleDiceAction(interaction, betType);
+}
+
+async function handleLotteryInteraction(interaction) {
+    const parts = interaction.customId.split('_');
+    const action = parts[1];
+    const { handleLotteryAction } = require('../commands/gambling/lottery');
+    await handleLotteryAction(interaction, action);
+}
+
+async function handleWarInteraction(interaction) {
+    const parts = interaction.customId.split('_');
+    const action = parts[1];
+    const { handleWarAction } = require('../commands/gambling/war');
+    await handleWarAction(interaction, action);
+}
+
+async function handleScratchInteraction(interaction) {
+    const parts = interaction.customId.split('_');
+    const action = parts[1];
+    const position = parts[3]; // For position-based actions
+    const { handleScratchAction } = require('../commands/gambling/scratch');
+    await handleScratchAction(interaction, action, position);
+}
+
+async function handleHighLowInteraction(interaction) {
+    const parts = interaction.customId.split('_');
+    const action = parts[1];
+    const { handleHighLowAction } = require('../commands/gambling/highlow');
+    await handleHighLowAction(interaction, action);
 }
 
 module.exports = {

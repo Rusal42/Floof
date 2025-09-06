@@ -52,11 +52,11 @@ module.exports = {
         const betAmount = parseInt(args[0]);
         const betType = args[1].toLowerCase();
 
-        if (isNaN(betAmount) || betAmount < 50) {
+        if (isNaN(betAmount) || betAmount <= 0) {
             return await sendAsFloofWebhook(message, {
                 embeds: [
                     new EmbedBuilder()
-                        .setDescription('❌ Invalid bet amount! Minimum bet is **50** coins.')
+                        .setDescription('❌ Please provide a valid positive amount to bet!')
                         .setColor(0xff0000)
                 ]
             });

@@ -47,10 +47,32 @@ function slots(message, amountArg) {
             ]
         });
     }
-    let amount = parseInt(amountArg, 10);
-    if (isNaN(amount) || amount <= 0) {
+    let amount;
+    let isAllIn = false;
+    
+    if (!amountArg) {
         amount = 10;
+    } else {
+        const betInput = amountArg.toLowerCase();
+        if (betInput === 'all' || betInput === 'allin' || betInput === 'all-in') {
+            const currentBalance = getBalance(userId);
+            if (currentBalance <= 0) {
+                return sendAsFloofWebhook(message, { embeds: [
+                    new EmbedBuilder()
+                        .setDescription(`🎰 **Slots** | You have no coins to bet!`)
+                        .setColor(0xff0000)
+                ] });
+            }
+            amount = currentBalance;
+            isAllIn = true;
+        } else {
+            amount = parseInt(amountArg, 10);
+            if (isNaN(amount) || amount <= 0) {
+                amount = 10;
+            }
+        }
     }
+    
     const currentBalance = getBalance(userId);
     if (currentBalance < amount) {
         return sendAsFloofWebhook(message, { embeds: [
@@ -112,6 +134,7 @@ function slots(message, amountArg) {
             `**${spinArr[0]} | ${spinArr[1]} | ${spinArr[2]}**\n\n` +
             (payout > 0 ? `**${winType}** You won **${payout}** coins!` : 'You lost your bet!') +
             effectsMsg +
+            (isAllIn ? '\n🎰 **ALL IN!**' : '') +
             `\nYour new balance: **${getBalance(userId).toLocaleString()}** coins.`
         )
         .setColor(payout > 0 ? 0x43b581 : 0xff6961);
@@ -121,6 +144,7 @@ function slots(message, amountArg) {
 module.exports = {
     name: 'slots',
     description: 'Play the slot machine and bet your coins for big payouts',
+    usage: '%slots <amount|all>',
     aliases: ['slot'],
     permissions: [],
     

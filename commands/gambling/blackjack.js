@@ -81,20 +81,50 @@ async function blackjack(message, amountArg) {
         });
     }
     
-    // Remove hardcoded server restriction for multi-server compatibility
-    amountArg = parseInt(amountArg, 10);
-    if (isNaN(amountArg) || amountArg <= 0) {
+    let amount;
+    let isAllIn = false;
+    
+    if (!amountArg) {
         return sendAsFloofWebhook(message, {
             embeds: [
                 new EmbedBuilder()
                     .setTitle('Blackjack')
-                    .setDescription('Usage: %blackjack <amount>')
+                    .setDescription('Usage: %blackjack <amount|all>')
                     .setColor(0xffd700)
             ]
         });
     }
+    
+    const betInput = amountArg.toString().toLowerCase();
+    if (betInput === 'all' || betInput === 'allin' || betInput === 'all-in') {
+        const currentBalance = getBalance(userId);
+        if (currentBalance <= 0) {
+            return sendAsFloofWebhook(message, {
+                embeds: [
+                    new EmbedBuilder()
+                        .setTitle('Blackjack')
+                        .setDescription('❌ You have no coins to bet! Your balance is 0.')
+                        .setColor(0xff0000)
+                ]
+            });
+        }
+        amount = currentBalance;
+        isAllIn = true;
+    } else {
+        amount = parseInt(amountArg, 10);
+        if (isNaN(amount) || amount <= 0) {
+            return sendAsFloofWebhook(message, {
+                embeds: [
+                    new EmbedBuilder()
+                        .setTitle('Blackjack')
+                        .setDescription('Usage: %blackjack <amount|all>')
+                        .setColor(0xffd700)
+                ]
+            });
+        }
+    }
     const currentBalance = getBalance(userId);
-    if (currentBalance < amountArg) {
+    if (currentBalance < amount) {
         return sendAsFloofWebhook(message, {
             embeds: [
                 new EmbedBuilder()
@@ -112,7 +142,7 @@ async function blackjack(message, amountArg) {
     });
     
     // Deduct bet up front
-    addBalance(userId, -amountArg);
+    addBalance(userId, -amount);
     saveBalances();
     // Initialize deck and hands
     const deck = createDeck();
@@ -120,13 +150,13 @@ async function blackjack(message, amountArg) {
     const dealer = [deck.pop(), deck.pop()];
     // Store game state
     const stateKey = `${userId}_${message.channel.id}`;
-    blackjackGames[stateKey] = { deck, player, dealer, bet: amountArg, messageId: null, luckBoost };
+    blackjackGames[stateKey] = { deck, player, dealer, bet: amount, isAllIn, messageId: null, luckBoost };
     // Prepare embed
     const embed = new EmbedBuilder()
         .setTitle('Blackjack')
         .setDescription(
             `Your hand: ${formatHand(player)} (**${handValue(player)}**)
-Dealer: ${formatHand(dealer, true)}\n\nReact with the buttons below to Hit or Stand.`
+Dealer: ${formatHand(dealer, true)}${isAllIn ? '\n🎰 **ALL IN!**' : ''}\n\nReact with the buttons below to Hit or Stand.`
         )
         .setColor(0x3498db);
     // Buttons
@@ -149,6 +179,7 @@ Dealer: ${formatHand(dealer, true)}\n\nReact with the buttons below to Hit or St
 module.exports = {
     name: 'blackjack',
     description: 'Play blackjack and bet your coins against the dealer',
+    usage: '%blackjack <amount|all>',
     aliases: ['bj'],
     permissions: [],
     

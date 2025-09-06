@@ -15,11 +15,6 @@ module.exports = {
         const userId = message.author.id;
         const action = args[0]?.toLowerCase() || 'view';
 
-        if (!isNaN(parseInt(action))) {
-            const bodyguardNumber = parseInt(action);
-            return await handleSelectBodyguardByNumber(message, userId, bodyguardNumber, args.slice(1));
-        }
-
         switch (action) {
             case 'view':
             case 'list':
@@ -43,52 +38,42 @@ async function displayBodyguards(message, userId) {
     const bodyguards = userData.bodyguards || {};
     const userBalance = getBalance(userId);
 
-    let description = '**🛡️ Your Security Force**\n\n';
-    description += `💰 **Balance:** ${userBalance.toLocaleString()} coins\n\n`;
-    
+    let description = '**🛡️ Your Personal Protection Force**\n\n';
+
     if (Object.keys(bodyguards).length === 0) {
-        description += '❌ **No bodyguards hired**\n\nUse `%bodyguards hire <type>` to build your security force!\n\n';
-        description += '**Available Types:**\n';
-        let index = 1;
-        Object.entries(BODYGUARD_TYPES).forEach(([type, info]) => {
-            description += `**${index}.** ${info.emoji} **${info.name}** - ${info.price.toLocaleString()} coins\n`;
-            description += `└ 🛡️ ${(info.attack_reduction * 100).toFixed(0)}% damage reduction\n`;
-            description += `└ 💰 ${info.daily_wage.toLocaleString()} coins/day\n`;
-            description += `└ \`%bodyguards hire ${index}\` or \`%bodyguards hire ${type}\`\n\n`;
-            index++;
-        });
+        description += '❌ **No bodyguards hired**\n\n';
+        description += '💡 Use `%blackmarket` to hire bodyguards for protection!\n';
+        description += '💡 Or use `%bodyguards hire [type]` to hire directly\n\n';
     } else {
         let totalProtection = 0;
         let dailyCost = 0;
-        let index = 1;
-        
+
         Object.entries(bodyguards).forEach(([type, data]) => {
             const info = BODYGUARD_TYPES[type];
-            if (info && data.count > 0) {
-                totalProtection += info.attack_reduction * data.count;
-                dailyCost += info.daily_wage * data.count;
+            if (info) {
+                totalProtection += info.attack_reduction;
+                dailyCost += info.daily_wage;
                 
-                description += `**${index}.** ${info.emoji} **${info.name}** x${data.count}\n`;
-                description += `└ 🛡️ Protection: ${(info.attack_reduction * 100).toFixed(0)}% each\n`;
-                description += `└ 💰 Daily Cost: ${info.daily_wage.toLocaleString()} coins each\n`;
-                description += `└ 📍 Assignment: ${data.assignment || 'Personal Protection'}\n`;
-                description += `└ \`%bodyguards ${index} <command>\` to manage\n\n`;
-                index++;
+                description += `${info.emoji} **${info.name}**\n`;
+                description += `└ 🛡️ Protection: ${(info.attack_reduction * 100).toFixed(0)}% damage reduction\n`;
+                description += `└ 💰 Daily Cost: ${info.daily_wage.toLocaleString()} coins\n`;
+                description += `└ 📍 Assignment: Personal Protection\n\n`;
             }
         });
-        
+
         description += `**📊 Total Protection:** ${(Math.min(totalProtection * 100, 80)).toFixed(0)}% damage reduction\n`;
         description += `**💸 Daily Wages:** ${dailyCost.toLocaleString()} coins\n\n`;
-        description += '**💡 Commands:**\n';
-        description += '• `%bodyguards hire <number/type>` - Hire new bodyguard\n';
-        description += '• `%bodyguards <number> assign <assignment>` - Assign duties\n';
-        description += '• `%bodyguards <number> fire` - Dismiss bodyguard';
     }
+
+    description += '**Available Commands:**\n';
+    description += '• `%bodyguards hire [type]` - Hire from blackmarket\n';
+    description += '• `%bodyguards assign [type] [personal|business]` - Assign protection\n';
+    description += '• `%bodyguards fire [type]` - Dismiss a bodyguard\n';
+    description += '• `%blackmarket` - Browse available bodyguards\n\n';
 
     description += '**💡 Protection Types:**\n';
     description += '• **Personal:** Protects you from attacks and robberies\n';
     description += '• **Business:** Protects your businesses from raids\n';
-    description += '• `%blackmarket` - Browse available bodyguards';
 
     const embed = new EmbedBuilder()
         .setTitle('🛡️ Bodyguard Management')
@@ -237,80 +222,22 @@ async function assignBodyguard(message, userId, bodyguardType, assignment) {
     return await sendAsFloofWebhook(message, { embeds: [embed] });
 }
 
-async function handleSelectBodyguardByNumber(message, userId, bodyguardNumber, args) {
-    const { getUserBusinessData, BODYGUARD_TYPES } = require('./utils/business-manager');
-    const userData = getUserBusinessData(userId);
-    const bodyguards = userData.bodyguards || {};
-    
-    const bodyguardTypes = Object.keys(bodyguards).filter(type => bodyguards[type].count > 0);
-    
-    if (bodyguardNumber < 1 || bodyguardNumber > bodyguardTypes.length) {
-        return await sendAsFloofWebhook(message, {
-            embeds: [
-                new EmbedBuilder()
-                    .setDescription(`❌ Invalid bodyguard number! Choose 1-${bodyguardTypes.length}.\nUse \`%bodyguards\` to see your bodyguards.`)
-                    .setColor(0xff0000)
-            ]
-        });
-    }
-    
-    const selectedType = bodyguardTypes[bodyguardNumber - 1];
-    const command = args[0]?.toLowerCase();
-    
-    if (!command) {
-        // Show info about selected bodyguard
-        const info = BODYGUARD_TYPES[selectedType];
-        const data = bodyguards[selectedType];
-        
-        let description = `${info.emoji} **${info.name}** x${data.count}\n\n`;
-        description += `🛡️ **Protection:** ${(info.attack_reduction * 100).toFixed(0)}% damage reduction each\n`;
-        description += `💰 **Daily Cost:** ${info.daily_wage.toLocaleString()} coins each\n`;
-        description += `📍 **Assignment:** ${data.assignment || 'Personal Protection'}\n\n`;
-        description += `**Commands:**\n`;
-        description += `• \`%bodyguards ${bodyguardNumber} assign <assignment>\`\n`;
-        description += `• \`%bodyguards ${bodyguardNumber} fire\``;
-        
-        const embed = new EmbedBuilder()
-            .setTitle(`🛡️ Bodyguard #${bodyguardNumber}`)
-            .setDescription(description)
-            .setColor(0x2c2c2c)
-            .setTimestamp();
-            
-        return await sendAsFloofWebhook(message, { embeds: [embed] });
-    }
-    
-    switch (command) {
-        case 'assign':
-            return await assignBodyguard(message, userId, selectedType, args[1]);
-        case 'fire':
-        case 'dismiss':
-            return await fireBodyguard(message, userId, selectedType);
-        default:
-            return await sendAsFloofWebhook(message, {
-                embeds: [
-                    new EmbedBuilder()
-                        .setDescription(`❌ Invalid command! Use \`assign\` or \`fire\``)
-                        .setColor(0xff0000)
-                ]
-            });
-    }
-}
-
 async function fireBodyguard(message, userId, bodyguardType) {
     if (!bodyguardType) {
         return await sendAsFloofWebhook(message, {
             embeds: [
                 new EmbedBuilder()
-                    .setDescription('❌ Please specify bodyguard type to fire!\nExample: `%bodyguards fire basic_bodyguard`')
+                    .setDescription('❌ Please specify which bodyguard type to fire: `basic`, `professional`, or `elite`')
                     .setColor(0xff0000)
             ]
         });
     }
 
+    const type = bodyguardType.toLowerCase().replace('_bodyguard', '') + '_bodyguard';
     const { getUserBusinessData, saveUserBusinessData, BODYGUARD_TYPES } = require('./utils/business-manager');
     const userData = getUserBusinessData(userId);
 
-    if (!userData.bodyguards?.[bodyguardType]) {
+    if (!userData.bodyguards?.[type]) {
         return await sendAsFloofWebhook(message, {
             embeds: [
                 new EmbedBuilder()
@@ -320,10 +247,10 @@ async function fireBodyguard(message, userId, bodyguardType) {
         });
     }
 
-    delete userData.bodyguards[bodyguardType];
+    delete userData.bodyguards[type];
     saveUserBusinessData(userId, userData);
 
-    const info = BODYGUARD_TYPES[bodyguardType];
+    const info = BODYGUARD_TYPES[type];
     const embed = new EmbedBuilder()
         .setTitle('🚪 Bodyguard Dismissed')
         .setDescription(`${info.emoji} You have dismissed your **${info.name}**.\n\n💸 You will save ${info.daily_wage.toLocaleString()} coins per day in wages.`)

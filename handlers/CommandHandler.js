@@ -176,41 +176,6 @@ class CommandHandler {
             }
         }
         
-        // If this is a gambling command, check if the other bot is online
-        if (command && command.category === 'gambling' && message.guild) {
-            const OTHER_BOT_ID = '1399482685545779241'; // The ID of the other gambling bot
-            
-            try {
-                // Try to get the bot from cache first (faster)
-                let otherBot = message.guild.members.cache.get(OTHER_BOT_ID);
-                
-                // If not in cache, try to fetch it (slower but more accurate)
-                if (!otherBot) {
-                    otherBot = await message.guild.members.fetch(OTHER_BOT_ID).catch(() => null);
-                }
-                
-                // If we found the bot, check its status
-                if (otherBot) {
-                    const status = otherBot.presence?.status || 'offline';
-                    const isOnline = status !== 'offline' && status !== 'invisible';
-                    
-                    console.log(`[BOT STATUS] ${otherBot.user.tag} is ${isOnline ? 'ONLINE' : 'OFFLINE'} (status: ${status})`);
-                    
-                    // If the other bot is online, ignore the command
-                    if (isOnline) {
-                        console.log(`[COMMAND] Ignoring ${commandName} - other gambling bot is online`);
-                        return false;
-                    }
-                    console.log(`[COMMAND] Processing ${commandName} - other gambling bot is offline`);
-                } else {
-                    console.log(`[BOT STATUS] Other gambling bot (${OTHER_BOT_ID}) not found in server`);
-                }
-            } catch (error) {
-                console.error('[ERROR] Failed to check bot status:', error);
-                // Continue with command execution if there's an error
-                console.log(`[COMMAND] Processing ${commandName} - error checking bot status`);
-            }
-        }
         
         if (!command) {
             return false; // Command not found

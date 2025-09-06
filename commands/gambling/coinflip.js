@@ -5,7 +5,7 @@ const { getBalance, addBalance, subtractBalance, hasBalance } = require('./utils
 module.exports = {
     name: 'coinflip',
     description: 'Flip a coin and bet on heads or tails',
-    usage: '%coinflip <heads/tails> <amount>',
+    usage: '%coinflip <heads/tails> <amount|all>',
     category: 'gambling',
     aliases: ['cf', 'flip'],
 
@@ -58,26 +58,35 @@ module.exports = {
             });
         }
 
-        const amount = parseInt(args[1]);
-        if (isNaN(amount) || amount <= 0) {
-            return await sendAsFloofWebhook(message, {
-                embeds: [
-                    new EmbedBuilder()
-                        .setDescription('❌ Please provide a valid positive amount to bet!')
-                        .setColor(0xff0000)
-                ]
-            });
+        let amount;
+        const betInput = args[1].toLowerCase();
+        
+        // Handle "all in" betting
+        if (betInput === 'all' || betInput === 'allin' || betInput === 'all-in') {
+            const currentBalance = getBalance(userId);
+            if (currentBalance <= 0) {
+                return await sendAsFloofWebhook(message, {
+                    embeds: [
+                        new EmbedBuilder()
+                            .setDescription('❌ You have no coins to bet! Your balance is 0.')
+                            .setColor(0xff0000)
+                    ]
+                });
+            }
+            amount = currentBalance;
+        } else {
+            amount = parseInt(args[1]);
+            if (isNaN(amount) || amount <= 0) {
+                return await sendAsFloofWebhook(message, {
+                    embeds: [
+                        new EmbedBuilder()
+                            .setDescription('❌ Please provide a valid positive amount to bet or use "all" to bet everything!')
+                            .setColor(0xff0000)
+                    ]
+                });
+            }
         }
 
-        if (amount > 10000) {
-            return await sendAsFloofWebhook(message, {
-                embeds: [
-                    new EmbedBuilder()
-                        .setDescription('❌ Maximum bet is 10,000 coins!')
-                        .setColor(0xff0000)
-                ]
-            });
-        }
 
         if (!hasBalance(userId, amount)) {
             const currentBalance = getBalance(userId);
@@ -104,9 +113,10 @@ module.exports = {
             newBalance = subtractBalance(userId, amount);
         }
 
+        const isAllIn = betInput === 'all' || betInput === 'allin' || betInput === 'all-in';
         const embed = new EmbedBuilder()
             .setTitle('🪙 Coinflip Result')
-            .setDescription(`You chose: **${chosenSide}**\nResult: **${result}**\n\n${won ? '🎉 You won!' : '😔 You lost!'}\n\n💰 Balance: **${newBalance.toLocaleString()}** coins (${won ? '+' : '-'}${amount.toLocaleString()})`)
+            .setDescription(`You chose: **${chosenSide}**\nResult: **${result}**\n\n${won ? '🎉 You won!' : '😔 You lost!'}\n\n💰 Balance: **${newBalance.toLocaleString()}** coins (${won ? '+' : '-'}${amount.toLocaleString()})${isAllIn ? ' 🎰 **ALL IN!**' : ''}`)
             .setColor(won ? 0x00ff00 : 0xff0000)
             .setTimestamp();
 

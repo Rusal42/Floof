@@ -91,21 +91,40 @@ async function roulette(message, args) {
         });
     }
 
-    const amount = parseInt(args[0]);
+    let amount;
+    let isAllIn = false;
     let betType = args[1]?.toLowerCase();
     let betValue = args[2];
 
-    // Check if amount is valid
-    if (!amount || isNaN(amount) || amount <= 0) {
-        await sendAsFloofWebhook(message, {
-            embeds: [
-                new EmbedBuilder()
-                    .setTitle('🎰 Roulette - Invalid Bet')
-                    .setDescription('Please specify a valid bet amount! Example: `%roulette 100 color red`')
-                    .setColor(0xff6961)
-            ]
-        });
-        return showRouletteHelp(message);
+    // Handle "all in" betting
+    if (args[0] && (args[0].toLowerCase() === 'all' || args[0].toLowerCase() === 'allin' || args[0].toLowerCase() === 'all-in')) {
+        const currentBalance = getBalance(userId);
+        if (currentBalance <= 0) {
+            return await sendAsFloofWebhook(message, {
+                embeds: [
+                    new EmbedBuilder()
+                        .setTitle('🎰 Roulette')
+                        .setDescription('❌ You have no coins to bet! Your balance is 0.')
+                        .setColor(0xff0000)
+                ]
+            });
+        }
+        amount = currentBalance;
+        isAllIn = true;
+    } else {
+        amount = parseInt(args[0]);
+        // Check if amount is valid
+        if (!amount || isNaN(amount) || amount <= 0) {
+            await sendAsFloofWebhook(message, {
+                embeds: [
+                    new EmbedBuilder()
+                        .setTitle('🎰 Roulette - Invalid Bet')
+                        .setDescription('Please specify a valid bet amount or use "all"! Example: `%roulette 100 color red` or `%roulette all red`')
+                        .setColor(0xff6961)
+                ]
+            });
+            return showRouletteHelp(message);
+        }
     }
     
     // Default to color bet if no bet type specified

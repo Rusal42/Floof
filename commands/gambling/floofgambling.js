@@ -29,7 +29,11 @@ module.exports = {
 
         // Split commands into categories for better organization
         const coreCommands = gambleCmds.filter(cmd => 
-            ['balance', 'beg', 'slots', 'blackjack', 'coinflip', 'roulette', 'baccarat', 'craps', 'keno', 'wheel', 'plinko', 'races', 'leaderboard', 'donate'].includes(cmd.name)
+            ['balance', 'beg', 'slots', 'blackjack', 'coinflip', 'roulette', 'baccarat', 'craps', 'keno', 'wheel', 'plinko', 'poker', 'dice', 'war', 'highlow', 'races', 'leaderboard', 'donate'].includes(cmd.name)
+        );
+        
+        const lotteryCommands = gambleCmds.filter(cmd => 
+            ['lottery', 'scratch'].includes(cmd.name)
         );
         
         const jobCommands = gambleCmds.filter(cmd => 
@@ -54,14 +58,16 @@ module.exports = {
 
         const tips = [
             '💼 **Getting Started:** Use `%work` every 30 seconds to earn coins',
-            '🎰 **Gambling:** Try `%slots 50`, `%blackjack 100`, or `%coinflip heads 25`',
+            '🎰 **Classic Games:** Try `%slots 50`, `%blackjack 100`, or `%coinflip heads 25`',
+            '🃏 **Card Games:** Play `%poker 500` for Texas Hold\'em or `%war 200` for quick battles',
+            '🎲 **Dice & Numbers:** Roll with `%dice 300` or guess with `%highlow 150`',
+            '🎫 **Lottery Fun:** Buy tickets with `%lottery buy` or scratch cards with `%scratch bronze`',
             '🛡️ **Protection:** Use `%vault deposit` to store coins safely, or hire bodyguards with `%shop`',
             '⚔️ **Combat:** Attack others with `%attack @user` or defend with pets from `%petshop`',
             '🏪 **Shopping:** Buy weapons, items, and protection from `%shop`, `%blackmarket`, `%petshop`',
-            '🏢 **Business:** Own businesses with `%business buy` and rob others with `%rob business`',
-            '🎯 **Crime:** Plan `%heist` operations, join `%cartel` activities, or `%smuggle` contraband',
-            '🍺 **Items:** Use `%use health pack` or `%use energy drink` to consume items',
-            '💰 **Check:** `%balance` for coins, `%inventory` for items, `%leaderboard` for rankings'
+            '🏢 **Business:** Own businesses with `%business buy` and collect with `%business collect all`',
+            '🐾 **Pets:** Adopt with `%pet buy`, hunt for loot with `%pet hunt`, and train stats',
+            '💰 **Check:** `%balance` for coins, `%inventory` for items, `%networth` for total wealth'
         ].join('\n');
 
         const embed = new EmbedBuilder()
@@ -70,6 +76,7 @@ module.exports = {
             .addFields(
                 { name: 'Getting Started Guide', value: tips },
                 { name: '🎲 Core Gambling', value: formatCmdList(coreCommands) || 'None found', inline: true },
+                { name: '🎫 Lottery & Tickets', value: formatCmdList(lotteryCommands) || 'None found', inline: true },
                 { name: '💼 Jobs & Work', value: formatCmdList(jobCommands) || 'None found', inline: true },
                 { name: '⚔️ Combat & Crime', value: formatCmdList(combatCommands) || 'None found', inline: true },
                 { name: '🐾 Pets & Battles', value: formatCmdList(petCommands) || 'None found', inline: true },

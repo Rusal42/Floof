@@ -82,15 +82,6 @@ module.exports = {
             });
         }
 
-        if (amount > 50000) {
-            return await sendAsFloofWebhook(message, {
-                embeds: [
-                    new EmbedBuilder()
-                        .setDescription('❌ Maximum donation is 50,000 coins!')
-                        .setColor(0xff0000)
-                ]
-            });
-        }
 
         if (!hasBalance(userId, amount)) {
             const currentBalance = getBalance(userId);

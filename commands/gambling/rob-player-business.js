@@ -90,9 +90,9 @@ async function robPlayerBusiness(message, targetUserId) {
 
         } else {
             // Robbery failed - get arrested
-            const { arrestUser } = require('./beatup');
+            const { arrestUser } = require('./utils/crime-manager');
             const arrestTime = 300; // 5 minutes
-            arrestUser(userId, arrestTime);
+            arrestUser(userId, arrestTime * 1000, 'Business Robbery', 0);
 
             const embed = new EmbedBuilder()
                 .setTitle('🚔 Robbery Failed!')
