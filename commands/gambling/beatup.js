@@ -6,7 +6,7 @@ const { sendAsFloofWebhook } = require('../../utils/webhook-util');
 const { loadBalances, saveBalances, getBalance, setBalance } = require('./utils/balance-manager');
 const { getActivePet, isUserAFK, updateUserActivity, simulatePetDefense, PET_TYPES } = require('./utils/pet-manager');
 const { getSelectedWeapon } = require('./select');
-const { getInventory, getItemInfo, hasItem, removeItem } = require('./utils/inventory-manager');
+const { getUserInventory, getItemInfo, hasItem, removeItemFromInventory } = require('./utils/inventory-manager');
 const { getCrimeData } = require('./utils/crime-manager');
 
 // Constants

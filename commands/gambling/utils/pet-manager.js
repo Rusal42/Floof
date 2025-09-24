@@ -525,10 +525,29 @@ function getStatusBar(value) {
     return `${filled}${empty}`;
 }
 
+// Check if pet should level up and apply level up bonuses
+function checkLevelUp(pet) {
+    const xpNeeded = pet.level * 100;
+    if (pet.xp >= xpNeeded) {
+        pet.level++;
+        pet.xp -= xpNeeded;
+        
+        // Level up stat bonus
+        const petInfo = PET_TYPES[pet.type];
+        Object.keys(pet.stats).forEach(stat => {
+            pet.stats[stat] += Math.floor(petInfo.growth_rate[stat] * 0.5);
+        });
+        
+        return true;
+    }
+    return false;
+}
+
 module.exports = {
     PET_TYPES,
     PET_ITEMS,
     getUserPets,
+    saveUserPets,
     buyPet,
     getPet,
     getActivePet,

@@ -1,6 +1,6 @@
 const { EmbedBuilder } = require('discord.js');
 const { sendAsFloofWebhook } = require('../../utils/webhook-util');
-const { getInventory, getItemInfo } = require('./utils/inventory-manager');
+const { getUserInventory, getItemInfo } = require('./utils/inventory-manager');
 const fs = require('fs');
 const path = require('path');
 

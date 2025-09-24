@@ -407,17 +407,341 @@ function getStatusBar(value) {
     return `${filled}${empty}`;
 }
 
+async function handleFeedPet(message, userId, args) {
+    const activePet = getActivePet(userId);
+    
+    if (!activePet) {
+        return await sendAsFloofWebhook(message, {
+            embeds: [
+                new EmbedBuilder()
+                    .setDescription('❌ You need an active pet to feed! Use `%pet buy` to get a pet first.')
+                    .setColor(0xff0000)
+            ]
+        });
+    }
+
+    if (args.length === 0) {
+        const userData = getUserPets(userId);
+        const petItems = userData.pet_items || {};
+        
+        let description = `**🍽️ Feed ${activePet.name}**\n\n`;
+        description += `**Current Status:**\n`;
+        description += `🍽️ Hunger: ${activePet.hunger}/100\n`;
+        description += `😊 Happiness: ${activePet.happiness}/100\n\n`;
+        description += `**Available Food:**\n`;
+        
+        const foodItems = Object.entries(PET_ITEMS).filter(([id, item]) => item.type === 'food');
+        let hasFood = false;
+        
+        for (const [foodId, foodInfo] of foodItems) {
+            const quantity = petItems[foodId] || 0;
+            if (quantity > 0) {
+                hasFood = true;
+                const petInfo = PET_TYPES[activePet.type];
+                const isFavorite = petInfo.favorite_foods.includes(foodId) ? '⭐' : '';
+                description += `${foodInfo.emoji} **${foodInfo.name}** x${quantity} ${isFavorite}\n`;
+                description += `└ +${foodInfo.hunger} hunger, +${foodInfo.happiness} happiness\n`;
+            }
+        }
+        
+        if (!hasFood) {
+            description += `❌ No food items available!\n\n`;
+            description += `💡 **Buy food from the pet shop:**\n`;
+            description += `Use \`%petshop\` to buy food items for your pet.`;
+        } else {
+            description += `\n💡 **Usage:** \`%pet feed <food_name>\``;
+        }
+
+        const embed = new EmbedBuilder()
+            .setTitle('🍽️ Pet Feeding')
+            .setDescription(description)
+            .setColor(0xe91e63)
+            .setTimestamp();
+
+        return await sendAsFloofWebhook(message, { embeds: [embed] });
+    }
+
+    const foodType = args[0].toLowerCase();
+    const result = feedPet(userId, activePet.id, foodType);
+    
+    if (!result.success) {
+        let errorMsg = '';
+        switch (result.reason) {
+            case 'invalid':
+                errorMsg = '❌ Invalid food item! Use `%pet feed` to see available food.';
+                break;
+            case 'no_food':
+                errorMsg = `❌ You don't have any ${foodType}! Buy some from the pet shop with \`%petshop\`.`;
+                break;
+            default:
+                errorMsg = '❌ Failed to feed pet.';
+        }
+        
+        return await sendAsFloofWebhook(message, {
+            embeds: [
+                new EmbedBuilder()
+                    .setDescription(errorMsg)
+                    .setColor(0xff0000)
+            ]
+        });
+    }
+
+    const foodInfo = PET_ITEMS[foodType];
+    const petInfo = PET_TYPES[activePet.type];
+    const isFavorite = petInfo.favorite_foods.includes(foodType);
+    
+    let description = `${petInfo.emoji} **${activePet.name}** enjoyed the ${foodInfo.emoji} **${foodInfo.name}**!\n\n`;
+    description += `**Effects:**\n`;
+    description += `🍽️ Hunger: +${result.hunger_gained} (now ${result.pet.hunger}/100)\n`;
+    description += `😊 Happiness: +${result.happiness_gained} (now ${result.pet.happiness}/100)\n`;
+    
+    if (isFavorite) {
+        description += `\n⭐ **Favorite Food Bonus!** Effects increased by 50%!`;
+    }
+
+    const embed = new EmbedBuilder()
+        .setTitle('🍽️ Pet Fed Successfully!')
+        .setDescription(description)
+        .setColor(0x00ff00)
+        .setTimestamp();
+
+    return await sendAsFloofWebhook(message, { embeds: [embed] });
+}
+
+async function handleTrainPet(message, userId, args) {
+    const activePet = getActivePet(userId);
+    
+    if (!activePet) {
+        return await sendAsFloofWebhook(message, {
+            embeds: [
+                new EmbedBuilder()
+                    .setDescription('❌ You need an active pet to train! Use `%pet buy` to get a pet first.')
+                    .setColor(0xff0000)
+            ]
+        });
+    }
+
+    updatePetStatus(activePet);
+
+    if (args.length === 0) {
+        let description = `**🏋️ Train ${activePet.name}**\n\n`;
+        description += `**Current Status:**\n`;
+        description += `🍽️ Hunger: ${activePet.hunger}/100 (needs 20+)\n`;
+        description += `😊 Happiness: ${activePet.happiness}/100 (needs 30+)\n\n`;
+        description += `**Current Stats:**\n`;
+        description += `⚔️ Attack: ${activePet.stats.attack}\n`;
+        description += `🛡️ Defense: ${activePet.stats.defense}\n`;
+        description += `💨 Speed: ${activePet.stats.speed}\n`;
+        description += `❤️ Health: ${activePet.stats.health}\n\n`;
+        description += `**Available Training:**\n`;
+        description += `⚔️ \`%pet train attack\` - Increase attack power\n`;
+        description += `🛡️ \`%pet train defense\` - Increase defense\n`;
+        description += `💨 \`%pet train speed\` - Increase speed\n`;
+        description += `❤️ \`%pet train health\` - Increase health\n\n`;
+        description += `💡 Training costs 15 happiness and 10 hunger!`;
+
+        const embed = new EmbedBuilder()
+            .setTitle('🏋️ Pet Training')
+            .setDescription(description)
+            .setColor(0xe91e63)
+            .setTimestamp();
+
+        return await sendAsFloofWebhook(message, { embeds: [embed] });
+    }
+
+    const statType = args[0].toLowerCase();
+    const result = trainPet(userId, activePet.id, statType);
+    
+    if (!result.success) {
+        let errorMsg = '';
+        switch (result.reason) {
+            case 'pet_not_found':
+                errorMsg = '❌ Pet not found!';
+                break;
+            case 'unhappy':
+                errorMsg = `😢 ${activePet.name} is too sad to train! Feed them or play to increase happiness (needs 30+).`;
+                break;
+            case 'hungry':
+                errorMsg = `🍽️ ${activePet.name} is too hungry to train! Feed them first (needs 20+).`;
+                break;
+            case 'invalid_stat':
+                errorMsg = '❌ Invalid stat! Choose: attack, defense, speed, or health.';
+                break;
+            default:
+                errorMsg = '❌ Failed to train pet.';
+        }
+        
+        return await sendAsFloofWebhook(message, {
+            embeds: [
+                new EmbedBuilder()
+                    .setDescription(errorMsg)
+                    .setColor(0xff0000)
+            ]
+        });
+    }
+
+    const petInfo = PET_TYPES[activePet.type];
+    let description = `${petInfo.emoji} **${activePet.name}** completed ${statType} training!\n\n`;
+    description += `**Training Results:**\n`;
+    description += `📈 ${statType.charAt(0).toUpperCase() + statType.slice(1)}: +${result.stat_gained} (now ${result.pet.stats[statType]})\n`;
+    description += `⭐ XP: +10 (now ${result.pet.xp}/${result.pet.level * 100})\n`;
+    description += `🍽️ Hunger: -10 (now ${result.pet.hunger}/100)\n`;
+    description += `😊 Happiness: -15 (now ${result.pet.happiness}/100)\n`;
+    
+    if (result.leveled_up) {
+        description += `\n🎉 **LEVEL UP!** ${activePet.name} is now level ${result.pet.level}!\n`;
+        description += `All stats increased from leveling up!`;
+    }
+
+    const embed = new EmbedBuilder()
+        .setTitle('🏋️ Training Complete!')
+        .setDescription(description)
+        .setColor(0x00ff00)
+        .setTimestamp();
+
+    return await sendAsFloofWebhook(message, { embeds: [embed] });
+}
+
+async function handlePetInfo(message, userId, args) {
+    let targetPet;
+    
+    if (args.length === 0) {
+        targetPet = getActivePet(userId);
+        if (!targetPet) {
+            return await sendAsFloofWebhook(message, {
+                embeds: [
+                    new EmbedBuilder()
+                        .setDescription('❌ You need an active pet! Use `%pet buy` to get a pet first.')
+                        .setColor(0xff0000)
+                ]
+            });
+        }
+    } else {
+        const petName = args.join(' ');
+        const userData = getUserPets(userId);
+        targetPet = userData.pets.find(pet => pet.name.toLowerCase() === petName.toLowerCase());
+        
+        if (!targetPet) {
+            return await sendAsFloofWebhook(message, {
+                embeds: [
+                    new EmbedBuilder()
+                        .setDescription(`❌ You don't have a pet named "${petName}"!`)
+                        .setColor(0xff0000)
+                ]
+            });
+        }
+    }
+
+    updatePetStatus(targetPet);
+    const petInfo = PET_TYPES[targetPet.type];
+    const userData = getUserPets(userId);
+    const isActive = targetPet.id === userData.active_pet;
+    
+    let description = `${petInfo.emoji} **${targetPet.name}** ${isActive ? '⭐ **ACTIVE**' : ''}\n`;
+    description += `**${petInfo.name}** • Level ${targetPet.level}\n\n`;
+    
+    description += `**📊 Stats:**\n`;
+    description += `⚔️ Attack: ${targetPet.stats.attack}\n`;
+    description += `🛡️ Defense: ${targetPet.stats.defense}\n`;
+    description += `💨 Speed: ${targetPet.stats.speed}\n`;
+    description += `❤️ Health: ${targetPet.stats.health}\n\n`;
+    
+    description += `**🎯 Status:**\n`;
+    const hungerBar = getStatusBar(targetPet.hunger);
+    const happinessBar = getStatusBar(targetPet.happiness);
+    description += `🍽️ Hunger: ${targetPet.hunger}/100 ${hungerBar}\n`;
+    description += `😊 Happiness: ${targetPet.happiness}/100 ${happinessBar}\n`;
+    description += `⭐ XP: ${targetPet.xp}/${targetPet.level * 100}\n\n`;
+    
+    description += `**🏆 Record:**\n`;
+    description += `🥇 Battles Won: ${targetPet.battles_won}\n`;
+    description += `💔 Battles Lost: ${targetPet.battles_lost}\n`;
+    description += `🏋️ Training Sessions: ${targetPet.training_sessions}\n\n`;
+    
+    description += `**💡 Favorite Foods:**\n`;
+    const favoriteEmojis = petInfo.favorite_foods.map(food => {
+        const foodItem = PET_ITEMS[food];
+        return foodItem ? foodItem.emoji : '❓';
+    }).join(' ');
+    description += favoriteEmojis;
+
+    const embed = new EmbedBuilder()
+        .setTitle(`🐾 Pet Information`)
+        .setDescription(description)
+        .setColor(0xe91e63)
+        .setThumbnail(message.author.displayAvatarURL({ dynamic: true }))
+        .setTimestamp();
+
+    return await sendAsFloofWebhook(message, { embeds: [embed] });
+}
+
+async function handleSwitchPet(message, userId, args) {
+    if (args.length === 0) {
+        return await sendAsFloofWebhook(message, {
+            embeds: [
+                new EmbedBuilder()
+                    .setDescription('❌ Please specify which pet to make active!\nExample: `%pet switch Fluffy`')
+                    .setColor(0xff0000)
+            ]
+        });
+    }
+
+    const petName = args.join(' ');
+    const userData = getUserPets(userId);
+    const targetPet = userData.pets.find(pet => pet.name.toLowerCase() === petName.toLowerCase());
+    
+    if (!targetPet) {
+        return await sendAsFloofWebhook(message, {
+            embeds: [
+                new EmbedBuilder()
+                    .setDescription(`❌ You don't have a pet named "${petName}"!\n\nYour pets: ${userData.pets.map(p => p.name).join(', ')}`)
+                    .setColor(0xff0000)
+            ]
+        });
+    }
+
+    if (targetPet.id === userData.active_pet) {
+        return await sendAsFloofWebhook(message, {
+            embeds: [
+                new EmbedBuilder()
+                    .setDescription(`❌ ${targetPet.name} is already your active pet!`)
+                    .setColor(0xff0000)
+            ]
+        });
+    }
+
+    const result = setActivePet(userId, targetPet.id);
+    
+    if (!result.success) {
+        return await sendAsFloofWebhook(message, {
+            embeds: [
+                new EmbedBuilder()
+                    .setDescription('❌ Failed to switch active pet!')
+                    .setColor(0xff0000)
+            ]
+        });
+    }
+
+    const petInfo = PET_TYPES[targetPet.type];
+    const embed = new EmbedBuilder()
+        .setTitle('⭐ Active Pet Changed!')
+        .setDescription(`${petInfo.emoji} **${targetPet.name}** is now your active pet!\n\nUse \`%pet info\` to see their stats.`)
+        .setColor(0x00ff00)
+        .setTimestamp();
+
+    return await sendAsFloofWebhook(message, { embeds: [embed] });
+}
+
 async function displayPetTypes(message) {
     let description = '**🐾 Available Pet Types**\n\n';
-    description += '🐱 **Cat** - 1,000 coins\n';
-    description += '└ Playful and independent companion\n\n';
-    description += '🐶 **Dog** - 1,200 coins\n';
-    description += '└ Loyal and energetic friend\n\n';
-    description += '🐰 **Rabbit** - 800 coins\n';
-    description += '└ Cute and gentle pet\n\n';
-    description += '🐦 **Bird** - 600 coins\n';
-    description += '└ Colorful and talkative companion\n\n';
-    description += '🚧 **Pet system is being rebuilt - coming soon!**';
+    
+    for (const [petId, petInfo] of Object.entries(PET_TYPES)) {
+        description += `${petInfo.emoji} **${petInfo.name}** - ${petInfo.price.toLocaleString()} coins\n`;
+        description += `└ ${petInfo.description}\n\n`;
+    }
+    
+    description += `💡 **How to buy:** \`%pet buy <type> <name>\`\n`;
+    description += `Example: \`%pet buy cat Fluffy\``;
 
     const embed = new EmbedBuilder()
         .setTitle('🐾 Pet Types')
